@@ -1,36 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Chatbot Pribadi</title>
+    <title>Flora AI Web</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #eee; }
-        #chat-box { height: 60vh; overflow-y: scroll; background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
-        .msg { padding: 10px; border-radius: 10px; margin: 5px 0; width: fit-content; max-width: 80%; }
-        .user { background: #0084ff; color: white; margin-left: auto; }
-        .bot { background: #ddd; color: black; }
-        input { width: 70%; padding: 10px; border-radius: 5px; border: none; }
-        button { width: 25%; padding: 10px; background: #0084ff; color: white; border: none; border-radius: 5px; }
+        body { font-family: sans-serif; padding: 20px; background: #f5f5f5; max-width: 600px; margin: 0 auto; }
+        #chat-box { height: 60vh; overflow-y: scroll; background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd; }
+        .msg { padding: 10px 15px; border-radius: 15px; margin: 8px 0; width: fit-content; max-width: 85%; word-wrap: break-word; }
+        .user { background: #007bff; color: white; margin-left: auto; border-bottom-right-radius: 2px; }
+        .bot { background: #e9ecef; color: black; border-bottom-left-radius: 2px; }
+        .controls { display: flex; gap: 5px; }
+        input[type="text"] { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; border-radius: 25px; border: none; cursor: pointer; color: white; font-weight: bold; }
+        .btn-kirim { background: #007bff; }
+        .btn-img { background: #6c757d; }
+        img { max-width: 100%; border-radius: 10px; margin-top: 5px; }
+        /* Loading Spinner */
+        .loading { display: none; text-align: center; font-size: 12px; color: #666; }
     </style>
 </head>
 <body>
-    <h2>Bot Gue 🤖</h2>
+    <h2>Flora AI 🌸</h2>
     <div id="chat-box"></div>
-    <div style="display:flex; justify-content:space-between;">
-        <input type="text" id="pesan" placeholder="Ketik sesuatu...">
-        <button onclick="kirim()">Kirim</button>
+    <div class="loading" id="loader">Sedang memproses...</div>
+    
+    <div class="controls">
+        <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImageUpload()">
+        
+        <button class="btn-img" onclick="document.getElementById('fileInput').click()">📷</button>
+        
+        <input type="text" id="pesan" placeholder="Ketik pesan / prompt...">
+        <button class="btn-kirim" onclick="kirimChat()">➤</button>
     </div>
 
     <script>
-        async function kirim() {
+        const chatBox = document.getElementById("chat-box");
+        const loader = document.getElementById("loader");
+
+        // 1. Fungsi Chat Biasa (Ke Gemini)
+        async function kirimChat() {
             const txt = document.getElementById("pesan").value;
             if(!txt) return;
 
-            // Tampilin pesan kita
-            document.getElementById("chat-box").innerHTML += `<div class="msg user">${txt}</div>`;
+            addBubble(txt, 'user');
             document.getElementById("pesan").value = "";
+            loader.style.display = "block";
 
-            // Kirim ke Otak (Backend)
             try {
                 const res = await fetch('/api', {
                     method: 'POST',
@@ -38,12 +53,58 @@
                     body: JSON.stringify({ message: txt })
                 });
                 const data = await res.json();
-
-                // Tampilin balasan
-                document.getElementById("chat-box").innerHTML += `<div class="msg bot">${data.reply}</div>`;
+                addBubble(data.reply, 'bot');
             } catch (e) {
-                document.getElementById("chat-box").innerHTML += `<div class="msg bot">Error koneksi :(</div>`;
+                addBubble("Error koneksi.", 'bot');
             }
+            loader.style.display = "none";
+        }
+
+        // 2. Fungsi Edit Gambar (Ke NanoBanana)
+        async function handleImageUpload() {
+            const file = document.getElementById("fileInput").files[0];
+            const prompt = document.getElementById("pesan").value;
+
+            if (!file) return;
+            if (!prompt) {
+                alert("Tulis prompt gaya dulu di kolom teks! (Misal: anime style)");
+                return;
+            }
+
+            // Tampilkan preview gambar kita
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async function() {
+                const base64Img = reader.result;
+                addBubble(`Mengedit foto ini jadi: <b>${prompt}</b>...<br><img src="${base64Img}" width="150">`, 'user');
+                
+                loader.style.display = "block";
+                loader.innerText = "Sedang menggambar... (tunggu 10 detik)";
+
+                try {
+                    const res = await fetch('/api/edit', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ image: base64Img, prompt: prompt })
+                    });
+                    const data = await res.json();
+                    
+                    if(data.success) {
+                        addBubble(`Jadi deh! 🎉<br><img src="${data.url}">`, 'bot');
+                    } else {
+                        addBubble(`Gagal: ${data.error}`, 'bot');
+                    }
+                } catch (e) {
+                    addBubble("Error upload.", 'bot');
+                }
+                loader.style.display = "none";
+                document.getElementById("fileInput").value = ""; // Reset input
+            };
+        }
+
+        function addBubble(html, type) {
+            chatBox.innerHTML += `<div class="msg ${type}">${html}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
 </body>
