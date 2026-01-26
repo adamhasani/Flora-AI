@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatbot Pribadi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #eee; }
+        #chat-box { height: 60vh; overflow-y: scroll; background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        .msg { padding: 10px; border-radius: 10px; margin: 5px 0; width: fit-content; max-width: 80%; }
+        .user { background: #0084ff; color: white; margin-left: auto; }
+        .bot { background: #ddd; color: black; }
+        input { width: 70%; padding: 10px; border-radius: 5px; border: none; }
+        button { width: 25%; padding: 10px; background: #0084ff; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>Bot Gue 🤖</h2>
+    <div id="chat-box"></div>
+    <div style="display:flex; justify-content:space-between;">
+        <input type="text" id="pesan" placeholder="Ketik sesuatu...">
+        <button onclick="kirim()">Kirim</button>
+    </div>
+
+    <script>
+        async function kirim() {
+            const txt = document.getElementById("pesan").value;
+            if(!txt) return;
+
+            // Tampilin pesan kita
+            document.getElementById("chat-box").innerHTML += `<div class="msg user">${txt}</div>`;
+            document.getElementById("pesan").value = "";
+
+            // Kirim ke Otak (Backend)
+            try {
+                const res = await fetch('/api', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: txt })
+                });
+                const data = await res.json();
+
+                // Tampilin balasan
+                document.getElementById("chat-box").innerHTML += `<div class="msg bot">${data.reply}</div>`;
+            } catch (e) {
+                document.getElementById("chat-box").innerHTML += `<div class="msg bot">Error koneksi :(</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
