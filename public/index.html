@@ -15,8 +15,7 @@
         .btn-kirim { background: #007bff; }
         .btn-img { background: #6c757d; }
         img { max-width: 100%; border-radius: 10px; margin-top: 5px; }
-        /* Loading Spinner */
-        .loading { display: none; text-align: center; font-size: 12px; color: #666; }
+        .loading { display: none; text-align: center; font-size: 12px; color: #666; margin-bottom: 10px;}
     </style>
 </head>
 <body>
@@ -26,10 +25,8 @@
     
     <div class="controls">
         <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImageUpload()">
-        
         <button class="btn-img" onclick="document.getElementById('fileInput').click()">📷</button>
-        
-        <input type="text" id="pesan" placeholder="Ketik pesan / prompt...">
+        <input type="text" id="pesan" placeholder="Ketik prompt dulu..." />
         <button class="btn-kirim" onclick="kirimChat()">➤</button>
     </div>
 
@@ -37,15 +34,37 @@
         const chatBox = document.getElementById("chat-box");
         const loader = document.getElementById("loader");
 
-        // 1. Fungsi Chat Biasa (Ke Gemini)
+        // FUNGSI KOMPRES GAMBAR (PENTING!)
+        function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        // Kecilkan ukuran jadi max lebar 800px (Biar ringan)
+                        const scale = 800 / img.width;
+                        canvas.width = 800;
+                        canvas.height = img.height * scale;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // Kompres kualitas jadi 70% JPEG
+                        resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+                    }
+                }
+            });
+        }
+
         async function kirimChat() {
             const txt = document.getElementById("pesan").value;
             if(!txt) return;
-
             addBubble(txt, 'user');
             document.getElementById("pesan").value = "";
             loader.style.display = "block";
-
             try {
                 const res = await fetch('/api', {
                     method: 'POST',
@@ -54,52 +73,49 @@
                 });
                 const data = await res.json();
                 addBubble(data.reply, 'bot');
-            } catch (e) {
-                addBubble("Error koneksi.", 'bot');
-            }
+            } catch (e) { addBubble("Error koneksi.", 'bot'); }
             loader.style.display = "none";
         }
 
-        // 2. Fungsi Edit Gambar (Ke NanoBanana)
         async function handleImageUpload() {
             const file = document.getElementById("fileInput").files[0];
             const prompt = document.getElementById("pesan").value;
 
             if (!file) return;
             if (!prompt) {
-                alert("Tulis prompt gaya dulu di kolom teks! (Misal: anime style)");
+                alert("Tulis prompt gaya dulu! Contoh: anime style");
                 return;
             }
 
-            // Tampilkan preview gambar kita
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async function() {
-                const base64Img = reader.result;
-                addBubble(`Mengedit foto ini jadi: <b>${prompt}</b>...<br><img src="${base64Img}" width="150">`, 'user');
-                
-                loader.style.display = "block";
-                loader.innerText = "Sedang menggambar... (tunggu 10 detik)";
+            loader.style.display = "block";
+            loader.innerText = "Mengompres gambar...";
 
-                try {
-                    const res = await fetch('/api/edit', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ image: base64Img, prompt: prompt })
-                    });
-                    const data = await res.json();
-                    
-                    if(data.success) {
-                        addBubble(`Jadi deh! 🎉<br><img src="${data.url}">`, 'bot');
-                    } else {
-                        addBubble(`Gagal: ${data.error}`, 'bot');
-                    }
-                } catch (e) {
-                    addBubble("Error upload.", 'bot');
+            try {
+                // 1. Kompres dulu sebelum kirim
+                const compressedBase64 = await compressImage(file);
+                
+                // Tampilkan preview yang sudah dikompres
+                addBubble(`Mengedit foto...<br><img src="${compressedBase64}" width="150">`, 'user');
+                loader.innerText = "Mengirim ke server... (Tunggu ya)";
+
+                // 2. Kirim versi kecil ke Vercel
+                const res = await fetch('/api/edit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ image: compressedBase64, prompt: prompt })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    addBubble(`Jadi nih! 🎉<br><img src="${data.url}">`, 'bot');
+                } else {
+                    addBubble(`Gagal: ${data.error}`, 'bot');
                 }
-                loader.style.display = "none";
-                document.getElementById("fileInput").value = ""; // Reset input
-            };
+            } catch (e) {
+                addBubble(`Error: ${e.message}`, 'bot');
+            }
+            loader.style.display = "none";
+            document.getElementById("fileInput").value = "";
         }
 
         function addBubble(html, type) {
