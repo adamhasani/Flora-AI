@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ 
             model: "gemini-2.5-flash",
-            systemInstruction: "Nama kamu Flora. Kamu AI asisten pribadi yang gaul, santai, dan sedikit tengil. Gunakan bahasa Indonesia sehari-hari (lu/gue atau aku/kamu)."
+            systemInstruction: "Nama kamu Flora. Kamu asisten yang cerdas dan ramah. Jawab pertanyaan dengan bahasa Indonesia yang santai, ringkas, dan jelas. Hindari bahasa yang terlalu formal/baku, tapi jangan gunakan bahasa alay. Bersikaplah seperti teman ngobrol yang suportif."
         });
 
         // --- LOGIC ROUTER (MODULAR) ---
