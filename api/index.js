@@ -5,28 +5,29 @@ const Groq = require("groq-sdk");
 const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
 const geminiKey = getCleanKey(process.env.GEMINI_API_KEY || process.env.API_KEY);
 const groqKey = getCleanKey(process.env.GROQ_API_KEY);
+const mistralKey = getCleanKey(process.env.MISTRAL_API_KEY); // <--- Taruh di Vercel
 
 const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 const groq = new Groq({ apiKey: groqKey || "dummy" });
 
 // --- 2. PROMPT SISTEM ---
 const promptStrictHTML = `
-    Nama kamu Flora. Kamu asisten AI yang cerdas dan modern.
-    WAJIB GUNAKAN HTML: <b>tebal</b>, <br> untuk baris baru, <ul><li> untuk daftar.
-    DILARANG gunakan Markdown (** atau #). Jawab dalam Bahasa Indonesia yang santai tapi sopan.
+    Nama kamu Flora. Kamu asisten AI cerdas & modern.
+    WAJIB GUNAKAN HTML: <b>tebal</b>, <br> baris baru, <ul><li> daftar.
+    DILARANG gunakan Markdown (** atau #). Jawab dalam Bahasa Indonesia santai.
 `;
 
 // --- 3. HELPER: PEMBERSIH ---
 const cleanResponse = (text) => {
     if (!text) return "";
     let clean = text
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') // Convert ** ke <b>
-        .replace(/\*(.*?)\*/g, '<i>$1</i>')     // Convert * ke <i>
-        .replace(/^- (.*$)/gim, '<li>$1</li>')  // Convert list - ke <li>
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') 
+        .replace(/\*(.*?)\*/g, '<i>$1</i>')     
+        .replace(/^- (.*$)/gim, '<li>$1</li>')  
         .replace(/```html/g, '').replace(/```/g, '')
         .replace(/\\n/g, "<br>").replace(/\n/g, "<br>")
         .trim();
-    if (clean.includes('<li>')) clean = `<ul>${clean}</ul>`;
+    if (clean.includes('<li>') && !clean.includes('<ul>')) clean = `<ul>${clean}</ul>`;
     return clean;
 };
 
@@ -39,29 +40,38 @@ const getCleanHistory = (history) => {
 
 // --- 4. FUNGSI EKSEKUTOR ---
 
-// A. QWEN (GANTI ANABOT) - Gratis & Stabil
-async function runQwen(history) {
+// A. MISTRAL AI (Ganti Hugging Face/Anabot)
+async function runMistral(history) {
+    if (!mistralKey) throw new Error("Mistral Key Kosong");
     const cleanHist = getCleanHistory(history);
-    const payload = {
-        messages: [{ role: "system", content: promptStrictHTML }, ...cleanHist],
-        model: "qwen",
-        seed: 42
-    };
 
-    const response = await fetch('https://text.pollinations.ai/', {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${mistralKey}`
+        },
+        body: JSON.stringify({
+            model: "mistral-small-latest",
+            messages: [
+                { role: "system", content: promptStrictHTML },
+                ...cleanHist
+            ],
+            temperature: 0.7
+        })
     });
 
-    const replyText = await response.text();
-    if (!replyText) throw new Error("Qwen Sedang Sibuk");
+    const data = await response.json();
+    const replyText = data.choices?.[0]?.message?.content || "";
+    
+    if (!replyText) throw new Error("Mistral Sedang Sibuk");
     return cleanResponse(replyText);
 }
 
-// B. GROQ
+// B. GROQ (Llama 3.3)
 async function runGroq(history) {
-    if (!groqKey) throw new Error("API Key GROQ Kosong!");
+    if (!groqKey) throw new Error("Groq Key Kosong");
     const messagesGroq = [{ role: "system", content: promptStrictHTML }, ...getCleanHistory(history)];
     const res = await groq.chat.completions.create({
         messages: messagesGroq,
@@ -73,7 +83,7 @@ async function runGroq(history) {
 
 // C. GEMINI
 async function runGemini(history) {
-    if (!geminiKey) throw new Error("API Key GEMINI Kosong!");
+    if (!geminiKey) throw new Error("Gemini Key Kosong");
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: promptStrictHTML });
     const cleanHist = getCleanHistory(history).map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -85,7 +95,7 @@ async function runGemini(history) {
     return cleanResponse(result.response.text());
 }
 
-// --- 5. MAIN HANDLER ---
+// --- 5. MAIN HANDLER DENGAN FALLBACK BERLAPIS ---
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -97,17 +107,21 @@ module.exports = async (req, res) => {
         const selectedModel = model ? model.toLowerCase() : 'qwen';
         let result = "", label = "Flora AI";
         
+        // Logika Eksekusi
         try {
             if (selectedModel === 'groq') {
                 result = await runGroq(history); label = "Flora AI ⚡";
             } else if (selectedModel === 'gemini') {
                 result = await runGemini(history); label = "Flora AI 🧠";
             } else {
-                result = await runQwen(history); label = "Flora AI 🌿";
+                result = await runMistral(history); label = "Flora AI 🌿";
             }
             return res.json({ reply: `<b>[${label}]</b><br>${result}` });
         } catch (e) {
-            return res.json({ reply: `<b>[❌ Flora Error]</b><br>Sistem ${selectedModel} sedang limit. Coba model lain ya!` });
+            // Jika model utama (Mistral/Groq) gagal, lempar ke Gemini sebagai nyawa terakhir
+            console.log("Model utama gagal, mencoba backup Gemini...");
+            const backup = await runGemini(history);
+            return res.json({ reply: `<b>[Flora AI 🧠]</b><br>${backup}` });
         }
     } catch (sysError) {
         return res.status(500).json({ reply: `System Crash: ${sysError.message}` });
