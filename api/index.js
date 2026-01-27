@@ -2,58 +2,47 @@ const Groq = require("groq-sdk");
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 module.exports = async (req, res) => {
-    // 1. CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
     if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
     try {
-        const { message } = req.body;
-        if (!message) return res.status(400).json({ error: 'Pesan kosong' });
+        // Kita terima 'history' (array), bukan cuma 'message'
+        const { history } = req.body;
+        if (!history || !Array.isArray(history)) {
+            return res.status(400).json({ error: 'Riwayat chat tidak valid' });
+        }
 
-        // 2. INSTRUKSI FORMAT HTML (PENTING!)
-        // Kita suruh AI pakai tag HTML biar browser HP kamu bisa bacanya rapi.
-        const systemPrompt = `
-            Nama kamu Flora. Kamu asisten AI yang cerdas, to-the-point, dan rapi.
+        // --- SISTEM PROMPT (KEPRIBADIAN) ---
+        // Ini tetap ditaruh paling atas biar dia ingat siapa dirinya
+        const systemPrompt = {
+            role: "system",
+            content: `Nama kamu Flora. Asisten AI yang cerdas, to-the-point, dan rapi.
             
-            ATURAN FORMATTING (WAJIB DIPATUHI):
-            1. Jangan gunakan Markdown (seperti *, #, -). Tampilan itu jelek di web ini.
-            2. Gunakan HTML TAGS untuk memformat jawabanmu:
-               - Gunakan <b>Teks Tebal</b> untuk kata kunci atau sub-judul.
-               - Gunakan <br> untuk baris baru.
-               - Gunakan <ul><li>Poin 1</li><li>Poin 2</li></ul> untuk membuat daftar poin.
-               - Gunakan <p>Paragraf</p> untuk penjelasan.
-            3. Gaya Bicara: Informatif, Terstruktur, dan Mirip Wikipedia/Gemini.
-            
-            Contoh Output yang Benar:
-            <b>Ada Lovelace</b> adalah programmer pertama.<br><br>
-            <b>Kontribusi Utama:</b>
-            <ul>
-                <li>Menulis algoritma pertama.</li>
-                <li>Visioner komputer.</li>
-            </ul>
-        `;
+            ATURAN FORMATTING:
+            1. Gunakan HTML Tags: <b>Tebal</b> untuk judul/poin penting. <br> untuk baris baru.
+            2. Gunakan <ul><li>Poin 1</li></ul> untuk daftar.
+            3. Jangan pakai Markdown (* atau #).
+            4. Selalu ingat konteks percakapan sebelumnya.`
+        };
 
-        // 3. Kirim ke Groq
+        // Gabungkan: [Kepribadian] + [Riwayat Chat User]
+        const finalMessages = [systemPrompt, ...history];
+
+        // Kirim semua ke Groq
         const chatCompletion = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: message }
-            ],
+            messages: finalMessages,
             model: "llama-3.3-70b-versatile",
-            temperature: 0.5, // Lebih rendah biar nurut aturan format
+            temperature: 0.6,
             max_tokens: 1024,
         });
 
-        const reply = chatCompletion.choices[0]?.message?.content || "Maaf, server error.";
+        const reply = chatCompletion.choices[0]?.message?.content || "Maaf, error.";
 
         return res.status(200).json({ reply: reply });
 
     } catch (error) {
-        console.error("Groq Error:", error);
         return res.status(200).json({ reply: `⚠️ Error: ${error.message}` });
     }
 };
