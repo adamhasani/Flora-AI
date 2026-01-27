@@ -1,335 +1,273 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Flora AI - Gemini Style</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
-        /* --- 1. RESET & VARIABLES --- */
+        /* --- 1. VARIABEL & RESET --- */
         :root {
-            --bg-body: #131314; /* Gemini Dark Base */
-            --bg-sidebar: #1E1F20;
-            --bg-surface: #282A2C;
+            --bg-body: #131314;       /* Background Utama Gemini Dark */
+            --bg-sidebar: #1E1F20;    /* Sidebar */
+            --bg-input: #1E1F20;      /* Input Bar */
+            --bg-user: #282A2C;       /* Bubble User */
+            --bg-hover: #333537;
             --text-main: #E3E3E3;
             --text-sub: #A4A4A4;
-            --accent: #4AA9FF; /* Gemini Blue */
-            --accent-gradient: linear-gradient(90deg, #4AA9FF, #A78BFA);
-            --input-bg: #1E1F20;
-            --user-bubble: #282A2C;
+            --accent: #4AA9FF;        /* Biru Gemini */
+            --accent-grad: linear-gradient(90deg, #4AA9FF, #A78BFA);
         }
 
-        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            font-family: 'Outfit', sans-serif;
+        * { box-sizing: border-box; outline: none; }
+        body {
+            margin: 0; padding: 0;
             background-color: var(--bg-body);
             color: var(--text-main);
-            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            height: 100vh; display: flex; overflow: hidden;
         }
 
-        /* --- 2. AUTH SCREEN (LOGIN & REGISTER) --- */
-        #auth-screen {
+        /* --- 2. AUTH SCREEN (LOGIN/REGISTER) --- */
+        #auth-overlay {
             position: fixed; inset: 0; z-index: 9999;
             background: var(--bg-body);
             display: flex; align-items: center; justify-content: center;
             transition: opacity 0.5s ease;
         }
-
-        .auth-card {
-            width: 100%; max-width: 400px;
-            padding: 40px;
-            background: var(--bg-sidebar);
-            border-radius: 24px;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            border: 1px solid #333;
+        .auth-box {
+            width: 100%; max-width: 400px; padding: 40px;
+            background: var(--bg-sidebar); border-radius: 24px;
+            text-align: center; border: 1px solid #333;
         }
-
-        .logo-auth {
-            font-size: 40px; margin-bottom: 10px;
-            background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            font-weight: 700;
-        }
-
-        .auth-form { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; }
+        .auth-title { font-size: 28px; font-weight: 500; margin-bottom: 10px; }
+        .auth-sub { color: var(--text-sub); font-size: 14px; margin-bottom: 30px; }
         
-        .input-field {
-            background: #2C2C2E; border: 1px solid #3C3C3E;
-            padding: 16px; border-radius: 12px;
+        .inp-group { text-align: left; margin-bottom: 15px; }
+        .inp-field {
+            width: 100%; padding: 16px; background: #2C2C2E;
+            border: 1px solid #3C3C3E; border-radius: 12px;
             color: white; font-size: 16px; transition: 0.3s;
         }
-        .input-field:focus { border-color: var(--accent); }
-
-        .btn-primary {
-            background: white; color: black;
-            padding: 16px; border-radius: 30px; border: none;
-            font-weight: 600; font-size: 16px; cursor: pointer;
-            margin-top: 10px; transition: 0.2s;
+        .inp-field:focus { border-color: var(--accent); }
+        
+        .btn-main {
+            width: 100%; padding: 16px; border-radius: 30px;
+            background: white; color: black; font-weight: 600; font-size: 16px;
+            border: none; cursor: pointer; margin-top: 10px;
         }
-        .btn-primary:hover { background: #DDD; }
+        .toggle-link { margin-top: 20px; font-size: 13px; color: var(--text-sub); }
+        .toggle-link span { color: var(--accent); cursor: pointer; font-weight: 600; }
 
-        .toggle-text { margin-top: 20px; font-size: 14px; color: var(--text-sub); }
-        .toggle-text span { color: var(--accent); cursor: pointer; font-weight: 600; }
+        /* --- 3. LAYOUT UTAMA --- */
+        #app-layout { display: none; width: 100%; height: 100%; opacity: 0; transition: opacity 0.8s; }
 
-        /* --- 3. MAIN LAYOUT --- */
-        #app-container {
-            display: none; height: 100%; width: 100%;
-            opacity: 0; transition: opacity 0.8s ease;
-        }
-
-        /* Sidebar */
+        /* SIDEBAR */
         .sidebar {
-            width: 260px; background: var(--bg-sidebar);
-            display: flex; flex-direction: column; padding: 20px 15px;
+            width: 280px; background: var(--bg-sidebar);
+            display: flex; flex-direction: column; padding: 20px;
             border-right: 1px solid #333;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s;
         }
-        .new-chat-btn {
-            background: #28292A; color: var(--text-sub);
-            padding: 12px 15px; border-radius: 20px;
-            display: flex; align-items: center; gap: 10px;
-            cursor: pointer; font-size: 14px; font-weight: 500;
-            transition: 0.2s;
+        .new-chat {
+            background: #28292A; padding: 12px 15px; border-radius: 20px;
+            color: var(--text-sub); font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; gap: 10px; transition: 0.2s;
         }
-        .new-chat-btn:hover { background: #333; color: var(--text-main); }
-        .history-list { margin-top: 20px; flex: 1; overflow-y: auto; }
-        .history-item {
-            padding: 10px 15px; font-size: 14px; color: var(--text-main);
-            border-radius: 18px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .history-item:hover { background: #28292A; }
-        .user-profile {
-            display: flex; align-items: center; gap: 10px; padding-top: 15px; border-top: 1px solid #333;
-        }
-        .avatar { width: 32px; height: 32px; background: orange; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: black;}
+        .new-chat:hover { background: var(--bg-hover); color: white; }
+        
+        .history-sec { flex: 1; overflow-y: auto; margin-top: 20px; }
+        .hist-item { padding: 10px; border-radius: 18px; font-size: 14px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hist-item:hover { background: var(--bg-hover); }
 
-        /* Main Chat Area */
-        .main-content {
-            flex: 1; display: flex; flex-direction: column; position: relative;
+        .user-mini {
+            margin-top: auto; padding-top: 15px; border-top: 1px solid #333;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .avatar { width: 32px; height: 32px; background: orange; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #000; }
+
+        /* MAIN CHAT AREA */
+        .main-area { flex: 1; position: relative; display: flex; flex-direction: column; }
+        
+        /* HEADER MOBILE */
+        .mob-header {
+            display: none; padding: 15px; align-items: center; justify-content: space-between;
             background: var(--bg-body);
         }
 
-        /* Header Mobile */
-        .mobile-header {
-            display: none; padding: 15px; align-items: center; justify-content: space-between;
-            color: var(--text-sub);
-        }
-
-        /* Chat Scroll Area */
-        #chat-scroll {
-            flex: 1; overflow-y: auto; padding: 20px 0 120px 0; /* Padding bottom for input */
+        /* SCROLL AREA */
+        #chat-window {
+            flex: 1; overflow-y: auto; padding: 0 0 100px 0;
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* Welcome Center State */
-        #welcome-center {
-            width: 100%; max-width: 800px;
-            margin-top: 10vh; text-align: left; padding: 20px;
-            animation: fadeIn 0.8s ease;
+        /* --- 4. WELCOME SCREEN (TENGAH) --- */
+        #welcome-screen {
+            width: 100%; max-width: 800px; padding: 40px 20px;
+            margin-top: 5vh; animation: fadeIn 0.8s ease;
         }
-        .greeting {
-            font-size: 56px; line-height: 1.2; font-weight: 600;
-            background: linear-gradient(90deg, #4285F4, #9B72CB, #D96570);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            margin-bottom: 10px; letter-spacing: -1px;
+        .greet-1 {
+            font-size: 56px; font-weight: 600; letter-spacing: -1px; margin-bottom: 5px;
+            background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        .sub-greeting { font-size: 56px; font-weight: 600; color: #444746; margin-bottom: 40px; }
+        .greet-2 { font-size: 56px; font-weight: 600; color: #444746; margin-bottom: 40px; }
         
-        .suggestion-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;
-        }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
         .suggestion-card {
-            background: var(--bg-surface); padding: 15px; border-radius: 12px;
-            cursor: pointer; transition: 0.2s; border: 1px solid transparent;
-            height: 120px; display: flex; flex-direction: column; justify-content: space-between;
+            background: var(--bg-sidebar); padding: 15px; height: 120px;
+            border-radius: 12px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between;
+            transition: 0.2s;
         }
-        .suggestion-card:hover { background: #333537; }
-        .card-text { font-size: 14px; color: var(--text-main); line-height: 1.4; }
-        .card-icon { align-self: flex-end; background: #000; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .suggestion-card:hover { background: var(--bg-hover); }
+        .s-icon { align-self: flex-end; width: 30px; height: 30px; background: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
-        /* Message Layout (Gemini Style) */
-        .chat-container { width: 100%; max-width: 800px; padding: 0 20px; display: none; }
+        /* --- 5. CHAT BUBBLES (GEMINI STYLE) --- */
+        #message-container { width: 100%; max-width: 800px; padding: 20px; display: none; }
+
+        .row { display: flex; gap: 15px; margin-bottom: 30px; width: 100%; animation: slideUp 0.3s; }
         
-        .msg-row {
-            display: flex; gap: 16px; margin-bottom: 30px; width: 100%;
-            animation: slideUp 0.3s ease;
-        }
-        
-        /* User Style: Bubble */
-        .msg-row.user { justify-content: flex-end; }
-        .msg-row.user .msg-content {
-            background: var(--user-bubble);
-            padding: 12px 20px;
-            border-radius: 20px 20px 4px 20px;
-            max-width: 80%;
-            font-size: 16px;
-            line-height: 1.6;
+        /* USER: Pake Bubble */
+        .row.user { justify-content: flex-end; }
+        .row.user .content {
+            background: var(--bg-user); color: white;
+            padding: 12px 20px; border-radius: 20px 20px 4px 20px;
+            max-width: 80%; line-height: 1.6;
         }
 
-        /* Bot Style: No Bubble, Just Text */
-        .msg-row.bot { justify-content: flex-start; align-items: flex-start; }
+        /* BOT: Tanpa Bubble (Langsung Teks) */
+        .row.bot { align-items: flex-start; }
         .bot-icon {
-            width: 32px; height: 32px; flex-shrink: 0;
+            width: 30px; height: 30px; flex-shrink: 0; margin-top: 5px;
             background: url('https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg') no-repeat center/contain;
-            margin-top: 4px; /* Align with text top */
         }
-        .msg-row.bot .msg-content {
-            background: transparent;
-            padding: 0;
-            color: var(--text-main);
-            font-size: 16px;
-            line-height: 1.7;
-            max-width: 90%;
+        .row.bot .content {
+            background: transparent; padding: 0; color: var(--text-main);
+            font-size: 16px; line-height: 1.7; max-width: 90%;
         }
 
-        /* Input Area (Bottom) */
-        .input-area-wrapper {
+        /* --- 6. INPUT FLOATING --- */
+        .input-wrapper {
             position: absolute; bottom: 0; left: 0; right: 0;
-            background: linear-gradient(transparent, var(--bg-body) 30%);
+            background: linear-gradient(transparent, var(--bg-body) 40%);
             padding: 20px; display: flex; justify-content: center;
         }
-        .input-box {
-            background: var(--input-bg);
-            width: 100%; max-width: 800px;
-            border-radius: 30px;
-            padding: 10px 15px;
-            display: flex; align-items: center; gap: 10px;
-            border: 1px solid #333;
-            transition: 0.3s;
+        .input-bar {
+            background: var(--bg-input); width: 100%; max-width: 800px;
+            border-radius: 30px; padding: 8px 15px; display: flex; align-items: center; gap: 10px;
+            border: 1px solid #333; transition: 0.3s;
         }
-        .input-box:focus-within { background: #282A2C; border-color: #555; }
-        
-        .action-btn { background: none; border: none; color: var(--text-main); font-size: 18px; cursor: pointer; padding: 10px; border-radius: 50%; transition: 0.2s; }
-        .action-btn:hover { background: #3C4043; }
-        
-        #user-input {
-            flex: 1; background: transparent; border: none;
-            color: white; font-size: 16px; padding: 10px 0;
-        }
-        
-        .send-btn { color: var(--text-sub); }
-        #user-input:not(:placeholder-shown) ~ .send-btn { color: var(--accent); }
+        .input-bar:focus-within { background: var(--bg-user); border-color: #555; }
+        #chat-input { flex: 1; background: transparent; border: none; color: white; font-size: 16px; padding: 12px 0; }
+        .act-btn { background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 8px; border-radius: 50%; }
+        .act-btn:hover { background: #3C4043; }
 
-        /* Loader */
-        .typing-indicator span {
+        /* Loader Typing */
+        .dots span {
             display: inline-block; width: 6px; height: 6px; background: var(--text-sub);
-            border-radius: 50%; margin: 0 2px; animation: bounce 1.4s infinite ease-in-out both;
+            border-radius: 50%; margin: 0 2px; animation: bounce 1.4s infinite;
         }
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-        
-        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes bounce { 0%, 100% {transform: scale(0);} 50% {transform: scale(1);} }
+        @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+        @keyframes slideUp { from{transform:translateY(20px); opacity:0;} to{transform:translateY(0); opacity:1;} }
 
-        /* Responsive */
+        /* RESPONSIVE */
         @media (max-width: 768px) {
-            .sidebar { display: none; } /* Hide sidebar on mobile for simplicity */
-            .mobile-header { display: flex; }
-            .greeting { font-size: 36px; }
-            .sub-greeting { font-size: 36px; }
-            .suggestion-grid { grid-template-columns: 1fr; }
-            .suggestion-card { height: auto; }
-            .msg-row.user .msg-content { max-width: 90%; }
+            .sidebar { display: none; }
+            .mob-header { display: flex; }
+            .greet-1, .greet-2 { font-size: 38px; }
+            .card-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-    <div id="auth-screen">
-        <div class="auth-card">
-            <div class="logo-auth">🌸 Flora</div>
+    <div id="auth-overlay">
+        <div class="auth-box">
+            <h1 class="auth-title">🌸 Flora AI</h1>
+            <p class="auth-sub" id="auth-desc">Masuk untuk melanjutkan</p>
             
-            <div id="login-form" class="auth-form">
-                <h2 style="margin:0; font-weight:500;">Selamat Datang Kembali</h2>
-                <input type="text" class="input-field" id="l-email" placeholder="Email atau Username">
-                <input type="password" class="input-field" id="l-pass" placeholder="Password">
-                <button class="btn-primary" onclick="handleAuth('login')">Masuk</button>
-                <div class="toggle-text">
-                    Belum punya akun? <span onclick="toggleAuth('register')">Buat akun</span>
+            <div id="form-container">
+                <div class="inp-group" id="name-group" style="display:none;">
+                    <input type="text" id="r-name" class="inp-field" placeholder="Nama Lengkap">
                 </div>
+                <div class="inp-group">
+                    <input type="text" id="u-email" class="inp-field" placeholder="Username / Email">
+                </div>
+                <div class="inp-group">
+                    <input type="password" id="u-pass" class="inp-field" placeholder="Password">
+                </div>
+                <button class="btn-main" onclick="processAuth()" id="btn-action">Masuk</button>
             </div>
 
-            <div id="register-form" class="auth-form" style="display:none;">
-                <h2 style="margin:0; font-weight:500;">Buat Akun Baru</h2>
-                <input type="text" class="input-field" id="r-name" placeholder="Nama Lengkap">
-                <input type="email" class="input-field" id="r-email" placeholder="Email">
-                <input type="password" class="input-field" id="r-pass" placeholder="Password Baru">
-                <button class="btn-primary" onclick="handleAuth('register')">Daftar</button>
-                <div class="toggle-text">
-                    Sudah punya akun? <span onclick="toggleAuth('login')">Masuk</span>
-                </div>
+            <div class="toggle-link">
+                <span id="toggle-text" onclick="switchMode()">Buat akun baru</span>
             </div>
         </div>
     </div>
 
-    <div id="app-container">
+    <div id="app-layout">
         
         <div class="sidebar">
-            <div class="new-chat-btn" onclick="resetChat()">
+            <div class="new-chat" onclick="resetChat()">
                 <i class="fa-solid fa-plus"></i> Chat Baru
             </div>
-            <div style="margin-top: 20px; font-size: 12px; font-weight: 600; color: var(--text-sub);">Terbaru</div>
-            <div class="history-list" id="history-list">
-                <div class="history-item"><i class="fa-regular fa-message" style="margin-right:8px;"></i> Tugas Data Science</div>
-                <div class="history-item"><i class="fa-regular fa-message" style="margin-right:8px;"></i> Kode Python</div>
-            </div>
-            <div class="user-profile">
-                <div class="avatar" id="u-avatar">A</div>
-                <div style="font-size: 14px;">
-                    <div id="u-name-display" style="font-weight: 600;">Adam</div>
-                    <div style="font-size: 11px; color: var(--text-sub);">Pro Plan</div>
+            <div style="margin-top:20px; font-size:12px; font-weight:600; color:var(--text-sub);">Baru saja</div>
+            <div class="history-sec" id="history-list">
+                </div>
+            <div class="user-mini">
+                <div class="avatar" id="u-avatar">U</div>
+                <div>
+                    <div style="font-weight:600; font-size:14px;" id="u-name-display">User</div>
+                    <div style="font-size:11px; color:gray;">Free Plan</div>
                 </div>
             </div>
         </div>
 
-        <div class="main-content">
-            <div class="mobile-header">
-                <i class="fa-solid fa-bars"></i>
-                <span style="font-weight: 600;">Flora AI</span>
-                <div class="avatar" style="width: 28px; height: 28px; font-size: 12px;">A</div>
+        <div class="main-area">
+            <div class="mob-header">
+                <i class="fa-solid fa-bars" style="color:white;"></i>
+                <span style="font-weight:600;">Flora AI</span>
+                <div class="avatar" style="width:28px; height:28px; font-size:12px;">U</div>
             </div>
 
-            <div id="chat-scroll">
+            <div id="chat-window">
                 
-                <div id="welcome-center">
-                    <div class="greeting" id="greeting-text">Halo, Adam</div>
-                    <div class="sub-greeting">Mau mulai dari mana?</div>
+                <div id="welcome-screen">
+                    <div class="greet-1" id="greeting">Halo, User</div>
+                    <div class="greet-2">Ada yang bisa dibantu?</div>
                     
-                    <div class="suggestion-grid">
-                        <div class="suggestion-card" onclick="sendSuggestion('Buatkan kerangka essay tentang AI')">
-                            <div class="card-text">Buatkan kerangka essay tentang masa depan AI</div>
-                            <div class="card-icon"><i class="fa-solid fa-pen-nib" style="color:white; font-size:12px;"></i></div>
+                    <div class="card-grid">
+                        <div class="suggestion-card" onclick="startChat('Buatkan rencana belajar Data Science')">
+                            <div>Rencana belajar Data Science untuk pemula</div>
+                            <div class="s-icon"><i class="fa-solid fa-graduation-cap" style="color:white; font-size:12px;"></i></div>
                         </div>
-                        <div class="suggestion-card" onclick="sendSuggestion('Jelaskan regresi linear dalam Python')">
-                            <div class="card-text">Jelaskan konsep regresi linear dengan contoh Python</div>
-                            <div class="card-icon"><i class="fa-brands fa-python" style="color:white; font-size:14px;"></i></div>
+                        <div class="suggestion-card" onclick="startChat('Jelaskan teori relativitas')">
+                            <div>Jelaskan teori relativitas dengan bahasa santai</div>
+                            <div class="s-icon"><i class="fa-solid fa-atom" style="color:white; font-size:12px;"></i></div>
                         </div>
-                        <div class="suggestion-card" onclick="sendSuggestion('Ide caption Instagram untuk foto liburan')">
-                            <div class="card-text">Ide caption Instagram kreatif untuk foto liburan</div>
-                            <div class="card-icon"><i class="fa-regular fa-image" style="color:white; font-size:12px;"></i></div>
+                        <div class="suggestion-card" onclick="startChat('Ide caption Instagram liburan')">
+                            <div>Buatkan caption Instagram estetik untuk foto pantai</div>
+                            <div class="s-icon"><i class="fa-regular fa-image" style="color:white; font-size:12px;"></i></div>
                         </div>
-                        <div class="suggestion-card" onclick="sendSuggestion('Analisis data penjualan bulanan')">
-                            <div class="card-text">Bantu saya menganalisis tren data penjualan</div>
-                            <div class="card-icon"><i class="fa-solid fa-chart-line" style="color:white; font-size:12px;"></i></div>
+                        <div class="suggestion-card" onclick="startChat('Debug kode Python error')">
+                            <div>Bantu saya memperbaiki kode Python ini</div>
+                            <div class="s-icon"><i class="fa-brands fa-python" style="color:white; font-size:14px;"></i></div>
                         </div>
                     </div>
                 </div>
 
-                <div id="chat-container" class="chat-container">
-                    </div>
+                <div id="message-container"></div>
 
             </div>
 
-            <div class="input-area-wrapper">
-                <div class="input-box">
-                    <button class="action-btn"><i class="fa-regular fa-image"></i></button>
-                    <button class="action-btn"><i class="fa-solid fa-microphone"></i></button>
-                    <input type="text" id="user-input" placeholder="Masukkan perintah di sini" autocomplete="off">
-                    <button class="action-btn send-btn" onclick="handleSend()"><i class="fa-solid fa-paper-plane"></i></button>
+            <div class="input-wrapper">
+                <div class="input-bar">
+                    <button class="act-btn"><i class="fa-regular fa-image"></i></button>
+                    <button class="act-btn"><i class="fa-solid fa-microphone"></i></button>
+                    <input type="text" id="chat-input" placeholder="Ketik perintah di sini..." autocomplete="off">
+                    <button class="act-btn" style="color: var(--accent);" onclick="handleSend()"><i class="fa-solid fa-paper-plane"></i></button>
                 </div>
             </div>
         </div>
@@ -337,183 +275,192 @@
 
     <script>
         // --- LOGIC AUTH ---
-        function toggleAuth(type) {
-            const login = document.getElementById('login-form');
-            const reg = document.getElementById('register-form');
-            
-            if (type === 'register') {
-                login.style.display = 'none';
-                reg.style.display = 'flex';
-                reg.classList.add('fade-in');
+        let isRegister = false;
+        
+        function switchMode() {
+            isRegister = !isRegister;
+            const title = document.getElementById('auth-desc');
+            const btn = document.getElementById('btn-action');
+            const toggle = document.getElementById('toggle-text');
+            const nameGroup = document.getElementById('name-group');
+
+            if(isRegister) {
+                title.innerText = "Buat akun baru untuk memulai";
+                btn.innerText = "Daftar";
+                toggle.innerText = "Sudah punya akun? Masuk";
+                nameGroup.style.display = 'block';
             } else {
-                reg.style.display = 'none';
-                login.style.display = 'flex';
-                login.classList.add('fade-in');
+                title.innerText = "Masuk untuk melanjutkan";
+                btn.innerText = "Masuk";
+                toggle.innerText = "Buat akun baru";
+                nameGroup.style.display = 'none';
             }
         }
 
-        function handleAuth(action) {
-            // Simulasi Login Sukses
-            const btn = event.target;
-            const originalText = btn.innerText;
+        function processAuth() {
+            const btn = document.getElementById('btn-action');
             btn.innerText = "Memproses...";
             
             setTimeout(() => {
-                const screen = document.getElementById('auth-screen');
-                const app = document.getElementById('app-container');
-                const nameInput = document.getElementById('r-name').value || "Adam"; // Default name
+                const overlay = document.getElementById('auth-overlay');
+                const app = document.getElementById('app-layout');
                 
-                if(action === 'register' && nameInput) {
-                    document.getElementById('u-name-display').innerText = nameInput;
-                    document.getElementById('u-avatar').innerText = nameInput.charAt(0).toUpperCase();
-                }
+                // Ambil Nama
+                let name = "Traveller";
+                if(isRegister) name = document.getElementById('r-name').value;
+                if(!name) name = "Adam"; // Default
 
-                // Greeting berdasarkan waktu
-                const hour = new Date().getHours();
-                let greet = "Selamat Pagi";
-                if (hour >= 11 && hour < 15) greet = "Selamat Siang";
-                else if (hour >= 15 && hour < 19) greet = "Selamat Sore";
-                else if (hour >= 19) greet = "Selamat Malam";
-                
-                document.getElementById('greeting-text').innerHTML = `<span style="font-weight:400; color:#888;">${greet},</span> <br>${document.getElementById('u-name-display').innerText}`;
+                // Update UI Nama
+                document.getElementById('greeting').innerHTML = `<span style="background: linear-gradient(90deg, #4AA9FF, #A78BFA); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Halo, ${name}</span>`;
+                document.getElementById('u-name-display').innerText = name;
+                document.getElementById('u-avatar').innerText = name.charAt(0).toUpperCase();
 
-                screen.style.opacity = '0';
+                // Animasi Masuk
+                overlay.style.opacity = '0';
                 setTimeout(() => {
-                    screen.style.display = 'none';
+                    overlay.style.display = 'none';
                     app.style.display = 'flex';
                     setTimeout(() => app.style.opacity = '1', 100);
                 }, 500);
             }, 1000);
         }
 
-        // --- LOGIC CHAT ---
-        const chatContainer = document.getElementById('chat-container');
-        const welcomeScreen = document.getElementById('welcome-center');
-        const userInput = document.getElementById('user-input');
+        // --- LOGIC CHAT (GEMINI ENGINE) ---
+        const chatInput = document.getElementById('chat-input');
+        const msgContainer = document.getElementById('message-container');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const scrollWindow = document.getElementById('chat-window');
 
-        userInput.addEventListener("keypress", function(event) {
-            if (event.key === "Enter") handleSend();
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSend();
         });
 
-        function sendSuggestion(text) {
-            userInput.value = text;
+        function startChat(text) {
+            chatInput.value = text;
             handleSend();
         }
 
         function resetChat() {
-            chatContainer.innerHTML = "";
+            msgContainer.innerHTML = "";
+            msgContainer.style.display = "none";
             welcomeScreen.style.display = "block";
-            chatContainer.style.display = "none";
         }
 
         function handleSend() {
-            const text = userInput.value.trim();
-            if (!text) return;
+            const text = chatInput.value.trim();
+            if(!text) return;
 
-            // 1. Hide Welcome Screen if first chat
+            // 1. UI Transition
             welcomeScreen.style.display = "none";
-            chatContainer.style.display = "block";
-
+            msgContainer.style.display = "block";
+            
             // 2. Add User Message (Bubble)
-            addUserMessage(text);
-            userInput.value = "";
+            appendMessage(text, 'user');
+            chatInput.value = "";
 
-            // 3. Show Loading & Process Bot Reply
-            showTypingIndicator();
+            // 3. Bot Typing Indicator
+            const loaderId = showLoader();
 
-            // Simulasi delay API
+            // 4. Simulate Response Delay
             setTimeout(() => {
-                removeTypingIndicator();
-                const reply = generateMockReply(text);
-                addBotMessage(reply);
+                removeLoader(loaderId);
+                const reply = getAIResponse(text);
+                typeWriterEffect(reply); // Efek ngetik
+                addToHistory(text); // Masuk sidebar
             }, 1500);
         }
 
-        function addUserMessage(text) {
+        function appendMessage(text, role) {
             const div = document.createElement('div');
-            div.className = 'msg-row user';
-            div.innerHTML = `<div class="msg-content">${text}</div>`;
-            chatContainer.appendChild(div);
-            scrollToBottom();
+            div.className = `row ${role}`;
+            
+            if(role === 'user') {
+                div.innerHTML = `<div class="content">${text}</div>`;
+            } else {
+                // Bot Structure: Icon + Text
+                div.innerHTML = `
+                    <div class="bot-icon"></div>
+                    <div class="content">${text}</div>
+                `;
+            }
+            msgContainer.appendChild(div);
+            scrollWindow.scrollTop = scrollWindow.scrollHeight;
         }
 
-        function showTypingIndicator() {
+        function showLoader() {
+            const id = 'loader-' + Date.now();
             const div = document.createElement('div');
-            div.id = "typing-loader";
-            div.className = 'msg-row bot';
+            div.id = id;
+            div.className = 'row bot';
             div.innerHTML = `
                 <div class="bot-icon"></div>
-                <div class="msg-content">
-                    <div class="typing-indicator"><span></span><span></span><span></span></div>
+                <div class="content">
+                    <div class="dots"><span></span><span></span><span></span></div>
                 </div>
             `;
-            chatContainer.appendChild(div);
-            scrollToBottom();
+            msgContainer.appendChild(div);
+            scrollWindow.scrollTop = scrollWindow.scrollHeight;
+            return id;
         }
 
-        function removeTypingIndicator() {
-            const loader = document.getElementById('typing-loader');
-            if (loader) loader.remove();
+        function removeLoader(id) {
+            const el = document.getElementById(id);
+            if(el) el.remove();
         }
 
-        function addBotMessage(text) {
+        // Efek Mengetik Seperti Gemini
+        function typeWriterEffect(text) {
             const div = document.createElement('div');
-            div.className = 'msg-row bot';
-            
-            // Struktur Gemini: Icon di kiri, Teks polos di kanan
-            const iconDiv = document.createElement('div');
-            iconDiv.className = 'bot-icon';
+            div.className = 'row bot';
             
             const contentDiv = document.createElement('div');
-            contentDiv.className = 'msg-content';
+            contentDiv.className = 'content';
             
-            div.appendChild(iconDiv);
+            div.innerHTML = `<div class="bot-icon"></div>`;
             div.appendChild(contentDiv);
-            chatContainer.appendChild(div);
+            msgContainer.appendChild(div);
 
-            // Efek mengetik (Streaming effect)
             let i = 0;
-            const speed = 15; // Kecepatan mengetik ms
-            
-            function typeWriter() {
+            const speed = 10; // Kecepatan ngetik
+
+            function type() {
                 if (i < text.length) {
-                    // Handle HTML tags agar tidak rusak saat diketik
-                    if (text.substring(i).startsWith("<br>")) {
-                        contentDiv.innerHTML += "<br>";
+                    // Handle HTML tags basic
+                    if(text.substring(i).startsWith('<br>')) {
+                        contentDiv.innerHTML += '<br>';
                         i += 4;
-                    } else if (text.substring(i).startsWith("<strong>")) {
-                         // Skip typing effect for formatting tags simple logic
-                         contentDiv.innerHTML += text.charAt(i);
-                         i++;
+                    } else if(text.substring(i).startsWith('<b>')) {
+                        // Skip tag handling for simplicity in this demo
+                        contentDiv.innerHTML += text.charAt(i);
+                        i++;
                     } else {
                         contentDiv.innerHTML += text.charAt(i);
                         i++;
                     }
-                    scrollToBottom();
-                    setTimeout(typeWriter, speed);
+                    scrollWindow.scrollTop = scrollWindow.scrollHeight;
+                    setTimeout(type, speed);
                 }
             }
-            typeWriter();
+            type();
         }
 
-        function scrollToBottom() {
-            const scrollArea = document.getElementById('chat-scroll');
-            scrollArea.scrollTop = scrollArea.scrollHeight;
+        function addToHistory(title) {
+            const list = document.getElementById('history-list');
+            const item = document.createElement('div');
+            item.className = 'hist-item';
+            item.innerHTML = `<i class="fa-regular fa-message" style="margin-right:10px;"></i> ${title}`;
+            list.prepend(item);
         }
 
-        // Mock Reply Logic (Pura-pura AI)
-        function generateMockReply(input) {
+        // Mock AI Brain
+        function getAIResponse(input) {
             input = input.toLowerCase();
-            if (input.includes("halo") || input.includes("siapa")) {
-                return "Halo! Saya Flora, asisten AI eksperimental yang didesain untuk membantu produktivitasmu. Saya menggunakan model bahasa canggih untuk memproses informasi. Ada yang bisa saya bantu?";
-            } else if (input.includes("python") || input.includes("koding")) {
-                return "Tentu. Python adalah bahasa yang sangat kuat untuk Data Science. Berikut contoh sederhana regresi linear:<br><br><code>import numpy as np<br>from sklearn.linear_model import LinearRegression<br>...</code><br><br>Apakah kamu ingin penjelasan lebih detail tentang kodenya?";
-            } else if (input.includes("essay") || input.includes("tulis")) {
-                return "Baik, untuk membuat essay yang kuat, kita perlu struktur berikut:<br>1. <strong>Pendahuluan:</strong> Latar belakang masalah.<br>2. <strong>Tesis:</strong> Argumen utama kamu.<br>3. <strong>Isi:</strong> Data pendukung dan analisis.<br>4. <strong>Kesimpulan:</strong> Ringkasan solusi.<br><br>Topik apa yang spesifik ingin kamu bahas?";
-            } else {
-                return "Menarik. Saya bisa melihat dari perspektif data bahwa hal tersebut memiliki pola yang unik. Bisakah kamu memberikan konteks lebih lanjut agar jawaban saya lebih akurat?";
-            }
+            if(input.includes("halo") || input.includes("hai")) return "Halo! Saya Flora. Ada yang bisa saya bantu untuk tugas atau proyek kamu hari ini?";
+            if(input.includes("siapa kamu")) return "Saya Flora, model AI eksperimental yang didesain untuk membantu produktivitas, koding, dan penulisan kreatif.";
+            if(input.includes("belajar") || input.includes("tips")) return "Belajar adalah proses yang seru. Untuk memulainya, cobalah metode <b>Pomodoro</b> (25 menit fokus, 5 menit istirahat). <br><br>Apa topik spesifik yang ingin kamu pelajari?";
+            if(input.includes("python") || input.includes("koding")) return "Python adalah bahasa yang hebat. Ini contoh sederhana loop:<br><br><code>for i in range(5):<br>&nbsp;&nbsp;print(i)</code><br><br>Mau saya buatkan kode yang lebih kompleks?";
+            return "Pertanyaan yang menarik. Berdasarkan basis data saya, hal itu bisa dilihat dari berbagai perspektif. Bisakah kamu memberikan detail lebih lanjut?";
         }
     </script>
 </body>
-</html>
+    </html>
