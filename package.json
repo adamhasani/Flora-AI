@@ -9,7 +9,10 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "groq-sdk": "^0.3.3",
-    "cors": "^2.8.5"
+    "axios": "^1.6.0",
+    "form-data": "^4.0.0",
+    "cors": "^2.8.5",
+    "node-fetch": "^3.3.2"
   },
   "engines": {
     "node": "20.x"
