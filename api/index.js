@@ -1,13 +1,11 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
-// --- SETUP ---
+// --- SETUP API KEYS ---
+// Pastikan GROQ_API_KEY ada di Vercel
 const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
 const groqKey = getCleanKey(process.env.GROQ_API_KEY);
-const geminiKey = getCleanKey(process.env.GEMINI_API_KEY || process.env.API_KEY);
 
 const groq = new Groq({ apiKey: groqKey || "dummy" });
-const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 
 // --- PROMPT FLORA ---
 const promptFlora = `
@@ -22,18 +20,20 @@ const getCleanHistory = (history) => history.map(msg => ({
     content: msg.content.replace(/<[^>]*>/g, '').trim()
 }));
 
-// --- EKSEKUTOR UTAMA (GROQ) ---
+// --- EKSEKUTOR (PURE GROQ) ---
 async function runGroq(history, message, imageBase64) {
     let messages = [
         { role: "system", content: promptFlora },
         ...getCleanHistory(history)
     ];
 
-    let modelName = "mixtral-8x7b-32768"; // <--- INI MISTRAL (Default)
+    // DEFAULT: MISTRAL (Mixtral 8x7b)
+    let modelName = "mixtral-8x7b-32768"; 
 
     if (imageBase64) {
-        // Kalau ada gambar, Mistral gabisa liat, jadi pinjem mata Llama Vision
-        console.log("Mode Gambar: Switch ke Llama Vision");
+        // PENGECUALIAN: Kalau ada gambar, terpaksa switch ke Llama Vision
+        // (Karena Mistral di Groq belum support gambar sama sekali)
+        console.log("Ada gambar -> Switch ke Llama Vision (Mistral buta)");
         modelName = "llama-3.2-11b-vision-preview"; 
         
         messages.push({
@@ -44,8 +44,8 @@ async function runGroq(history, message, imageBase64) {
             ]
         });
     } else {
-        // Kalau Chat Teks Biasa -> PAKE MISTRAL
-        console.log("Mode Teks: Full Mistral");
+        // FULL MISTRAL UNTUK TEKS
+        console.log("Mode Teks -> Murni Mistral");
         messages.push({ role: "user", content: message });
     }
 
@@ -58,21 +58,7 @@ async function runGroq(history, message, imageBase64) {
     return cleanResponse(res.choices[0]?.message?.content);
 }
 
-// --- BACKUP DARURAT (GEMINI) ---
-// Cuma dipake kalau Groq/Mistral servernya down total
-async function runGemini(history, message) {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptFlora });
-    const chat = model.startChat({
-        history: history.map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content.replace(/<[^>]*>/g, '') }]
-        }))
-    });
-    const result = await chat.sendMessage(message);
-    return cleanResponse(result.response.text());
-}
-
-// --- HANDLER ---
+// --- HANDLER UTAMA ---
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -81,24 +67,19 @@ module.exports = async (req, res) => {
 
     try {
         const { history = [], message, image } = req.body;
-        let result = "";
-        let label = "Flora (Mistral)";
-
-        try {
-            // PAKSA PAKAI GROQ (MISTRAL)
-            result = await runGroq(history, message, image);
-            if (image) label = "Flora Vision"; 
-        } 
-        catch (e) {
-            console.error("Mistral Error:", e.message);
-            // Backup ke Gemini kalau Mistral tewas
-            result = await runGemini(history, message);
-            label = "Flora (Backup)";
-        }
+        
+        // Langsung panggil Mistral (Groq) tanpa try-catch backup
+        const result = await runGroq(history, message, image);
+        
+        const label = image ? "Flora Vision" : "Flora (Mistral)";
 
         return res.json({ reply: `<b>[${label}]</b><br>${result}` });
 
     } catch (err) {
-        return res.status(500).json({ reply: `Error: ${err.message}` });
+        // Kalau error, langsung tampilkan error aslinya
+        console.error("Mistral Error:", err);
+        return res.status(500).json({ 
+            reply: `<b>[System Error]</b><br>Mistral gagal merespon: ${err.message}` 
+        });
     }
 };
