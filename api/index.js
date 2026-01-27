@@ -17,18 +17,16 @@ module.exports = async (req, res) => {
         const { history } = req.body;
         if (!history || !Array.isArray(history)) return res.status(400).json({ error: 'History invalid' });
 
-        // --- DEFINISI INSTRUKSI (PROMPT) ---
+        // --- DEFINISI PROMPT ---
         
-        // 1. Prompt NATURAL (Untuk Gemini & Anabot)
-        // Kita bebaskan dia mau format gimana, biar lebih luwes.
+        // 1. Prompt NATURAL (Untuk Anabot & Gemini)
         const promptNatural = `
             Nama kamu Flora. Kamu asisten AI yang cerdas, santai, dan to-the-point.
             Jawablah pertanyaan dengan jelas dan ringkas.
             Jika ditanya terjemahan bahasa Inggris, langsung jawab artinya saja.
         `;
 
-        // 2. Prompt KETAT HTML (Khusus Groq)
-        // Kita paksa dia pakai HTML biar rapi di web.
+        // 2. Prompt HTML (Khusus Groq)
         const promptStrictHTML = `
             Nama kamu Flora. Asisten AI cerdas & rapi.
             ATURAN FORMATTING (WAJIB HTML):
@@ -40,90 +38,90 @@ module.exports = async (req, res) => {
         `;
 
         // ============================================================
-        // LAYER 1: GOOGLE GEMINI RESMI (Pakai Prompt Natural)
+        // LAYER 1: ANABOT API (Prioritas Utama)
         // ============================================================
         try {
-            console.log("Mencoba Layer 1: Google Gemini...");
-            const modelGemini = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash", // Versi stabil & pintar
-                systemInstruction: promptNatural // <-- Pakai yang natural
-            });
-
-            const geminiHistory = history.map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model', 
-                parts: [{ text: msg.content }]
-            }));
-            const lastMsg = geminiHistory.pop().parts[0].text;
-
-            const chat = modelGemini.startChat({ history: geminiHistory });
-            const result = await chat.sendMessage(lastMsg);
+            console.log("Mencoba Layer 1: Anabot API...");
             
-            return res.status(200).json({ reply: result.response.text() });
+            const conversationText = history.map(msg => {
+                return `${msg.role === 'user' ? 'User' : 'Flora'}: ${msg.content}`;
+            }).join('\n');
+
+            const finalPrompt = `[System: ${promptNatural}]\n\nRiwayat Chat:\n${conversationText}\n\nFlora:`;
+            const apiUrl = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(finalPrompt)}&type=Chat&apikey=freeApikey`;
+            
+            const response = await fetch(apiUrl, { method: 'GET' });
+            const data = await response.json();
+            
+            // Parsing Data Anabot
+            let replyText = "";
+            if (data.data && data.data.result && data.data.result.text) {
+                replyText = data.data.result.text;
+            } else if (data.result && data.result.text) {
+                replyText = data.result.text;
+            } else if (data.result) {
+                replyText = data.result;
+            } else if (typeof data === 'string') {
+                replyText = data;
+            } else {
+                replyText = "Maaf, format jawaban aneh.";
+            }
+            
+            // Langsung kirim (Tanpa embel-embel "via backup")
+            return res.status(200).json({ reply: replyText });
 
         } catch (err1) {
-            console.error("Layer 1 Gagal (Google):", err1.message);
-            
+            console.error("Layer 1 Gagal (Anabot):", err1.message);
+
             // ============================================================
-            // LAYER 2: ANABOT API (Backup 1 - Pakai Prompt Natural)
+            // LAYER 2: GROQ LLAMA 3 (Backup Pertama)
             // ============================================================
             try {
-                console.log("Mencoba Layer 2: Anabot API...");
+                console.log("Mencoba Layer 2: Groq...");
                 
-                const conversationText = history.map(msg => {
-                    return `${msg.role === 'user' ? 'User' : 'Flora'}: ${msg.content}`;
-                }).join('\n');
+                const messagesGroq = [
+                    { role: "system", content: promptStrictHTML }, // Pakai HTML biar rapi
+                    ...history
+                ];
 
-                // Gabungkan Prompt Natural + Chat History
-                const finalPrompt = `[System: ${promptNatural}]\n\nRiwayat Chat:\n${conversationText}\n\nFlora:`;
+                const chatCompletion = await groq.chat.completions.create({
+                    messages: messagesGroq,
+                    model: "llama-3.3-70b-versatile",
+                    temperature: 0.6,
+                    max_tokens: 1024,
+                });
+
+                const replyGroq = chatCompletion.choices[0]?.message?.content || "Maaf, Groq error.";
                 
-                // Kirim request
-                const apiUrl = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(finalPrompt)}&type=Chat&apikey=freeApikey`;
-                const response = await fetch(apiUrl, { method: 'GET' });
-                const data = await response.json();
-                
-                // Parsing Data (Tetap pakai logika perbaikan JSON kemarin biar aman)
-                let replyText = "";
-                if (data.data && data.data.result && data.data.result.text) {
-                    replyText = data.data.result.text;
-                } else if (data.result && data.result.text) {
-                    replyText = data.result.text;
-                } else if (data.result) {
-                    replyText = data.result;
-                } else if (typeof data === 'string') {
-                    replyText = data;
-                } else {
-                    replyText = "Maaf, format jawaban aneh.";
-                }
-                
-                return res.status(200).json({ reply: replyText + " <br><br><i>(Dijawab via Backup 1)</i>" });
+                return res.status(200).json({ reply: replyGroq });
 
             } catch (err2) {
-                console.error("Layer 2 Gagal (Anabot):", err2.message);
+                console.error("Layer 2 Gagal (Groq):", err2.message);
 
                 // ============================================================
-                // LAYER 3: GROQ LLAMA 3 (Backup Akhir - Pakai Prompt HTML)
+                // LAYER 3: GOOGLE GEMINI (Backup Terakhir / Nuklir)
                 // ============================================================
                 try {
-                    console.log("Mencoba Layer 3: Groq...");
-                    
-                    const messagesGroq = [
-                        { role: "system", content: promptStrictHTML }, // <-- Pakai yang Strict HTML
-                        ...history
-                    ];
-
-                    const chatCompletion = await groq.chat.completions.create({
-                        messages: messagesGroq,
-                        model: "llama-3.3-70b-versatile",
-                        temperature: 0.6,
-                        max_tokens: 1024,
+                    console.log("Mencoba Layer 3: Google Gemini...");
+                    const modelGemini = genAI.getGenerativeModel({ 
+                        model: "gemini-2.0-flash", 
+                        systemInstruction: promptNatural 
                     });
 
-                    const replyGroq = chatCompletion.choices[0]?.message?.content || "Maaf, Groq error.";
+                    const geminiHistory = history.map(msg => ({
+                        role: msg.role === 'user' ? 'user' : 'model', 
+                        parts: [{ text: msg.content }]
+                    }));
+                    const lastMsg = geminiHistory.pop().parts[0].text;
+
+                    const chat = modelGemini.startChat({ history: geminiHistory });
+                    const result = await chat.sendMessage(lastMsg);
                     
-                    return res.status(200).json({ reply: replyGroq + " <br><br><i>(Dijawab via Backup Akhir)</i>" });
+                    return res.status(200).json({ reply: result.response.text() });
 
                 } catch (err3) {
-                    return res.status(200).json({ reply: "⚠️ Maaf, Flora pingsan. Semua server down." });
+                    console.error("Layer 3 Gagal (Fatal):", err3.message);
+                    return res.status(200).json({ reply: "⚠️ Maaf, Flora pingsan. Semua server (Anabot, Groq, Google) lagi down." });
                 }
             }
         }
