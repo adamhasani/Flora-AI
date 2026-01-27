@@ -1,64 +1,51 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+// Pastikan kamu sudah taruh API Key di Vercel (Settings > Environment Variables)
+const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+
 module.exports = async (req, res) => {
-    // 1. CORS Headers (Biar browser tidak rewel soal izin akses)
+    // 1. SETUP CORS (Biar Web Frontend bisa akses API ini)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Handle preflight request (Basa-basi browser)
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    // Jika browser cuma "nanya" (Preflight), langsung jawab OK
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // Pastikan hanya terima metode POST
-    if (req.method !== 'POST') {
-        return res.status(405).send('Method Not Allowed');
-    }
+    // Pastikan metode request adalah POST
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
     try {
-        // Ambil pesan dari user
         const { message } = req.body;
+        if (!message) return res.status(400).json({ error: 'Pesan kosong' });
 
-        // --- BAGIAN PENTING: API KEY ---
-        // Kita coba ambil dari Environment Variable Vercel dulu
-        let apiKey = process.env.GEMINI_API_KEY;
-
-        // JAGA-JAGA: Kalau Env Var gagal/kosong, script akan pakai key manual di bawah ini
-        // Hapus tanda // di baris bawah ini dan masukkan key-mu jika cara Env Var tetap gagal
-        // apiKey = "AIzaSyD-MASUKKAN-KEY-KAMU-DISINI"; 
-
-        if (!apiKey) {
-            throw new Error("API Key kosong! Cek Settings Vercel atau paste manual di kodingan.");
-        }
-
-        // --- SETTING KEPRIBADIAN (OTAK) ---
-        const genAI = new GoogleGenerativeAI(apiKey);
+        // 2. PILIH MODEL (Gemini 3 Flash Preview)
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.0-flash",
-            systemInstruction: "Nama kamu Flora. Kamu asisten yang cerdas dan ramah. Jawab pertanyaan dengan bahasa Indonesia yang santai, ringkas, dan jelas. Hindari bahasa yang terlalu formal/baku, tapi jangan gunakan bahasa alay. Bersikaplah seperti teman ngobrol yang suportif."
+            model: "gemini-3-flash-preview", 
+            
+            // Atur kepribadian bot di sini
+            systemInstruction: "Nama kamu Flora. Kamu asisten AI yang cerdas, santai, lucu, dan suka menggunakan emoji. Kamu menjawab dalam Bahasa Indonesia gaul tapi sopan.",
         });
 
-        // --- LOGIC ROUTER (MODULAR) ---
-        // Contoh: Jika user ketik "/ping", langsung balas tanpa ke Gemini (Hemat kuota)
-        if (message.trim().toLowerCase() === "/ping") {
-            return res.status(200).json({ reply: "Pong! Aku aktif kok 🤖" });
-        }
-
-        // Kirim ke Google Gemini
+        // 3. KIRIM PESAN KE GOOGLE
         const result = await model.generateContent(message);
-        const response = result.response.text();
+        const response = await result.response;
+        const text = response.text();
 
-        // Kirim balasan ke tampilan chat
-        return res.status(200).json({ reply: response });
+        // 4. KIRIM JAWABAN KE WEB
+        return res.status(200).json({ reply: text });
 
     } catch (error) {
-        // --- BAGIAN DIAGNOSA ERROR ---
-        console.error("Error Backend:", error);
-        
-        // Disini kuncinya: Kita kirim pesan error aslinya ke layar chat
-        return res.status(500).json({ 
-            reply: "⚠️ ERROR SYSTEM: " + error.message 
-        });
+        console.error("Gemini Error:", error);
+
+        // -- PENANGANAN ERROR LIMIT (429) --
+        // Karena model "Preview" kuotanya dikit, kita kasih pesan yang jelas kalau habis.
+        if (error.message.includes("429") || error.message.includes("quota")) {
+            return res.status(200).json({ 
+                reply: "⚠️ Waduh, kuota model 'Gemini 3 Preview' habis nih (Limit Google). Coba ganti ke 'gemini-2.0-flash' di file api/index.js biar lebih stabil ya!" 
+            });
+        }
+
+        return res.status(500).json({ reply: "Maaf, Flora lagi pusing (Error Server). Coba tanya lagi nanti ya." });
     }
 };
