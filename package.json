@@ -2,8 +2,8 @@
   "name": "flora-ai-sendiri",
   "version": "1.0.0",
   "dependencies": {
-    "@google/generative-ai": "latest",
-    "axios": "^1.6.0",
+    "groq-sdk": "^0.3.3",
+    "axios": "^1.7.0",
     "form-data": "^4.0.0"
   }
 }
