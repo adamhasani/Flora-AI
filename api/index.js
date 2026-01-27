@@ -40,7 +40,7 @@ async function callGroq(history, systemPrompt) {
 // MODE PRO (GEMINI)
 async function callGemini(history, systemPrompt) {
     console.log("🧠 Mode: GEMINI");
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: systemPrompt });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: systemPrompt });
     const geminiHist = history.map(msg => ({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }] }));
     const lastMsg = geminiHist.pop().parts[0].text;
     const chat = model.startChat({ history: geminiHist });
