@@ -19,20 +19,22 @@ const cleanResponse = (text) => {
     return clean;
 };
 
-// --- 2. FUNGSI AI ---
+// --- 2. FUNGSI AI (DENGAN LABEL) ---
 
-// MODE CEPAT (GROQ) - Pakai GEMMA 2 (Google) biar Anti-Meta
+// MODE CEPAT (GROQ - Llama 3)
 async function callGroq(history, systemPrompt) {
-    console.log("🚀 Mode: GROQ (Gemma 2)");
+    console.log("🚀 Mode: GROQ (Llama 3)");
     const messages = [{ role: "system", content: systemPrompt }, ...history];
     const chatCompletion = await groq.chat.completions.create({
         messages: messages,
-        // GANTI MODEL YANG MATI TADI KE YANG BARU:
-        model: "gemma2-9b-it", 
+        model: "llama-3.3-70b-versatile", // Versi Meta Stabil
         temperature: 0.6,
         max_tokens: 1024,
     });
-    return cleanResponse(chatCompletion.choices[0]?.message?.content);
+    const text = cleanResponse(chatCompletion.choices[0]?.message?.content);
+    
+    // Tambahkan Label
+    return `<b>[⚡ Groq]</b><br>${text}`;
 }
 
 // MODE PRO (GEMINI)
@@ -43,7 +45,10 @@ async function callGemini(history, systemPrompt) {
     const lastMsg = geminiHist.pop().parts[0].text;
     const chat = model.startChat({ history: geminiHist });
     const result = await chat.sendMessage(lastMsg);
-    return cleanResponse(result.response.text());
+    const text = cleanResponse(result.response.text());
+    
+    // Tambahkan Label
+    return `<b>[🧠 Gemini]</b><br>${text}`;
 }
 
 // MODE SANTAI (ANABOT)
@@ -55,7 +60,10 @@ async function callAnabot(history, systemPrompt) {
     const resp = await fetch(url);
     const data = await resp.json();
     let text = data.data?.result?.text || data.result?.text || data.result || "";
-    return cleanResponse(text);
+    text = cleanResponse(text);
+    
+    // Tambahkan Label
+    return `<b>[🚙 Anabot]</b><br>${text}`;
 }
 
 // --- 3. MAIN HANDLER ---
@@ -96,17 +104,20 @@ module.exports = async (req, res) => {
                 return res.json({ reply: await callAnabot(history, systemPrompt) });
             } 
             else {
-                // Default: GROQ (Gemma 2)
+                // Default: GROQ (Llama 3)
                 return res.json({ reply: await callGroq(history, systemPrompt) });
             }
         } catch (err) {
             console.error(`❌ ${selectedModel} Gagal:`, err.message);
-            // Fallback ke Anabot kalau Groq/Gemini mati
+            // Fallback dengan Label Error
             try {
                 const backup = await callAnabot(history, systemPrompt);
-                return res.json({ reply: backup });
+                // Kita beri tahu user kalau model pilihannya gagal
+                const errorMessage = `<b>[⚠️ ${selectedModel} Error]</b><br>Dialihkan ke Backup...<br><br>`;
+                // Hapus label Anabot asli biar ga dobel, atau biarin aja juga gapapa
+                return res.json({ reply: errorMessage + backup });
             } catch (fatal) {
-                return res.json({ reply: "Maaf, Flora sedang gangguan sistem." });
+                return res.json({ reply: "Maaf, Flora sedang gangguan sistem total." });
             }
         }
 
