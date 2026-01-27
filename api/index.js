@@ -10,21 +10,21 @@ const mistralKey = getCleanKey(process.env.MISTRAL_API_KEY);
 const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 const groq = new Groq({ apiKey: groqKey || "dummy" });
 
-// --- 2. PROMPT SISTEM (IDENTITAS FLORA) ---
+// --- 2. PROMPT SISTEM ---
 const promptStrictHTML = `
-    IDENTITAS: Nama kamu Flora. Kamu asisten AI cerdas dan mandiri.
-    JANGAN PERNAH mengaku buatan Google, OpenAI, atau Meta. Kamu adalah Flora AI.
-    WAJIB GUNAKAN HTML: <b>tebal</b>, <br> baris baru, <ul><li> daftar.
-    DILARANG gunakan Markdown (** atau #). Jawab dalam Bahasa Indonesia santai.
+    IDENTITAS: Nama kamu Flora. Kamu asisten AI mandiri yang cerdas.
+    JANGAN PERNAH mengaku buatan Google/OpenAI/Meta. Kamu adalah Flora AI.
+    WAJIB HTML: <b>tebal</b>, <br> baris baru, <ul><li> daftar. JANGAN Markdown.
+    Jawab dalam Bahasa Indonesia santai dan to-the-point.
 `;
 
 // --- 3. HELPER: PEMBERSIH ---
 const cleanResponse = (text) => {
     if (!text) return "";
     let clean = text
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') 
-        .replace(/\*(.*?)\*/g, '<i>$1</i>')     
-        .replace(/^- (.*$)/gim, '<li>$1</li>')  
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/\*(.*?)\*/g, '<i>$1</i>')
+        .replace(/^- (.*$)/gim, '<li>$1</li>')
         .replace(/```html/g, '').replace(/```/g, '')
         .replace(/\\n/g, "<br>").replace(/\n/g, "<br>")
         .trim();
@@ -41,11 +41,8 @@ const getCleanHistory = (history) => {
 
 // --- 4. FUNGSI EKSEKUTOR ---
 
-// A. MISTRAL AI (FIXED JSON)
 async function runMistral(history) {
-    if (!mistralKey) throw new Error("API Key Mistral Kosong");
-    const cleanHist = getCleanHistory(history);
-
+    if (!mistralKey) throw new Error("API Key Mistral tidak ditemukan di Vercel");
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -54,23 +51,17 @@ async function runMistral(history) {
             'Authorization': `Bearer ${mistralKey}`
         },
         body: JSON.stringify({
-            model: "open-mistral-7b",
-            messages: [{ role: "system", content: promptStrictHTML }, ...cleanHist],
+            model: "mistral-tiny", 
+            messages: [{ role: "system", content: promptStrictHTML }, ...getCleanHistory(history)],
             temperature: 0.7
         })
     });
 
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || "Mistral Error");
-    }
-
     const data = await response.json();
-    const replyText = data.choices?.[0]?.message?.content || "";
-    return cleanResponse(replyText);
+    if (!response.ok) throw new Error(`Mistral Reject: ${data.error?.message || response.statusText}`);
+    return cleanResponse(data.choices?.[0]?.message?.content);
 }
 
-// B. GROQ
 async function runGroq(history) {
     if (!groqKey) throw new Error("API Key Groq Kosong");
     const res = await groq.chat.completions.create({
@@ -80,7 +71,6 @@ async function runGroq(history) {
     return cleanResponse(res.choices[0]?.message?.content);
 }
 
-// C. GEMINI
 async function runGemini(history) {
     if (!geminiKey) throw new Error("API Key Gemini Kosong");
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptStrictHTML });
@@ -107,19 +97,16 @@ module.exports = async (req, res) => {
         let result = "", label = "Flora AI";
         
         try {
-            if (selectedModel === 'groq') {
-                result = await runGroq(history); label = "Flora AI ⚡";
-            } else if (selectedModel === 'gemini') {
-                result = await runGemini(history); label = "Flora AI 🧠";
-            } else {
-                result = await runMistral(history); label = "Flora AI 🌿";
-            }
+            if (selectedModel === 'groq') { result = await runGroq(history); label = "Flora AI ⚡"; }
+            else if (selectedModel === 'gemini') { result = await runGemini(history); label = "Flora AI 🧠"; }
+            else { result = await runMistral(history); label = "Flora AI 🌿"; }
+            
             return res.json({ reply: `<b>[${label}]</b><br>${result}` });
         } catch (e) {
-            console.error("Fallback Triggered:", e.message);
+            console.error("DEBUG:", e.message);
             const backup = await runGemini(history);
             return res.json({ 
-                reply: `<b>[Flora AI 🧠 - Backup]</b><br><small><i>(Mode ${selectedModel} sibuk: ${e.message})</i></small><br><br>${backup}` 
+                reply: `<b>[Flora AI 🧠 - Backup Aktif]</b><br><small>Alasan: ${e.message}</small><br><br>${backup}` 
             });
         }
     } catch (sysError) {
