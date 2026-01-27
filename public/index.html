@@ -2,35 +2,41 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flora AI - Hybrid Interface</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flora AI - Hybrid</title>
     <style>
-        /* --- CSS: Tampilan Dark Mode Modern --- */
+        /* --- CSS RESET & LAYOUT UTAMA --- */
+        * { box-sizing: border-box; }
+        
         body {
             margin: 0;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #121212;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212; /* Warna Latar Gelap */
             color: #e0e0e0;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            height: 100vh; /* Full tinggi layar */
+            height: 100dvh; /* Support browser HP modern */
+            overflow: hidden; /* Mencegah scroll body, cuma chat yg scroll */
         }
 
-        /* Header */
+        /* HEADER */
         header {
             background-color: #1f1f1f;
             padding: 15px;
             text-align: center;
             border-bottom: 1px solid #333;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            flex-shrink: 0; /* Header gak boleh mengecil */
+            z-index: 10;
         }
-        h2 { margin: 0; font-size: 1.2rem; color: #ff80ab; }
-        small { color: #888; font-size: 0.8rem; }
+        h2 { margin: 0; font-size: 1.1rem; color: #ff80ab; }
+        small { color: #888; font-size: 0.75rem; }
 
-        /* Area Chat (Scrollable) */
+        /* AREA CHAT (TENGAH) */
         #chat-container {
-            flex: 1;
-            overflow-y: auto;
+            flex-grow: 1; /* Mengisi sisa ruang kosong */
+            overflow-y: auto; /* Bisa discroll */
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -38,100 +44,93 @@
             scroll-behavior: smooth;
         }
 
-        /* Bubble Chat Style */
+        /* BUBBLE CHAT */
         .message {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 18px;
-            font-size: 15px;
-            line-height: 1.5;
-            position: relative;
+            max-width: 85%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 0.95rem;
+            line-height: 1.4;
             word-wrap: break-word;
         }
-        
-        /* User Bubble (Kanan, Pink) */
         .user {
             align-self: flex-end;
-            background-color: #e91e63;
+            background-color: #e91e63; /* Pink user */
             color: white;
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: 2px;
         }
-
-        /* Bot Bubble (Kiri, Abu Gelap) */
         .flora {
             align-self: flex-start;
-            background-color: #2c2c2c;
+            background-color: #2c2c2c; /* Abu bot */
             color: #eeeeee;
-            border-bottom-left-radius: 4px;
-            border: 1px solid #444;
+            border-bottom-left-radius: 2px;
         }
-
-        /* Styling HTML Output dari Bot (Bold, List, dll) */
+        
+        /* Format HTML Bot */
         .flora b { color: #ff80ab; }
         .flora ul { margin: 5px 0; padding-left: 20px; }
-        .flora li { margin-bottom: 5px; }
 
-        /* Area Input & Controls */
+        /* AREA INPUT (BAWAH) */
         .input-area {
             background-color: #1f1f1f;
-            padding: 15px;
+            padding: 10px;
             border-top: 1px solid #333;
+            flex-shrink: 0; /* Gak boleh gepeng */
         }
 
+        /* Baris Kontrol (Pilih Model) */
         .controls {
             display: flex;
             justify-content: center;
+            align-items: center;
             margin-bottom: 10px;
         }
-
-        /* Dropdown Model Selector */
-        select {
-            background-color: #333;
+        .controls select {
+            background: #333;
             color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
             border: 1px solid #555;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
             outline: none;
-            cursor: pointer;
-            font-size: 0.9rem;
-            text-align: center;
         }
 
+        /* Baris Input (Teks + Tombol) */
         .chat-input-group {
-            display: flex;
+            display: flex; /* INI KUNCINYA BIAR SEJAJAR */
             gap: 10px;
+            width: 100%;
         }
 
         input[type="text"] {
-            flex: 1;
-            padding: 12px 20px;
+            flex: 1; /* Ambil semua sisa ruang */
+            padding: 12px 15px;
             border-radius: 25px;
             border: none;
             background-color: #2c2c2c;
             color: white;
-            outline: none;
             font-size: 1rem;
+            outline: none;
         }
 
-        button {
-            padding: 10px 20px;
+        button#send-btn {
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            border: none;
             background-color: #e91e63;
+            border: none;
             color: white;
+            font-size: 1.2rem;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s;
+            flex-shrink: 0; /* Tombol gak boleh mengecil */
         }
-        button:active { background-color: #c2185b; }
-        
-        /* Loading Animation */
-        .loading-dots { display: inline-block; animation: dot-pulse 1.5s infinite linear; }
-        @keyframes dot-pulse { 0% { opacity: .2; } 50% { opacity: 1; } 100% { opacity: .2; } }
+        button#send-btn:active { transform: scale(0.95); }
+
+        /* Loading Dots */
+        .loading { font-style: italic; color: #888; font-size: 0.8rem; }
 
     </style>
 </head>
@@ -145,30 +144,29 @@
     <div id="chat-container">
         <div class="message flora">
             Halo! Saya <b>Flora</b>.<br>
-            Silakan pilih "otak" yang ingin digunakan di bawah, lalu mulailah mengobrol!
+            Pilih mode otak di bawah dan ayo ngobrol!
         </div>
     </div>
 
     <div class="input-area">
+        
         <div class="controls">
-            <label for="modelSelect" style="margin-right: 10px; align-self: center; font-size: 0.9rem;">Mode:</label>
             <select id="modelSelect">
-                <option value="groq">🚀 Cepat (Default)</option>
-                <option value="gemini">🧠 Pintar (Pro)</option>
-                <option value="anabot">🚙 Santai (Semi)</option>
+                <option value="groq">🚀 Cepat (Groq)</option>
+                <option value="gemini">🧠 Pintar (Gemini)</option>
+                <option value="anabot">🚙 Santai (Anabot)</option>
             </select>
         </div>
 
         <div class="chat-input-group">
-            <input type="text" id="userInput" placeholder="Ketik pesan di sini..." autocomplete="off">
-            <button onclick="sendMessage()">➤</button>
+            <input type="text" id="userInput" placeholder="Ketik pesan..." autocomplete="off">
+            <button id="send-btn" onclick="sendMessage()">➤</button>
         </div>
     </div>
 
     <script>
-        let historyChat = []; // Menyimpan riwayat percakapan di browser
+        let historyChat = []; 
 
-        // Fungsi Kirim Pesan
         async function sendMessage() {
             const inputField = document.getElementById("userInput");
             const chatContainer = document.getElementById("chat-container");
@@ -176,51 +174,67 @@
             const statusText = document.getElementById("status-text");
 
             const text = inputField.value.trim();
-            if (!text) return;
+            if (!text) return; // Jangan kirim kalau kosong
 
-            // 1. Tampilkan Pesan User ke Layar
-            chatContainer.innerHTML += `<div class="message user">${text}</div>`;
+            // 1. Tampilkan Pesan User
+            appendMessage("user", text);
             inputField.value = ""; // Kosongkan input
             
-            // Simpan ke history array
+            // Simpan ke history
             historyChat.push({ role: "user", content: text });
 
-            // Scroll ke bawah
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-
-            // 2. Tampilkan Loading Bubble
+            // 2. Tampilkan Loading
             const loadingId = "loading-" + Date.now();
-            chatContainer.innerHTML += `<div class="message flora" id="${loadingId}"><span class="loading-dots">...</span></div>`;
+            chatContainer.innerHTML += `<div class="message flora loading" id="${loadingId}">Sedang mengetik...</div>`;
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
-            // Update status text
-            const modelName = modelSelect.options[modelSelect.selectedIndex].text;
-            statusText.innerText = `Sedang mengetik via ${modelName}...`;
+            statusText.innerText = "Flora sedang berpikir...";
 
             try {
-                // 3. KIRIM KE BACKEND (/api)
+                // 3. KIRIM KE API (Pastikan path '/api' benar)
                 const response = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        history: historyChat,   // Kirim riwayat chat
-                        model: modelSelect.value // Kirim pilihan model (groq/gemini/anabot)
+                        history: historyChat,
+                        model: modelSelect.value
                     })
                 });
 
                 const data = await response.json();
 
-                // 4. Hapus Loading & Tampilkan Jawaban Bot
+                // 4. Hapus Loading & Tampilkan Jawaban
                 document.getElementById(loadingId).remove();
                 
                 if (data.reply) {
-                    // Render HTML dari bot (innerHTML aman karena sudah di-clean di backend)
                     chatContainer.innerHTML += `<div class="message flora">${data.reply}</div>`;
-                    
-                    // Simpan jawaban bot ke history
                     historyChat.push({ role: "model", content: data.reply });
                 } else {
-                    chatContainer.innerHTML += `<div class="message flora">⚠️ Maaf, tidak ada balasan.</div>`;
+                    chatContainer.innerHTML += `<div class="message flora">⚠️ Server diam saja.</div>`;
                 }
 
-            } catch (
+            } catch (error) {
+                if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+                chatContainer.innerHTML += `<div class="message flora">❌ Error: ${error.message}</div>`;
+            }
+
+            // Reset Status & Scroll
+            statusText.innerText = "Online • Siap membantu";
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Helper untuk tambah pesan
+        function appendMessage(role, text) {
+            const chatContainer = document.getElementById("chat-container");
+            chatContainer.innerHTML += `<div class="message ${role}">${text}</div>`;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Enter untuk kirim
+        document.getElementById("userInput").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") sendMessage();
+        });
+    </script>
+
+</body>
+</html>
