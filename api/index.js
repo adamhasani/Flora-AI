@@ -1,31 +1,41 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
-// Inisialisasi SDK
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const TAVILY_KEY = process.env.TAVILY_API_KEY;
 
-// --- FUNGSI PEMBERSIH (SANITIZER) ---
-// Ini rahasianya biar output ga ada \u003c atau \\n aneh
+// 1. PEMBERSIH RESPONS (Sanitizer)
 const cleanResponse = (text) => {
     if (!text) return "";
     let clean = text
-        .replace(/```html/g, '')      // Hapus tag code block
-        .replace(/```/g, '')          // Hapus sisa backticks
-        .replace(/\\n/g, "<br>")      // Ubah \n jadi <br>
-        .replace(/\n/g, "<br>")       // Ubah Enter asli jadi <br>
-        .replace(/\\"/g, '"')         // Hilangkan slash di kutip
-        .replace(/\\u003c/g, "<")     // Ubah kode alien <
-        .replace(/\\u003e/g, ">")     // Ubah kode alien >
-        .replace(/\\/g, "")           // Bersihkan sisa slash sampah
-        .trim();                      // Hapus spasi kosong awal/akhir
-        
-    // Hapus kutip di awal dan akhir jika Gemini membungkusnya string
-    if (clean.startsWith('"') && clean.endsWith('"')) {
-        clean = clean.slice(1, -1);
-    }
+        .replace(/```html/g, '')
+        .replace(/```/g, '')
+        .replace(/\\n/g, "<br>")
+        .replace(/\n/g, "<br>")
+        .replace(/\\"/g, '"')
+        .replace(/\\u003c/g, "<")
+        .replace(/\\u003e/g, ">")
+        .replace(/\\/g, "")
+        .trim();
+    if (clean.startsWith('"') && clean.endsWith('"')) clean = clean.slice(1, -1);
     return clean;
+};
+
+// 2. VALIDATOR RESPONS (Ini Solusi Error Kamu!)
+// Kalau jawaban mengandung kata-kata error, kita anggap GAGAL biar pindah layer.
+const isValidReply = (text) => {
+    if (!text || text.length < 5) return false; // Terlalu pendek = Gagal
+    const errorKeywords = [
+        "tidak dapat menemukan pola",
+        "error generating response",
+        "internal server error",
+        "maaf format salah",
+        "upstream request timeout"
+    ];
+    // Kalau ada kata error di atas, return FALSE (Gagal)
+    if (errorKeywords.some(keyword => text.toLowerCase().includes(keyword))) return false;
+    return true;
 };
 
 module.exports = async (req, res) => {
@@ -39,15 +49,14 @@ module.exports = async (req, res) => {
         const { history } = req.body;
         if (!history || !Array.isArray(history)) return res.status(400).json({ error: 'History invalid' });
 
-        // --- 1. TAVILY SEARCH (PENCARI FAKTA) ---
+        // --- TAVILY: Tambah Keyword LIRIK & LAGU ---
         let internetContext = "";
         const lastMessage = history[history.length - 1].content;
-        const keywords = ["siapa", "kapan", "dimana", "pemenang", "terbaru", "harga", "cuaca", "berita", "skor", "2024", "2025", "2026"];
+        const keywords = ["siapa", "kapan", "dimana", "pemenang", "terbaru", "berita", "skor", "2025", "lirik", "lagu", "chord"];
         const isNewsQuestion = keywords.some(word => lastMessage.toLowerCase().includes(word));
 
         if (isNewsQuestion && TAVILY_KEY) {
             try {
-                console.log("🔍 Sedang Googling via Tavily...");
                 const searchResp = await fetch("https://api.tavily.com/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -61,23 +70,18 @@ module.exports = async (req, res) => {
                 });
                 const searchData = await searchResp.json();
                 if (searchData.results) {
-                    const texts = searchData.results.map(r => `Title: ${r.title}\nIsi: ${r.content}`).join("\n\n");
-                    internetContext = `\n[DATA FAKTA DARI INTERNET]:\n${texts}\n(Gunakan data ini sebagai prioritas!)\n`;
+                    const texts = searchData.results.map(r => `Info: ${r.content}`).join("\n\n");
+                    internetContext = `\n[DATA INTERNET]:\n${texts}\n(Gunakan ini sebagai referensi utama!)\n`;
                 }
-            } catch (err) { console.error("Tavily skip:", err.message); }
+            } catch (err) { console.log("Tavily skip"); }
         }
 
-        // --- 2. PROMPT UTAMA ---
         const systemInstructionText = `
-            Nama kamu Flora. Kamu asisten AI yang cerdas, rapi, dan membantu.
-            ${internetContext} 
-            
-            ATURAN FORMATTING (WAJIB DITAATI):
-            1. Output HARUS HTML murni.
-            2. JANGAN gunakan escape characters (seperti \\n atau \\"). Tulis tag <br> secara langsung.
-            3. Gunakan <b>...</b> untuk tebal.
-            4. Gunakan <ul><li>...</li></ul> untuk list.
-            5. JANGAN pakai Markdown.
+            Nama kamu Flora. Kamu asisten AI yang cerdas & rapi.
+            ${internetContext}
+            ATURAN FORMATTING (WAJIB HTML):
+            1. Gunakan <b>tebal</b>, <br> baris baru, <ul><li>list</li></ul>.
+            2. JANGAN pakai Markdown.
         `;
 
         // ============================================================
@@ -89,23 +93,24 @@ module.exports = async (req, res) => {
                 model: "gemini-2.0-flash", 
                 systemInstruction: systemInstructionText 
             });
-
-            const geminiHistory = history.map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model', 
-                parts: [{ text: msg.content }]
-            }));
-            const lastMsg = geminiHistory.pop().parts[0].text;
-            const chat = modelGemini.startChat({ history: geminiHistory });
-            const result = await chat.sendMessage(lastMsg);
             
-            // PAKAI FUNGSI PEMBERSIH DI SINI
-            return res.status(200).json({ reply: cleanResponse(result.response.text()) });
+            const geminiHistory = history.map(msg => ({
+                role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }]
+            }));
+            const chat = modelGemini.startChat({ history: geminiHistory });
+            const result = await chat.sendMessage(geminiHistory.pop().parts[0].text);
+            const text = cleanResponse(result.response.text());
+
+            // CEK VALIDASI
+            if (!isValidReply(text)) throw new Error("Gemini jawab error");
+            
+            return res.status(200).json({ reply: text });
 
         } catch (err1) {
             console.error("Layer 1 Gagal:", err1.message);
             
             // ============================================================
-            // LAYER 2: ANABOT (Backup)
+            // LAYER 2: ANABOT (Backup 1)
             // ============================================================
             try {
                 console.log("Layer 2: Anabot...");
@@ -120,16 +125,20 @@ module.exports = async (req, res) => {
                 if (data.data?.result?.text) replyText = data.data.result.text;
                 else if (data.result?.text) replyText = data.result.text;
                 else if (data.result) replyText = data.result;
-                else replyText = typeof data === 'string' ? data : "Format Error";
+                else replyText = typeof data === 'string' ? data : "";
+                
+                replyText = cleanResponse(replyText);
 
-                // PAKAI FUNGSI PEMBERSIH DI SINI JUGA
-                return res.status(200).json({ reply: cleanResponse(replyText) });
+                // CEK VALIDASI (Ini yang akan nangkep error "Tidak dapat menemukan...")
+                if (!isValidReply(replyText)) throw new Error("Anabot jawab error text");
+
+                return res.status(200).json({ reply: replyText });
 
             } catch (err2) {
                 console.error("Layer 2 Gagal:", err2.message);
 
                 // ============================================================
-                // LAYER 3: GROQ (Mixtral)
+                // LAYER 3: GROQ (Backup Akhir)
                 // ============================================================
                 try {
                     console.log("Layer 3: Groq...");
@@ -139,16 +148,16 @@ module.exports = async (req, res) => {
                         model: "mixtral-8x7b-32768", 
                         temperature: 0.6,
                     });
-                    const replyGroq = chatCompletion.choices[0]?.message?.content || "";
+                    const replyGroq = cleanResponse(chatCompletion.choices[0]?.message?.content);
                     
-                    // DAN DI SINI JUGA
-                    return res.status(200).json({ reply: cleanResponse(replyGroq) });
+                    return res.status(200).json({ reply: replyGroq });
 
                 } catch (err3) {
-                    return res.status(200).json({ reply: "⚠️ Maaf, Flora pingsan. Semua server down." });
+                    return res.status(200).json({ reply: "⚠️ Maaf, Flora pingsan. Semua server sibuk." });
                 }
             }
         }
+
     } catch (finalError) {
         return res.status(500).json({ reply: `Error: ${finalError.message}` });
     }
