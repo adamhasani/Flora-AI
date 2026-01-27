@@ -1,44 +1,76 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
+// Init SDK
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const TAVILY_KEY = process.env.TAVILY_API_KEY;
 
-// 1. PEMBERSIH RESPONS (Sanitizer)
+// --- 1. PEMBERSIH & VALIDATOR ---
 const cleanResponse = (text) => {
     if (!text) return "";
     let clean = text
-        .replace(/```html/g, '')
-        .replace(/```/g, '')
-        .replace(/\\n/g, "<br>")
-        .replace(/\n/g, "<br>")
-        .replace(/\\"/g, '"')
-        .replace(/\\u003c/g, "<")
-        .replace(/\\u003e/g, ">")
-        .replace(/\\/g, "")
+        .replace(/```html/g, '').replace(/```/g, '')
+        .replace(/\\n/g, "<br>").replace(/\n/g, "<br>")
+        .replace(/\\"/g, '"').replace(/\\u003c/g, "<")
+        .replace(/\\u003e/g, ">").replace(/\\/g, "")
         .trim();
     if (clean.startsWith('"') && clean.endsWith('"')) clean = clean.slice(1, -1);
     return clean;
 };
 
-// 2. VALIDATOR RESPONS (Ini Solusi Error Kamu!)
-// Kalau jawaban mengandung kata-kata error, kita anggap GAGAL biar pindah layer.
 const isValidReply = (text) => {
-    if (!text || text.length < 5) return false; // Terlalu pendek = Gagal
-    const errorKeywords = [
-        "tidak dapat menemukan pola",
-        "error generating response",
-        "internal server error",
-        "maaf format salah",
-        "upstream request timeout"
-    ];
-    // Kalau ada kata error di atas, return FALSE (Gagal)
-    if (errorKeywords.some(keyword => text.toLowerCase().includes(keyword))) return false;
+    if (!text || text.length < 5) return false;
+    const errors = ["tidak dapat menemukan", "error generating", "internal server error", "upstream request timeout"];
+    if (errors.some(k => text.toLowerCase().includes(k))) return false;
     return true;
 };
 
+// --- 2. FUNGSI AI ---
+
+// Mode Fast (Groq - Mixtral)
+async function callGroq(history, systemPrompt) {
+    console.log("🚀 Mode: GROQ (Fast)");
+    const messages = [{ role: "system", content: systemPrompt }, ...history];
+    const chatCompletion = await groq.chat.completions.create({
+        messages: messages,
+        model: "mixtral-8x7b-32768",
+        temperature: 0.6,
+        max_tokens: 1024,
+    });
+    return cleanResponse(chatCompletion.choices[0]?.message?.content);
+}
+
+// Mode Pro (Gemini 2.0)
+async function callGemini(history, systemPrompt) {
+    console.log("🧠 Mode: GEMINI (Pro)");
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: systemPrompt });
+    const geminiHist = history.map(msg => ({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }] }));
+    const lastMsg = geminiHist.pop().parts[0].text;
+    const chat = model.startChat({ history: geminiHist });
+    const result = await chat.sendMessage(lastMsg);
+    const text = cleanResponse(result.response.text());
+    if (!isValidReply(text)) throw new Error("Gemini Validation Failed");
+    return text;
+}
+
+// Mode Semi (Anabot)
+async function callAnabot(history, systemPrompt) {
+    console.log("🚙 Mode: ANABOT (Semi)");
+    const conversation = history.map(m => `${m.role==='user'?'User':'Flora'}: ${m.content}`).join('\n');
+    const prompt = `[System: ${systemPrompt}]\n\nChat:\n${conversation}\n\nFlora:`;
+    const url = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(prompt)}&type=Chat&apikey=freeApikey`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    let text = data.data?.result?.text || data.result?.text || data.result || "";
+    text = cleanResponse(text);
+    if (!isValidReply(text)) throw new Error("Anabot Validation Failed");
+    return text;
+}
+
+// --- 3. MAIN HANDLER ---
 module.exports = async (req, res) => {
+    // Header Wajib
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -46,119 +78,58 @@ module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
     try {
-        const { history } = req.body;
+        // TERIMA DATA 'MODEL' DARI LUAR
+        let { history, model } = req.body; 
+        
         if (!history || !Array.isArray(history)) return res.status(400).json({ error: 'History invalid' });
 
-        // --- TAVILY: Tambah Keyword LIRIK & LAGU ---
-        let internetContext = "";
-        const lastMessage = history[history.length - 1].content;
-        const keywords = ["siapa", "kapan", "dimana", "pemenang", "terbaru", "berita", "skor", "2025", "lirik", "lagu", "chord"];
-        const isNewsQuestion = keywords.some(word => lastMessage.toLowerCase().includes(word));
+        // TENTUKAN MODE (Default: groq)
+        // Pilihan: "groq", "gemini", "anabot"
+        const selectedModel = model ? model.toLowerCase() : "groq"; 
 
-        if (isNewsQuestion && TAVILY_KEY) {
+        // --- TAVILY SEARCH ---
+        let internetContext = "";
+        const cleanLastMsg = history[history.length - 1].content;
+        const keywords = ["siapa", "kapan", "dimana", "pemenang", "terbaru", "berita", "skor", "2025", "lirik", "lagu"];
+        if (TAVILY_KEY && keywords.some(w => cleanLastMsg.toLowerCase().includes(w))) {
             try {
                 const searchResp = await fetch("https://api.tavily.com/search", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        api_key: TAVILY_KEY,
-                        query: lastMessage,
-                        search_depth: "basic",
-                        include_answer: true,
-                        max_results: 3
-                    })
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ api_key: TAVILY_KEY, query: cleanLastMsg, search_depth: "basic", include_answer: true, max_results: 3 })
                 });
-                const searchData = await searchResp.json();
-                if (searchData.results) {
-                    const texts = searchData.results.map(r => `Info: ${r.content}`).join("\n\n");
-                    internetContext = `\n[DATA INTERNET]:\n${texts}\n(Gunakan ini sebagai referensi utama!)\n`;
-                }
-            } catch (err) { console.log("Tavily skip"); }
+                const sData = await searchResp.json();
+                if (sData.results) internetContext = `\n[DATA INTERNET]:\n${sData.results.map(r => r.content).join('\n')}\n`;
+            } catch (e) { console.log("Tavily Skip"); }
         }
 
-        const systemInstructionText = `
-            Nama kamu Flora. Kamu asisten AI yang cerdas & rapi.
+        const systemPrompt = `
+            Nama kamu Flora. AI Cerdas & Rapi.
             ${internetContext}
-            ATURAN FORMATTING (WAJIB HTML):
-            1. Gunakan <b>tebal</b>, <br> baris baru, <ul><li>list</li></ul>.
-            2. JANGAN pakai Markdown.
+            ATURAN: Output WAJIB HTML (<b>, <br>, <ul>). JANGAN Markdown.
         `;
 
-        // ============================================================
-        // LAYER 1: GOOGLE GEMINI
-        // ============================================================
+        // --- EKSEKUSI SESUAI PILIHAN ---
         try {
-            console.log("Layer 1: Gemini...");
-            const modelGemini = genAI.getGenerativeModel({ 
-                model: "gemini-2.0-flash", 
-                systemInstruction: systemInstructionText 
-            });
-            
-            const geminiHistory = history.map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }]
-            }));
-            const chat = modelGemini.startChat({ history: geminiHistory });
-            const result = await chat.sendMessage(geminiHistory.pop().parts[0].text);
-            const text = cleanResponse(result.response.text());
-
-            // CEK VALIDASI
-            if (!isValidReply(text)) throw new Error("Gemini jawab error");
-            
-            return res.status(200).json({ reply: text });
-
-        } catch (err1) {
-            console.error("Layer 1 Gagal:", err1.message);
-            
-            // ============================================================
-            // LAYER 2: ANABOT (Backup 1)
-            // ============================================================
-            try {
-                console.log("Layer 2: Anabot...");
-                const conversationText = history.map(msg => `${msg.role === 'user' ? 'User' : 'Flora'}: ${msg.content}`).join('\n');
-                const finalPrompt = `[System: ${systemInstructionText}]\n\nRiwayat:\n${conversationText}\n\nFlora:`;
-                const apiUrl = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(finalPrompt)}&type=Chat&apikey=freeApikey`;
-                
-                const response = await fetch(apiUrl, { method: 'GET' });
-                const data = await response.json();
-                
-                let replyText = "";
-                if (data.data?.result?.text) replyText = data.data.result.text;
-                else if (data.result?.text) replyText = data.result.text;
-                else if (data.result) replyText = data.result;
-                else replyText = typeof data === 'string' ? data : "";
-                
-                replyText = cleanResponse(replyText);
-
-                // CEK VALIDASI (Ini yang akan nangkep error "Tidak dapat menemukan...")
-                if (!isValidReply(replyText)) throw new Error("Anabot jawab error text");
-
-                return res.status(200).json({ reply: replyText });
-
-            } catch (err2) {
-                console.error("Layer 2 Gagal:", err2.message);
-
-                // ============================================================
-                // LAYER 3: GROQ (Backup Akhir)
-                // ============================================================
-                try {
-                    console.log("Layer 3: Groq...");
-                    const messagesGroq = [{ role: "system", content: systemInstructionText }, ...history];
-                    const chatCompletion = await groq.chat.completions.create({
-                        messages: messagesGroq,
-                        model: "mixtral-8x7b-32768", 
-                        temperature: 0.6,
-                    });
-                    const replyGroq = cleanResponse(chatCompletion.choices[0]?.message?.content);
-                    
-                    return res.status(200).json({ reply: replyGroq });
-
-                } catch (err3) {
-                    return res.status(200).json({ reply: "⚠️ Maaf, Flora pingsan. Semua server sibuk." });
-                }
+            if (selectedModel === "gemini" || selectedModel === "pro") {
+                // User minta PRO -> Coba Gemini -> Backup Groq
+                try { return res.json({ reply: await callGemini(history, systemPrompt) }); }
+                catch (e) { return res.json({ reply: await callGroq(history, systemPrompt) }); }
+            } 
+            else if (selectedModel === "anabot" || selectedModel === "semi") {
+                // User minta SEMI -> Coba Anabot -> Backup Groq
+                try { return res.json({ reply: await callAnabot(history, systemPrompt) }); }
+                catch (e) { return res.json({ reply: await callGroq(history, systemPrompt) }); }
+            } 
+            else {
+                // DEFAULT (GROQ/FAST) -> Coba Groq -> Backup Anabot
+                try { return res.json({ reply: await callGroq(history, systemPrompt) }); }
+                catch (e) { return res.json({ reply: await callAnabot(history, systemPrompt) }); }
             }
+        } catch (fatal) {
+            return res.json({ reply: "⚠️ Semua server sibuk." });
         }
 
-    } catch (finalError) {
-        return res.status(500).json({ reply: `Error: ${finalError.message}` });
+    } catch (err) {
+        return res.status(500).json({ reply: `Error: ${err.message}` });
     }
 };
