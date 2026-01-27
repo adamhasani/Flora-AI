@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
         try {
             console.log("Mencoba Layer 1: Google Gemini...");
             const modelGemini = genAI.getGenerativeModel({ 
-                model: "gemini-2.0-flash", // Versi stabil & pintar
+                model: "gemini-2.5-flash", // Versi stabil & pintar
                 systemInstruction: promptNatural // <-- Pakai yang natural
             });
 
