@@ -1,84 +1,27 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-// --- HELPER 1: GENERATOR ID (Biar dikira HP Asli) ---
-function generateRandomId(length = 6) {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-}
-
-// --- HELPER 2: ENGINE NANOBANANA ---
-async function runNanoBanana(base64Image, prompt) {
-    // 1. Convert Base64 ke Buffer
-    const buffer = Buffer.from(base64Image.split(',')[1], 'base64');
-    
-    // 2. HEADERS LENGKAP (Wajib ada biar gak ditolak)
-    const spoofHeaders = {
-        'User-Agent': 'okhttp/4.9.3',
-        'Platform': 'android',
-        'Product-Code': '067005', // Kode rahasia aplikasi
-        'Product-Serial': generateRandomId(15), // Serial number palsu
-        'Accept-Language': 'en-US'
-    };
-
-    // 3. Siapkan Form Data
+// --- HELPER: UPLOAD KE CATBOX (Biar dapat URL) ---
+async function uploadToCatbox(buffer) {
     const form = new FormData();
-    form.append('model_name', 'seedream'); // Model: seedream / anime
-    form.append('edit_type', 'style_transfer');
-    form.append('prompt', `${prompt}, masterpiece, best quality`);
-    form.append('strength', '0.6'); // Seberapa kuat editnya (0.1 - 1.0)
-    form.append('target_images', buffer, { 
-        filename: 'image.jpg', 
-        contentType: 'image/jpeg' 
-    });
+    form.append('reqtype', 'fileupload');
+    form.append('time', '1h'); // Hapus otomatis setelah 1 jam
+    form.append('fileToUpload', buffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
 
     try {
-        // REQUEST 1: BIKIN JOB
-        const { data: job } = await axios.post('https://api.photoeditorai.io/pe/photo-editor/create-job', form, { 
-            headers: { 
-                ...form.getHeaders(), 
-                ...spoofHeaders 
-            } 
+        const { data } = await axios.post('https://catbox.moe/user/api.php', form, {
+            headers: form.getHeaders()
         });
-
-        if (!job.result?.job_id) {
-            console.log("Respon Server:", JSON.stringify(job)); // Cek log jika gagal
-            throw new Error("Server menolak request (Job ID null).");
-        }
-
-        const jobId = job.result.job_id;
-
-        // REQUEST 2: CEK STATUS (Polling)
-        // Kita cek max 10 kali (setiap 1.5 detik)
-        for (let i = 0; i < 10; i++) {
-            await new Promise(r => setTimeout(r, 1500)); // Tunggu 1.5 detik
-            
-            const { data: res } = await axios.get(`https://api.photoeditorai.io/pe/photo-editor/get-job/${jobId}`, { 
-                headers: spoofHeaders 
-            });
-            
-            // Status 2 = Selesai
-            if (res.result.status === 2 && res.result.output?.length) {
-                return res.result.output[0]; 
-            }
-            // Status 3 = Gagal / NSFW
-            if (res.result.status === 3) {
-                throw new Error("Gambar mengandung konten sensitif/NSFW.");
-            }
-        }
-        throw new Error("Waktu habis (Timeout), coba lagi.");
-
+        if (data && data.startsWith('http')) return data.trim();
+        throw new Error("Gagal upload ke Catbox");
     } catch (e) {
-        throw new Error(e.message || "Gagal menghubungi server AI.");
+        throw new Error("Catbox Error: " + e.message);
     }
 }
 
 // --- MAIN HANDLER ---
 module.exports = async (req, res) => {
+    // 1. Setting Header (Biar browser gak rewel)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -88,21 +31,37 @@ module.exports = async (req, res) => {
 
     try {
         const { image, prompt } = req.body;
-        if (!image || !prompt) throw new Error("Data gambar/prompt kosong.");
+        if (!image || !prompt) throw new Error("Gambar/Prompt kosong.");
 
-        // Jalankan fungsi
-        const resultUrl = await runNanoBanana(image, prompt);
+        // 2. Convert Base64 (dari HP) jadi Buffer (Data Mentah)
+        const buffer = Buffer.from(image.split(',')[1], 'base64');
+
+        // 3. Upload dulu ke Catbox buat dapat URL
+        // (Karena Faa Engine cuma mau nerima URL)
+        const imageUrl = await uploadToCatbox(buffer);
+        console.log("Uploaded URL:", imageUrl);
+
+        // 4. Panggil Faa API
+        const faaUrl = `https://api-faa.my.id/faa/editfoto?url=${encodeURIComponent(imageUrl)}&prompt=${encodeURIComponent(prompt)}`;
+        
+        const response = await axios.get(faaUrl, { 
+            responseType: 'arraybuffer' // Kita minta data gambar mentah
+        });
+
+        // 5. Convert hasil gambar jadi Base64 biar bisa tampil di web
+        const base64Result = Buffer.from(response.data, 'binary').toString('base64');
+        const finalData = `data:image/jpeg;base64,${base64Result}`;
 
         return res.status(200).json({ 
             success: true, 
-            url: resultUrl 
+            url: finalData 
         });
 
     } catch (error) {
-        console.error("Error Edit Foto:", error);
+        console.error("Error Faa:", error.message);
         return res.status(500).json({ 
             success: false, 
-            error: error.message 
+            error: error.message || "Gagal memproses gambar." 
         });
     }
 };
