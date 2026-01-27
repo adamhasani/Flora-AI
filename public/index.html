@@ -6,28 +6,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; padding: 0; margin: 0; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
-        
-        .header { background: white; padding: 15px; text-align: center; font-weight: 600; color: #333; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .header { background: white; padding: 15px; text-align: center; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { padding: 10px 15px; border-radius: 18px; max-width: 85%; word-wrap: break-word; font-size: 14px; }
-        .user { background: #0084ff; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .bot { background: white; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .msg { padding: 10px 15px; border-radius: 18px; max-width: 85%; font-size: 14px; word-wrap: break-word; }
+        .user { background: #0084ff; color: white; align-self: flex-end; }
+        .bot { background: white; color: #333; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .msg img { max-width: 100%; border-radius: 10px; margin-top: 5px; display: block; }
 
-        /* Input Area */
+        /* Controls */
         .input-area { background: white; padding: 10px; border-top: 1px solid #ddd; }
-        .controls { display: flex; gap: 10px; align-items: center; }
-        input[type="text"] { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #ddd; outline: none; background: #f0f2f5; }
-        button { border: none; background: none; cursor: pointer; padding: 8px; font-size: 20px; }
-        .btn-send { color: #0084ff; font-weight: bold; }
-
-        /* Preview Image */
         #preview-container { display: none; padding: 10px; background: #f9f9f9; border-radius: 10px; margin-bottom: 10px; position: relative; width: fit-content; }
         #preview-img { height: 80px; border-radius: 8px; }
         #remove-img { position: absolute; top: -8px; right: -8px; background: #ff4444; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .controls { display: flex; gap: 10px; align-items: center; }
+        input[type="text"] { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #ddd; outline: none; background: #f0f2f5; }
+        button { border: none; background: none; cursor: pointer; padding: 8px; font-size: 20px; }
 
         /* Loader */
-        .loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 99; justify-content: center; align-items: center; flex-direction: column; }
+        .loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 99; justify-content: center; align-items: center; flex-direction: column; }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0084ff; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -36,12 +32,12 @@
 
     <div class="header">Flora AI 🌸</div>
     <div id="chat-box">
-        <div class="msg bot">Halo! 👋<br>Klik kamera 📷, pilih foto, tulis gayanya (misal: "anime style").</div>
+        <div class="msg bot">Halo! 👋<br>Klik 📷 untuk edit foto.</div>
     </div>
 
     <div class="loader" id="loader">
         <div class="spinner"></div>
-        <div style="margin-top:10px; color:#555; font-weight:600;">Mohon tunggu...</div>
+        <div id="status-text" style="margin-top:10px; color:#555; font-weight:600;">Mohon tunggu...</div>
     </div>
 
     <div class="input-area">
@@ -49,13 +45,11 @@
             <img id="preview-img" src="">
             <div id="remove-img" onclick="cancelImage()">×</div>
         </div>
-        
         <div class="controls">
             <button onclick="document.getElementById('fileInput').click()">📷</button>
             <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect()">
-            
-            <input type="text" id="pesan" placeholder="Ketik pesan..." onkeypress="if(event.key === 'Enter') kirim()">
-            <button class="btn-send" onclick="kirim()">➤</button>
+            <input type="text" id="pesan" placeholder="Ketik prompt..." onkeypress="if(event.key === 'Enter') kirim()">
+            <button style="color:#0084ff; font-weight:bold;" onclick="kirim()">➤</button>
         </div>
     </div>
 
@@ -63,18 +57,20 @@
         let currentImageBase64 = null;
         const chatBox = document.getElementById("chat-box");
         const loader = document.getElementById("loader");
+        const statusText = document.getElementById("status-text");
         const previewContainer = document.getElementById("preview-container");
         const previewImg = document.getElementById("preview-img");
 
         async function handleFileSelect() {
             const file = document.getElementById("fileInput").files[0];
             if (!file) return;
-            
-            // Kompres Gambar (Wajib biar ringan)
+            statusText.innerText = "Mengompres gambar...";
+            loader.style.display = "flex";
             const compressed = await compressImage(file);
             currentImageBase64 = compressed;
             previewImg.src = compressed;
             previewContainer.style.display = "block";
+            loader.style.display = "none";
         }
 
         function cancelImage() {
@@ -87,31 +83,11 @@
             const txt = document.getElementById("pesan").value;
             if (!txt && !currentImageBase64) return;
 
-            // --- MODE GAMBAR (FAA ENGINE) ---
+            // --- MODE GAMBAR ---
             if (currentImageBase64) {
-                if (!txt) { alert("Isi prompt gayanya dulu!"); return; }
-                
+                if (!txt) { alert("Isi prompt dulu!"); return; }
                 addBubble(`${txt}<br><img src="${currentImageBase64}">`, 'user');
-                loader.style.display = "flex";
-
-                try {
-                    const res = await fetch('/api/edit', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ image: currentImageBase64, prompt: txt })
-                    });
-                    
-                    const data = await res.json();
-                    if (data.success) {
-                        addBubble(`Selesai! ✨<br><img src="${data.url}">`, 'bot');
-                    } else {
-                        addBubble(`Gagal: ${data.error}`, 'bot');
-                    }
-                } catch (e) {
-                    addBubble(`Error: ${e.message}`, 'bot');
-                }
-                
-                loader.style.display = "none";
+                prosesEditDirect(currentImageBase64, txt);
                 document.getElementById("pesan").value = "";
                 cancelImage();
             } 
@@ -119,8 +95,8 @@
             else {
                 addBubble(txt, 'user');
                 document.getElementById("pesan").value = "";
+                statusText.innerText = "Bot mengetik...";
                 loader.style.display = "flex";
-                
                 try {
                     const res = await fetch('/api', {
                         method: 'POST',
@@ -130,8 +106,62 @@
                     const data = await res.json();
                     addBubble(data.reply, 'bot');
                 } catch (e) { addBubble("Error koneksi.", 'bot'); }
-                
                 loader.style.display = "none";
+            }
+        }
+
+        async function prosesEditDirect(img, prompt) {
+            statusText.innerText = "Mengirim ke AI...";
+            loader.style.display = "flex";
+
+            try {
+                // 1. START JOB
+                const startRes = await fetch('/api/edit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ step: 'start', image: img, prompt: prompt })
+                });
+                const startData = await startRes.json();
+                if (!startData.success) throw new Error(startData.error || "Gagal start");
+
+                const jobId = startData.jobId;
+
+                // 2. CEK STATUS (Looping)
+                let attempts = 0;
+                const interval = setInterval(async () => {
+                    attempts++;
+                    statusText.innerText = `Melukis... (${attempts})`;
+                    
+                    if (attempts > 60) { // Max 2 menit
+                        clearInterval(interval);
+                        loader.style.display = "none";
+                        addBubble("⚠️ Server AI lambat. Coba lagi.", 'bot');
+                        return;
+                    }
+
+                    try {
+                        const checkRes = await fetch('/api/edit', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ step: 'check', jobId: jobId })
+                        });
+                        const checkData = await checkRes.json();
+
+                        if (checkData.status === 'done') {
+                            clearInterval(interval);
+                            loader.style.display = "none";
+                            addBubble(`Selesai! ✨<br><img src="${checkData.url}">`, 'bot');
+                        } else if (checkData.status === 'failed') {
+                            clearInterval(interval);
+                            loader.style.display = "none";
+                            addBubble(`Gagal: ${checkData.error}`, 'bot');
+                        }
+                    } catch (e) {}
+                }, 2000);
+
+            } catch (e) {
+                loader.style.display = "none";
+                addBubble(`Error: ${e.message}`, 'bot');
             }
         }
 
