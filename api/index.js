@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
         // --- SETTING KEPRIBADIAN (OTAK) ---
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-3.0-flash",
+            model: "gemini-2.0-flash",
             systemInstruction: "Nama kamu Flora. Kamu asisten yang cerdas dan ramah. Jawab pertanyaan dengan bahasa Indonesia yang santai, ringkas, dan jelas. Hindari bahasa yang terlalu formal/baku, tapi jangan gunakan bahasa alay. Bersikaplah seperti teman ngobrol yang suportif."
         });
 
