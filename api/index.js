@@ -12,10 +12,8 @@ const groq = new Groq({ apiKey: groqKey || "dummy" });
 
 // --- 2. PROMPT SISTEM ---
 const promptStrictHTML = `
-    IDENTITAS: Nama kamu Flora. Kamu asisten AI mandiri yang cerdas.
-    JANGAN PERNAH mengaku buatan Google/OpenAI/Meta. Kamu adalah Flora AI.
-    WAJIB HTML: <b>tebal</b>, <br> baris baru, <ul><li> daftar. JANGAN Markdown.
-    Jawab dalam Bahasa Indonesia santai dan to-the-point.
+    Nama kamu Flora. Jawab dalam Bahasa Indonesia santai. 
+    WAJIB HTML: <b>tebal</b>, <br> baris baru. JANGAN Markdown.
 `;
 
 // --- 3. HELPER: PEMBERSIH ---
@@ -23,12 +21,8 @@ const cleanResponse = (text) => {
     if (!text) return "";
     let clean = text
         .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-        .replace(/\*(.*?)\*/g, '<i>$1</i>')
-        .replace(/^- (.*$)/gim, '<li>$1</li>')
-        .replace(/```html/g, '').replace(/```/g, '')
-        .replace(/\\n/g, "<br>").replace(/\n/g, "<br>")
+        .replace(/\n/g, "<br>")
         .trim();
-    if (clean.includes('<li>') && !clean.includes('<ul>')) clean = `<ul>${clean}</ul>`;
     return clean;
 };
 
@@ -39,10 +33,12 @@ const getCleanHistory = (history) => {
     }));
 };
 
-// --- 4. FUNGSI EKSEKUTOR ---
-
+// --- 4. FUNGSI EKSEKUTOR MISTRAL (DEBUG MODE) ---
 async function runMistral(history) {
-    if (!mistralKey) throw new Error("API Key Mistral tidak ditemukan di Vercel");
+    if (!mistralKey) throw new Error("VARIABEL_KOSONG: MISTRAL_API_KEY tidak ditemukan di Environment Variables Vercel.");
+    
+    const cleanHist = getCleanHistory(history);
+
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -52,39 +48,27 @@ async function runMistral(history) {
         },
         body: JSON.stringify({
             model: "mistral-tiny", 
-            messages: [{ role: "system", content: promptStrictHTML }, ...getCleanHistory(history)],
+            messages: [{ role: "system", content: promptStrictHTML }, ...cleanHist],
             temperature: 0.7
         })
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(`Mistral Reject: ${data.error?.message || response.statusText}`);
-    return cleanResponse(data.choices?.[0]?.message?.content);
+
+    // JIKA ERROR: Kirim detailnya langsung tanpa filter
+    if (!response.ok) {
+        const errorDetail = JSON.stringify(data.error || data);
+        throw new Error(`KODE_HTTP_${response.status}: ${errorDetail}`);
+    }
+
+    if (data.choices && data.choices[0]) {
+        return cleanResponse(data.choices[0].message.content);
+    }
+    
+    throw new Error("RESPON_STRUKTUR_SALAH: Mistral membalas tapi formatnya tidak dikenal.");
 }
 
-async function runGroq(history) {
-    if (!groqKey) throw new Error("API Key Groq Kosong");
-    const res = await groq.chat.completions.create({
-        messages: [{ role: "system", content: promptStrictHTML }, ...getCleanHistory(history)],
-        model: "llama-3.3-70b-versatile",
-    });
-    return cleanResponse(res.choices[0]?.message?.content);
-}
-
-async function runGemini(history) {
-    if (!geminiKey) throw new Error("API Key Gemini Kosong");
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptStrictHTML });
-    const cleanHist = getCleanHistory(history).map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-    }));
-    const lastMsg = cleanHist.pop().parts[0].text;
-    const chat = model.startChat({ history: cleanHist });
-    const result = await chat.sendMessage(lastMsg);
-    return cleanResponse(result.response.text());
-}
-
-// --- 5. MAIN HANDLER ---
+// --- 5. MAIN HANDLER (TANPA BACKUP) ---
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -94,22 +78,43 @@ module.exports = async (req, res) => {
     try {
         const { history, model } = req.body;
         const selectedModel = model ? model.toLowerCase() : 'mistral';
-        let result = "", label = "Flora AI";
         
-        try {
-            if (selectedModel === 'groq') { result = await runGroq(history); label = "Flora AI ⚡"; }
-            else if (selectedModel === 'gemini') { result = await runGemini(history); label = "Flora AI 🧠"; }
-            else { result = await runMistral(history); label = "Flora AI 🌿"; }
-            
-            return res.json({ reply: `<b>[${label}]</b><br>${result}` });
-        } catch (e) {
-            console.error("DEBUG:", e.message);
-            const backup = await runGemini(history);
-            return res.json({ 
-                reply: `<b>[Flora AI 🧠 - Backup Aktif]</b><br><small>Alasan: ${e.message}</small><br><br>${backup}` 
-            });
+        let result = "";
+        let label = "Flora AI 🌿";
+
+        // Kita PAKSA pakai Mistral (atau model pilihan) tanpa blok try-catch fallback
+        if (selectedModel === 'groq') {
+            result = await (async () => {
+                const res = await groq.chat.completions.create({
+                    messages: [{ role: "system", content: promptStrictHTML }, ...getCleanHistory(history)],
+                    model: "llama-3.3-70b-versatile",
+                });
+                return cleanResponse(res.choices[0]?.message?.content);
+            })();
+            label = "Flora AI ⚡";
+        } else if (selectedModel === 'gemini') {
+            const modelGemini = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptStrictHTML });
+            const cleanHist = getCleanHistory(history).map(m => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: m.content }]
+            }));
+            const lastMsg = cleanHist.pop().parts[0].text;
+            const chat = modelGemini.startChat({ history: cleanHist });
+            const finalRes = await chat.sendMessage(lastMsg);
+            result = cleanResponse(finalRes.response.text());
+            label = "Flora AI 🧠";
+        } else {
+            // EKSEKUSI MISTRAL
+            result = await runMistral(history);
         }
-    } catch (sysError) {
-        return res.status(500).json({ reply: `System Crash: ${sysError.message}` });
+
+        return res.json({ reply: `<b>[${label}]</b><br>${result}` });
+
+    } catch (err) {
+        // TAMPILKAN ERROR ASLI DI CHAT
+        console.error("DEBUG_LOG:", err.message);
+        return res.json({ 
+            reply: `<b>[❌ ERROR SISTEM]</b><br><br><b>Pesan:</b><br>${err.message}<br><br><small><i>Catatan: Mas Adam, cek pesan di atas buat tahu kenapa Mistral gagal.</i></small>` 
+        });
     }
 };
