@@ -1,23 +1,28 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-// Generator ID Palsu (Biar dikira HP beneran)
-function generateRandomId(length = 16) {
-    const chars = 'abcdef0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-    return result;
+// Fungsi Upload ke Pomf (Pengganti Catbox)
+async function uploadFile(buffer) {
+    const form = new FormData();
+    form.append('files[]', buffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
+
+    try {
+        // Kita pakai Pomf (biasanya lolos dari blokir Vercel)
+        const { data } = await axios.post('https://pomf.lain.la/upload.php', form, {
+            headers: form.getHeaders()
+        });
+        
+        if (data.success && data.files && data.files[0]) {
+            return data.files[0].url;
+        }
+        throw new Error("Gagal upload gambar.");
+    } catch (e) {
+        throw new Error("Uploader Error: " + e.message);
+    }
 }
 
-const COMMON_HEADERS = {
-    'User-Agent': 'okhttp/4.9.3', // Menyamar jadi aplikasi Android
-    'Platform': 'android',
-    'App-Version': '2.8.3',
-    'Accept-Language': 'en-US'
-};
-
 module.exports = async (req, res) => {
-    // 1. CORS Headers
+    // 1. Standar Header
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -26,56 +31,33 @@ module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
     try {
-        const { step, image, prompt, jobId } = req.body;
+        const { image, prompt } = req.body;
+        if (!image || !prompt) throw new Error("Gambar/Prompt tidak boleh kosong.");
+
+        // 2. Convert Base64 ke Buffer
+        const buffer = Buffer.from(image.split(',')[1], 'base64');
+
+        // 3. Upload dulu biar dapat URL (Syarat Faa)
+        const imageUrl = await uploadFile(buffer);
+        console.log("URL Gambar:", imageUrl);
+
+        // 4. Panggil Faa Engine
+        // Style kita set default biar gampang, atau ikutin prompt
+        const faaUrl = `https://api-faa.my.id/faa/editfoto?url=${encodeURIComponent(imageUrl)}&prompt=${encodeURIComponent(prompt)}`;
         
-        // PINTU 1: MULAI JOB (Daftar Antrian)
-        if (step === 'start') {
-            const buffer = Buffer.from(image.split(',')[1], 'base64');
-            const form = new FormData();
-            
-            // Kita pakai model 'anime' (lebih ringan dari seedream)
-            form.append('model_name', 'anime'); 
-            form.append('edit_type', 'style_transfer');
-            form.append('prompt', `${prompt}, masterpiece, best quality, ultra detailed`);
-            form.append('strength', '0.65');
-            form.append('target_images', buffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
+        const response = await axios.get(faaUrl, { 
+            responseType: 'arraybuffer',
+            timeout: 25000 // Batas waktu 25 detik
+        });
 
-            // Request ke Server AI
-            const { data } = await axios.post('https://api.photoeditorai.io/pe/photo-editor/create-job', form, { 
-                headers: { 
-                    ...form.getHeaders(), 
-                    ...COMMON_HEADERS, 
-                    'Product-Serial': generateRandomId() 
-                } 
-            });
+        // 5. Ubah hasil jadi Base64 lagi
+        const base64Result = Buffer.from(response.data, 'binary').toString('base64');
+        const finalData = `data:image/jpeg;base64,${base64Result}`;
 
-            if (!data.result?.job_id) throw new Error("Server AI sedang penuh. Coba 1 menit lagi.");
-            
-            return res.status(200).json({ success: true, jobId: data.result.job_id });
-        }
-
-        // PINTU 2: CEK STATUS (Tanya "Udah jadi belum?")
-        else if (step === 'check') {
-            const { data } = await axios.get(`https://api.photoeditorai.io/pe/photo-editor/get-job/${jobId}`, { 
-                headers: { ...COMMON_HEADERS } 
-            });
-
-            // Status 2 = Selesai
-            if (data.result.status === 2 && data.result.output?.length) {
-                return res.status(200).json({ status: 'done', url: data.result.output[0] });
-            }
-            // Status 3 = Gagal (NSFW/Error)
-            else if (data.result.status === 3) {
-                return res.status(200).json({ status: 'failed', error: "Gambar ditolak (NSFW/Error System)." });
-            }
-            // Status 0/1 = Masih Loading
-            else {
-                return res.status(200).json({ status: 'pending' });
-            }
-        }
+        return res.status(200).json({ success: true, url: finalData });
 
     } catch (error) {
-        console.error("Error Backend:", error.message);
+        console.error("Error:", error.message);
         return res.status(500).json({ success: false, error: error.message });
     }
 };
