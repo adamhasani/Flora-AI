@@ -1,55 +1,78 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
-// --- SETUP API KEYS ---
+// --- SETUP ---
 const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
-const geminiKey = getCleanKey(process.env.GEMINI_API_KEY || process.env.API_KEY);
 const groqKey = getCleanKey(process.env.GROQ_API_KEY);
+const geminiKey = getCleanKey(process.env.GEMINI_API_KEY || process.env.API_KEY);
 
-const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 const groq = new Groq({ apiKey: groqKey || "dummy" });
+const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 
-// --- PROMPT KEPRIBADIAN FLORA (Sesuai keinginan Adam) ---
+// --- PROMPT FLORA ---
 const promptFlora = `
-    Nama kamu Flora AI. Kamu asisten cerdas mahasiswa Data Science di Universitas Harkat Negeri.
-    Gaya bicara: Santai, informatif, dan membantu.
-    PENTING: Gunakan HTML <b>tebal</b> dan <br> untuk baris baru. JANGAN gunakan markdown.
+    Nama kamu Flora AI. Kamu asisten cerdas yang menggunakan otak Mistral.
+    Gaya bicara: Santai, logis, dan to the point.
+    PENTING: Gunakan HTML <b>tebal</b> dan <br> untuk baris baru.
 `;
 
-const cleanResponse = (text) => {
-    if (!text) return "";
-    return text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, "<br>").trim();
-};
+const cleanResponse = (text) => text ? text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, "<br>").trim() : "";
+const getCleanHistory = (history) => history.map(msg => ({
+    role: (msg.role === 'model' || msg.role === 'assistant') ? 'assistant' : 'user',
+    content: msg.content.replace(/<[^>]*>/g, '').trim()
+}));
 
-const getCleanHistory = (history) => {
-    return history.map(msg => ({
-        role: (msg.role === 'model' || msg.role === 'assistant') ? 'assistant' : 'user',
-        content: msg.content.replace(/<[^>]*>/g, '').trim()
-    }));
-};
+// --- EKSEKUTOR UTAMA (GROQ) ---
+async function runGroq(history, message, imageBase64) {
+    let messages = [
+        { role: "system", content: promptFlora },
+        ...getCleanHistory(history)
+    ];
 
-// --- EKSEKUTOR GROQ (LLAMA 3.3 - SANGAT CEPAT & GRATIS) ---
-async function runGroq(history) {
+    let modelName = "mixtral-8x7b-32768"; // <--- INI MISTRAL (Default)
+
+    if (imageBase64) {
+        // Kalau ada gambar, Mistral gabisa liat, jadi pinjem mata Llama Vision
+        console.log("Mode Gambar: Switch ke Llama Vision");
+        modelName = "llama-3.2-11b-vision-preview"; 
+        
+        messages.push({
+            role: "user",
+            content: [
+                { type: "text", text: message || "Jelaskan gambar ini" },
+                { type: "image_url", image_url: { url: imageBase64 } }
+            ]
+        });
+    } else {
+        // Kalau Chat Teks Biasa -> PAKE MISTRAL
+        console.log("Mode Teks: Full Mistral");
+        messages.push({ role: "user", content: message });
+    }
+
     const res = await groq.chat.completions.create({
-        messages: [{ role: "system", content: promptFlora }, ...getCleanHistory(history)],
-        model: "llama-3.3-70b-versatile",
+        messages: messages,
+        model: modelName,
+        temperature: 0.7,
+        max_tokens: 2048,
     });
     return cleanResponse(res.choices[0]?.message?.content);
 }
 
-// --- EKSEKUTOR GEMINI (BACKUP) ---
-async function runGemini(history) {
+// --- BACKUP DARURAT (GEMINI) ---
+// Cuma dipake kalau Groq/Mistral servernya down total
+async function runGemini(history, message) {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptFlora });
-    const cleanHist = getCleanHistory(history).map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-    }));
-    const lastMsg = cleanHist.pop().parts[0].text;
-    const chat = model.startChat({ history: cleanHist });
-    const result = await chat.sendMessage(lastMsg);
+    const chat = model.startChat({
+        history: history.map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content.replace(/<[^>]*>/g, '') }]
+        }))
+    });
+    const result = await chat.sendMessage(message);
     return cleanResponse(result.response.text());
 }
 
+// --- HANDLER ---
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -57,17 +80,20 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        const { history } = req.body;
-        let result = "", label = "Flora AI ⚡";
+        const { history = [], message, image } = req.body;
+        let result = "";
+        let label = "Flora (Mistral)";
 
         try {
-            // Kita pakai Groq sebagai utama karena Mistral kamu limit
-            result = await runGroq(history);
-        } catch (e) {
-            // Kalau Groq bermasalah, pindah ke Gemini
-            console.log("Switching to Gemini...");
-            result = await runGemini(history);
-            label = "Flora AI 🧠";
+            // PAKSA PAKAI GROQ (MISTRAL)
+            result = await runGroq(history, message, image);
+            if (image) label = "Flora Vision"; 
+        } 
+        catch (e) {
+            console.error("Mistral Error:", e.message);
+            // Backup ke Gemini kalau Mistral tewas
+            result = await runGemini(history, message);
+            label = "Flora (Backup)";
         }
 
         return res.json({ reply: `<b>[${label}]</b><br>${result}` });
