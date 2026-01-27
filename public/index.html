@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flora AI - Mobile Fixed</title>
+    <title>Flora AI - Art & Chat</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* --- 1. RESET & VARIABLE --- */
+        /* --- 1. RESET & CORE --- */
         :root {
             --bg-dark: #0f0f11;
             --bg-sidebar: rgba(20, 20, 23, 0.95);
@@ -19,16 +19,17 @@
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         
-        body, html {
+        html, body {
             margin: 0; padding: 0;
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg-dark);
             color: var(--text-main);
-            width: 100%; height: 100dvh; /* Pakai dvh biar pas di browser HP */
-            overflow: hidden; /* KUNCI UTAMA: Matikan scroll body */
+            width: 100%; height: 100dvh; /* Fix tinggi mobile */
+            overflow: hidden; /* Mencegah scroll body */
             display: flex;
         }
 
+        /* Background Animasi */
         .aura-bg {
             position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
             background: radial-gradient(circle at 50% 50%, rgba(255, 75, 75, 0.06), transparent 50%),
@@ -45,73 +46,61 @@
             display: flex; flex-direction: column; padding: 25px; gap: 20px; flex-shrink: 0;
         }
 
-        /* MAIN VIEW: Kunci lebar 100% dan flex column */
+        /* MAIN VIEW: Dipatenkan agar tidak offside */
         .main-view { 
             flex: 1; 
             display: flex; 
             flex-direction: column; 
             position: relative; 
             width: 100%; 
-            max-width: 100%; /* Cegah offside */
-            overflow: hidden; /* Cegah anak elemen keluar */
+            max-width: 100%; 
+            overflow: hidden; 
         }
         
         .mobile-top {
             display: none; padding: 15px; align-items: center; justify-content: space-between;
-            border-bottom: 1px solid var(--glass-border); background: rgba(15, 15, 17, 0.9); backdrop-filter: blur(10px);
-            z-index: 10; width: 100%;
+            border-bottom: 1px solid var(--glass-border); background: rgba(15, 15, 17, 0.95); backdrop-filter: blur(10px);
+            z-index: 10; width: 100%; flex-shrink: 0;
         }
 
         /* CHAT STREAM */
         #chat-stream { 
             flex: 1; 
             overflow-y: auto; 
-            overflow-x: hidden; /* Matikan scroll samping */
             padding: 15px; 
             display: flex; 
             flex-direction: column; 
             width: 100%;
+            scroll-behavior: smooth;
         }
 
-        /* --- 3. WELCOME SCREEN (DIPATENKAN TENGAH) --- */
+        /* --- 3. WELCOME SCREEN --- */
         #welcome-screen {
-            flex: 1; /* Ambil sisa ruang agar pas di tengah vertikal */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            text-align: center;
-            min-height: 50vh; /* Jaga agar tidak gepeng */
+            flex: 1; 
+            display: flex; flex-direction: column; 
+            align-items: center; justify-content: center;
+            width: 100%; text-align: center;
+            padding: 20px;
         }
 
         .greet-title { 
             font-size: 32px; font-weight: 700; margin-bottom: 10px; 
             background: linear-gradient(to right, #fff, #bbb); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            word-wrap: break-word; /* Biar teks panjang turun ke bawah */
         }
 
-        /* CHIPS CONTAINER: Scroll rapi tanpa offside layout */
+        /* CHIPS SCROLL (Horizontal Fix) */
         .chip-scroll-container {
-            display: flex; 
-            gap: 8px; 
-            overflow-x: auto; 
-            width: 100%; 
-            max-width: 100%;
-            padding: 10px 5px; 
-            scrollbar-width: none; 
-            /* Mobile: Start dari kiri, Desktop: Tengah */
-            justify-content: flex-start; 
+            display: flex; gap: 10px; overflow-x: auto; width: 100%; padding: 5px; 
+            scrollbar-width: none; justify-content: flex-start; /* Mobile start kiri */
         }
         .chip-scroll-container::-webkit-scrollbar { display: none; }
-        
-        /* Spacer di ujung scroll biar ga mentok */
-        .chip-scroll-container::after { content: ""; flex: 0 0 10px; }
+        /* Desktop center */
+        @media (min-width: 769px) { .chip-scroll-container { justify-content: center; } }
 
         .bubble-chip {
             background: rgba(255, 255, 255, 0.08); border: 1px solid var(--glass-border);
             padding: 10px 18px; border-radius: 50px; white-space: nowrap; cursor: pointer;
-            font-size: 13px; font-weight: 500; color: #ddd; flex-shrink: 0; /* Jangan menciut */
+            font-size: 13px; font-weight: 500; color: #ddd; flex-shrink: 0;
         }
         .bubble-chip i { color: #FF9A9E; margin-right: 6px; }
 
@@ -123,17 +112,15 @@
             width: 100%; z-index: 50; flex-shrink: 0;
         }
 
-        /* Container Preview yang Responsif */
         #preview-container { 
-            display: none; 
-            width: 100%; max-width: 600px; 
+            display: none; width: 100%; max-width: 750px; 
             background: rgba(30, 30, 35, 0.95); 
             border: 1px solid var(--glass-border); border-radius: 16px; 
             padding: 12px; margin-bottom: 10px; 
         }
 
-        /* Style Chips di Edit Mode */
-        .style-scroll { display: flex; gap: 6px; overflow-x: auto; padding-top: 10px; scrollbar-width: none; }
+        /* Style Chips Scroll */
+        .style-scroll { display: flex; gap: 8px; overflow-x: auto; padding-top: 10px; scrollbar-width: none; }
         .style-chip { 
             padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 8px; 
             font-size: 11px; white-space: nowrap; cursor: pointer; color: #ccc;
@@ -141,9 +128,9 @@
         .style-chip.active { background: #FF9A9E; color: black; font-weight: bold; }
 
         .glass-input-bar {
-            width: 100%; max-width: 750px; background: rgba(30,30,35,0.9);
+            width: 100%; max-width: 750px; background: rgba(30,30,35,0.95);
             border: 1px solid var(--glass-border); border-radius: 24px; 
-            padding: 8px 12px; display: flex; align-items: flex-end; gap: 8px;
+            padding: 8px 12px; display: flex; align-items: flex-end; gap: 10px;
         }
         textarea { flex: 1; background: transparent; border: none; color: white; font-size: 15px; resize: none; max-height: 100px; padding: 10px 0; }
         .send-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: white; color: black; cursor: pointer; flex-shrink: 0; display:flex; align-items:center; justify-content:center;}
@@ -155,27 +142,23 @@
         .bubble { padding: 12px 16px; font-size: 15px; line-height: 1.5; max-width: 85%; border-radius: 18px; word-wrap: break-word; }
         .user .bubble { background: #fff; color: #000; border-bottom-right-radius: 4px; }
         .bot .bubble { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #eee; border-bottom-left-radius: 4px; }
-        .chat-img { width: 100%; max-width: 250px; border-radius: 12px; margin-top: 5px; display: block; border: 1px solid #333; }
+        .chat-img { width: 100%; max-width: 280px; border-radius: 12px; margin-top: 8px; display: block; border: 1px solid #333; }
         
         .avatar-bot { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; background: linear-gradient(135deg, #FF9A9E, #A18CD1); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: #000; }
 
         /* AUTH SCREEN */
-        #auth-layer { position: fixed; inset: 0; z-index: 2000; background: rgba(15, 15, 17, 0.98); display: flex; justify-content: center; align-items: center; }
+        #auth-layer { position: fixed; inset: 0; z-index: 9999; background: rgba(15, 15, 17, 0.98); display: flex; justify-content: center; align-items: center; }
         .glass-card { width: 85%; max-width: 350px; text-align: center; padding: 30px; border-radius: 24px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); }
         .custom-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); padding: 14px; border-radius: 12px; color: white; margin: 20px 0; font-size: 16px; }
-        .btn-glow { width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--primary-grad); color: #4a1e20; font-weight: 700; cursor: pointer; }
+        .btn-glow { width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--primary-grad); color: #4a1e20; font-weight: 700; cursor: pointer; transition: transform 0.1s;}
+        .btn-glow:active { transform: scale(0.95); }
 
-        @media (min-width: 769px) {
-            .chip-scroll-container { justify-content: center; }
-            .greet-title { font-size: 42px; }
-        }
+        @media (min-width: 769px) { .greet-title { font-size: 42px; } }
         @media (max-width: 768px) { 
             .sidebar { display: none; } 
             .mobile-top { display: flex; } 
             .greet-title { font-size: 28px; }
-            /* Fix Paten Mobile */
-            .main-view { width: 100vw; }
-            .bubble { font-size: 14px; max-width: 88%; }
+            .main-view { width: 100vw; } /* Full width mobile */
         }
     </style>
 </head>
@@ -216,12 +199,12 @@
             <div id="chat-stream">
                 <div id="welcome-screen">
                     <div class="greet-title">Halo, <span id="u-name" style="color:#FF9A9E;">User</span></div>
-                    <p style="color:#8b8b93; font-size:14px; margin-bottom:20px;">Mau bahas apa?</p>
+                    <p style="color:#8b8b93; font-size:14px; margin-bottom:20px;">Mau bahas apa hari ini?</p>
                     
                     <div class="chip-scroll-container">
                         <div class="bubble-chip" onclick="setInput('Buatkan caption IG')"><i class="fa-brands fa-instagram"></i> Caption</div>
                         <div class="bubble-chip" onclick="setInput('Jelaskan Python')"><i class="fa-brands fa-python"></i> Python</div>
-                        <div class="bubble-chip" onclick="setInput('Resep nasi goreng')"><i class="fa-solid fa-utensils"></i> Resep</div>
+                        <div class="bubble-chip" onclick="setInput('Edit gambar jadi anime')"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit Anime</div>
                         <div class="bubble-chip" onclick="setInput('Cerpen horor')"><i class="fa-solid fa-ghost"></i> Cerpen</div>
                     </div>
                 </div>
@@ -237,7 +220,7 @@
                             <div style="font-size:12px; color:white; font-weight:bold;">Edit Mode</div>
                             <div style="font-size:11px; color:#888;">Pilih style di bawah:</div>
                         </div>
-                        <button onclick="clearImage()" style="background:none; border:none; color:#FF5E62;">✕</button>
+                        <button onclick="clearImage()" style="background:none; border:none; color:#FF5E62; padding:10px;">✕</button>
                     </div>
 
                     <div class="style-scroll">
@@ -246,6 +229,7 @@
                         <div class="style-chip" onclick="setStyle(this, 'Realistic')">Realistic</div>
                         <div class="style-chip" onclick="setStyle(this, 'Ghibli')">Ghibli</div>
                         <div class="style-chip" onclick="setStyle(this, 'Minecraft')">Minecraft</div>
+                        <div class="style-chip" onclick="setStyle(this, '3D Render')">3D Render</div>
                     </div>
                 </div>
 
@@ -269,13 +253,38 @@
         let chatHistory = [];
         let currentModel = 'gemini';
 
+        // --- FIXED LOGIN FUNCTION (Anti-Stuck) ---
         function handleLogin() {
-            const name = document.getElementById('username').value || "User";
-            document.getElementById('u-name').innerText = name;
-            document.getElementById('u-avatar-mob').innerText = name.charAt(0).toUpperCase();
-            document.getElementById('auth-layer').style.display = 'none';
-            document.getElementById('app-interface').style.display = 'flex';
-            setTimeout(() => document.getElementById('app-interface').style.opacity = 1, 50);
+            try {
+                // Ambil Nama
+                const nameInput = document.getElementById('username');
+                const name = nameInput.value.trim() || "User";
+                
+                // Update UI (Gunakan Try-Catch di dalam agar aman)
+                const uNameEl = document.getElementById('u-name');
+                if(uNameEl) uNameEl.innerText = name;
+                
+                // Transisi Layar
+                const authLayer = document.getElementById('auth-layer');
+                const appInterface = document.getElementById('app-interface');
+                
+                authLayer.style.opacity = 0;
+                
+                // Paksa pindah layar setelah 300ms
+                setTimeout(() => {
+                    authLayer.style.display = 'none';
+                    appInterface.style.display = 'flex';
+                    // Animasi Fade In
+                    setTimeout(() => appInterface.style.opacity = 1, 50);
+                }, 300);
+
+            } catch (e) {
+                console.error("Login Error:", e);
+                // Jika error, PAKSA MASUK
+                document.getElementById('auth-layer').style.display = 'none';
+                document.getElementById('app-interface').style.display = 'flex';
+                document.getElementById('app-interface').style.opacity = 1;
+            }
         }
 
         function syncModel(val) {
