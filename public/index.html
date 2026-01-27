@@ -3,264 +3,191 @@
 <head>
     <title>Flora AI | Premium</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         :root { 
-            --accent: #007AFF; 
-            --bg: #FAFAFB; 
-            --card: #FFFFFF;
-            --text-main: #1A1A1E; 
-            --text-sub: #929298; 
+            --primary: #007AFF; 
+            --bg: #F8F9FB; 
+            --text: #1C1C1E; 
+            --sub: #8E8E93; 
         }
 
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            background: var(--bg); color: var(--text-main); overflow: hidden; 
+            background: var(--bg); overflow: hidden; 
         }
 
-        /* --- AUTH SCREEN (ELEGANT MINIMALIST) --- */
-        #auth-screen { 
-            position: fixed; inset: 0; background: #FFF; z-index: 2000; 
-            display: flex; align-items: center; justify-content: center; 
-            padding: 40px; transition: 1s cubic-bezier(0.85, 0, 0.15, 1); 
-        }
-        .auth-card { width: 100%; max-width: 320px; text-align: left; }
-        .auth-card h2 { font-weight: 800; font-size: 28px; letter-spacing: -1px; margin: 20px 0 10px; }
-        .input-field { 
-            width: 100%; padding: 18px; border-radius: 20px; border: 1px solid #EFEFEF; 
-            background: #F9F9FB; outline: none; font-size: 15px; margin-bottom: 12px;
-            transition: 0.3s;
-        }
-        .input-field:focus { border-color: var(--accent); background: #FFF; box-shadow: 0 10px 20px rgba(0,0,0,0.03); }
-        .btn-auth { 
-            width: 100%; padding: 18px; border-radius: 20px; border: none; 
-            background: var(--text-main); color: #FFF; font-weight: 700; cursor: pointer; 
-            margin-top: 10px; transition: 0.3s;
-        }
-        .btn-auth:active { transform: scale(0.98); opacity: 0.9; }
+        /* --- AUTH SCREEN --- */
+        #auth-screen { position: fixed; inset: 0; background: #FFF; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 30px; transition: 0.8s; }
+        .auth-card { width: 100%; max-width: 340px; text-align: center; }
+        .input-auth { width: 100%; padding: 16px; border-radius: 16px; border: 1px solid #E5E5EA; background: #F2F2F7; outline: none; margin-bottom: 12px; font-size: 15px; }
+        .btn-auth { width: 100%; padding: 16px; border-radius: 16px; border: none; background: var(--text); color: #FFF; font-weight: 700; cursor: pointer; }
 
         /* --- MAIN APP --- */
-        #main-app { display: none; height: 100%; flex-direction: column; opacity: 0; transition: 1s; }
-
-        .header { 
-            padding: 25px 25px 15px; background: rgba(250, 250, 251, 0.8); 
-            backdrop-filter: blur(20px); z-index: 100; position: relative;
-        }
-        .nav-content { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 10; }
-        .logo-box { display: flex; align-items: center; gap: 12px; }
-        .logo-circle { 
-            width: 42px; height: 42px; background: #FFF; border-radius: 14px; 
-            display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 8px 15px rgba(0,0,0,0.05); font-size: 20px; 
-        }
+        #main-app { display: none; height: 100%; flex-direction: column; }
         
-        /* AURA ANIMATION */
-        .aura-bg {
-            position: absolute; top: -50px; left: 50%; transform: translateX(-50%);
-            width: 150%; height: 120px; filter: blur(50px); opacity: 0.3; pointer-events: none;
-            background: radial-gradient(circle, var(--accent), #AF52DE, transparent);
-            animation: flow 10s infinite alternate;
-        }
-        @keyframes flow { from { transform: translateX(-60%) scale(1); } to { transform: translateX(-40%) scale(1.2); } }
+        .header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); padding: 15px 25px; border-bottom: 1px solid #EEE; position: relative; z-index: 100; }
+        .aura-header { position: absolute; top: -40px; left: 50%; transform: translateX(-50%); width: 120%; height: 100px; filter: blur(40px); background: radial-gradient(circle, #007AFF, #AF52DE, transparent); opacity: 0.25; pointer-events: none; }
 
-        /* CHAT BOX */
-        #chat-box { flex: 1; overflow-y: auto; padding: 10px 25px; display: flex; flex-direction: column; gap: 40px; }
-        #chat-box::-webkit-scrollbar { width: 0; }
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
 
-        /* USER BUBBLE (MODERN NEUMORPHIC) */
+        /* BUBBLE USER */
         .msg.user { 
-            align-self: flex-end; background: var(--accent); color: #FFF; 
-            padding: 14px 22px; border-radius: 24px 24px 4px 24px; 
-            font-size: 15px; font-weight: 500; max-width: 80%; 
-            box-shadow: 0 10px 20px rgba(0,122,255,0.2);
-            animation: popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            align-self: flex-end; background: var(--primary); color: #FFF; 
+            padding: 12px 18px; border-radius: 20px 20px 4px 20px; 
+            max-width: 80%; font-size: 14.5px; box-shadow: 0 4px 12px rgba(0,122,255,0.2);
         }
 
-        /* BOT CONTENT (BORDERLESS ELEGANT) */
-        .msg.bot { align-self: flex-start; width: 100%; animation: fadeIn 0.8s ease; }
-        .bot-tag { 
-            font-size: 10px; font-weight: 800; color: var(--accent); 
-            letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; display: block; 
-            opacity: 0.7;
-        }
-        .bot-text { font-size: 16px; line-height: 1.8; color: var(--text-main); font-weight: 400; }
+        /* BUBBLE BOT (BORDERLESS BUT ELEGANT) */
+        .msg.bot { align-self: flex-start; max-width: 90%; }
+        .bot-label { font-size: 9px; font-weight: 800; color: var(--primary); letter-spacing: 1.5px; margin-bottom: 6px; display: block; opacity: 0.8; }
+        .bot-content { font-size: 15.5px; line-height: 1.7; color: var(--text); }
 
-        /* INPUT AREA (FLOATING GLASS) */
-        .input-wrapper { padding: 20px 25px 40px; background: transparent; }
-        .glass-input { 
-            background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(0,0,0,0.03);
-            backdrop-filter: blur(15px); border-radius: 30px; padding: 10px;
-            display: flex; align-items: center; box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+        /* IMAGE PROMPT AREA (FIXED) */
+        #draft-area { display: none; padding: 10px 20px; }
+        .prompt-card { 
+            background: #FFF; border-radius: 18px; padding: 10px; 
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #EEE;
         }
-        #pesan { 
-            flex: 1; border: none; outline: none; background: transparent; 
-            padding: 12px 15px; font-size: 16px; font-family: inherit;
+        .img-preview { width: 45px; height: 45px; border-radius: 10px; object-fit: cover; }
+        
+        /* INPUT AREA (MODERN & NO PENYOK) */
+        .input-wrapper { padding: 10px 20px 30px; background: transparent; }
+        .glass-container { 
+            background: #FFF; border-radius: 35px; padding: 6px 6px 6px 18px; 
+            display: flex; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.03);
         }
-        .btn-circle {
-            width: 48px; height: 48px; border-radius: 50%; border: none; 
-            background: var(--text-main); color: #FFF; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; transition: 0.3s;
+        #pesan { flex: 1; border: none; outline: none; background: transparent; font-size: 16px; padding: 10px 0; font-family: inherit; }
+        
+        .btn-action { background: none; border: none; font-size: 22px; cursor: pointer; padding: 0 10px; flex-shrink: 0; }
+        
+        .btn-send { 
+            width: 46px; height: 46px; border-radius: 50%; border: none; 
+            background: var(--text); color: #FFF; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; /* Mencegah tombol jadi penyok */
+            transition: 0.2s;
         }
-        .btn-circle:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .btn-send:active { transform: scale(0.9); }
 
-        /* IMAGE PREVIEW */
-        #draft-area { display: none; padding: 10px 25px; }
-        .img-preview-card { 
-            display: inline-flex; align-items: center; gap: 10px; 
-            background: #FFF; padding: 8px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-        }
-        .img-preview-card img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
-
-        /* UTILS */
-        .loader { display: none; gap: 5px; padding: 0 25px 20px; }
-        .dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: blink 1.4s infinite; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-        @keyframes popUp { from { opacity: 0; transform: scale(0.9) translateY(10px); } }
-        @keyframes fadeIn { from { opacity: 0; } }
+        .loader { display: none; padding: 0 25px 15px; gap: 4px; }
+        .dot { width: 5px; height: 5px; background: var(--primary); border-radius: 50%; animation: blink 1.4s infinite; }
     </style>
 </head>
 <body onload="initAuth()">
 
     <div id="auth-screen">
         <div class="auth-card">
-            <div class="logo-circle" style="width: 60px; height: 60px; font-size: 30px; margin-bottom: 20px;">🌸</div>
-            <h2 id="title-text">Flora AI</h2>
-            <p style="color: var(--text-sub); font-size: 14px; margin-bottom: 30px;">Elevate your daily intelligence.</p>
-            
-            <input type="text" id="u-name" class="input-field" placeholder="Username">
-            <input type="password" id="u-pass" class="input-field" placeholder="Password">
-            
-            <button class="btn-auth" onclick="handleAuth()">Continue</button>
-            <p id="toggle-link" style="font-size: 13px; text-align: center; margin-top: 20px; cursor: pointer;" onclick="toggleAuth()">
-                Don't have an account? <span style="color: var(--accent); font-weight: 700;">Create one</span>
-            </p>
+            <div style="font-size: 50px; margin-bottom: 15px;">🌸</div>
+            <h2 id="at">Flora AI</h2>
+            <p style="color:var(--sub); font-size:13px; margin-bottom:25px;">Satu asisten untuk segalanya.</p>
+            <input type="text" id="au" class="input-auth" placeholder="Username">
+            <input type="password" id="ap" class="input-auth" placeholder="Password">
+            <button class="btn-auth" onclick="auth()">Lanjutkan</button>
+            <p id="tog" style="font-size:12px; margin-top:20px; cursor:pointer;" onclick="toggle()">Belum punya akun? <b>Daftar</b></p>
         </div>
     </div>
 
     <div id="main-app">
         <div class="header">
-            <div class="aura-bg"></div>
-            <div class="nav-content">
-                <div class="logo-box">
-                    <div class="logo-circle">🌸</div>
+            <div class="aura-header"></div>
+            <div style="display:flex; align-items:center; justify-content:space-between; position:relative;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:36px; height:36px; background:#FFF; border-radius:10px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.05);">🌸</div>
                     <div>
-                        <div style="font-weight: 800; font-size: 16px; letter-spacing: -0.5px;">Flora AI</div>
-                        <div style="font-size: 9px; font-weight: 700; color: #34C759; letter-spacing: 1px;">PREMIUM SYSTEM</div>
+                        <div style="font-weight:800; font-size:15px;">Flora AI</div>
+                        <div style="font-size:9px; color:#34C759; font-weight:700;">ACTIVE</div>
                     </div>
                 </div>
-                <button onclick="logout()" style="background:none; border:none; color:var(--text-sub); font-size: 10px; font-weight: 800; cursor:pointer;">SIGN OUT</button>
+                <button onclick="logout()" style="background:none; border:none; color:red; font-size:10px; font-weight:800; cursor:pointer;">KELUAR</button>
             </div>
         </div>
 
         <div id="chat-box"></div>
 
-        <div id="typing" class="loader">
-            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-        </div>
+        <div id="typing" class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 
         <div id="draft-area">
-            <div class="img-preview-card">
-                <img id="p-img" src="">
-                <button onclick="removeImg()" style="border:none; background:none; color:red; font-size:12px; font-weight:800; cursor:pointer;">REMOVE</button>
+            <div class="prompt-card">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <img id="p-img" class="img-preview">
+                    <span style="font-size:11px; font-weight:700; color:var(--sub);">SIAP DIKIRIM</span>
+                </div>
+                <button onclick="clearImg()" style="border:none; background:none; color:red; font-weight:800; cursor:pointer; font-size:11px;">HAPUS</button>
             </div>
         </div>
 
         <div class="input-wrapper">
-            <div class="glass-input">
-                <button onclick="document.getElementById('file-in').click()" style="background:none; border:none; font-size: 20px; cursor:pointer; padding: 0 10px;">📷</button>
-                <input type="file" id="file-in" hidden onchange="previewImg()">
-                <input type="text" id="pesan" placeholder="Ask Flora anything..." onkeypress="if(event.key==='Enter') send()">
-                <button class="btn-circle" onclick="send()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <div class="glass-container">
+                <button class="btn-action" onclick="document.getElementById('fin').click()">📷</button>
+                <input type="file" id="fin" hidden onchange="prev()">
+                <input type="text" id="pesan" placeholder="Tanya Flora..." onkeypress="if(event.key==='Enter') kirim()">
+                <button class="btn-send" onclick="kirim()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        let isReg = false; let curImg = null; let chatHist = [];
-
-        function initAuth() {
-            const session = localStorage.getItem("flora_pro_session");
-            if(session) showApp(session);
+        let isReg = false; let curImg = null; let hist = [];
+        function initAuth() { 
+            const s = localStorage.getItem("f_session"); 
+            if(s) show(s); 
         }
-
-        function toggleAuth() {
-            isReg = !isReg;
-            document.getElementById("title-text").innerText = isReg ? "Create Account" : "Flora AI";
-            document.getElementById("toggle-link").innerHTML = isReg ? "Already have an account? <span style='color:var(--accent); font-weight:700;'>Sign In</span>" : "Don't have an account? <span style='color:var(--accent); font-weight:700;'>Create one</span>";
+        function toggle() { 
+            isReg = !isReg; 
+            document.getElementById("at").innerText = isReg ? "Buat Akun" : "Flora AI"; 
+            document.getElementById("tog").innerHTML = isReg ? "Sudah punya akun? <b>Masuk</b>" : "Belum punya akun? <b>Daftar</b>";
         }
-
-        function handleAuth() {
-            const u = document.getElementById("u-name").value;
-            const p = document.getElementById("u-pass").value;
+        function auth() {
+            const u = document.getElementById("au").value; const p = document.getElementById("ap").value;
             if(!u || !p) return;
-            if(isReg) { localStorage.setItem(`u_${u}`, p); alert("Account created!"); toggleAuth(); }
-            else { if(localStorage.getItem(`u_${u}`) === p) showApp(u); else alert("Invalid credentials"); }
+            if(isReg) { localStorage.setItem(`u_${u}`, p); alert("Berhasil! Silakan Login."); toggle(); }
+            else { if(localStorage.getItem(`u_${u}`) === p) show(u); else alert("Salah!"); }
         }
-
-        function showApp(n) {
-            localStorage.setItem("flora_pro_session", n);
-            document.getElementById("auth-screen").style.opacity = "0";
-            setTimeout(() => {
-                document.getElementById("auth-screen").style.display = "none";
-                document.getElementById("main-app").style.display = "flex";
-                setTimeout(() => document.getElementById("main-app").style.opacity = "1", 50);
-                loadHistory(n);
-            }, 800);
+        function show(n) {
+            localStorage.setItem("f_session", n);
+            document.getElementById("auth-screen").style.display = "none";
+            document.getElementById("main-app").style.display = "flex";
+            const saved = localStorage.getItem(`h_${n}`);
+            if(saved) { hist = JSON.parse(saved); hist.forEach(m => add(m.content, m.role === 'user' ? 'user' : 'bot', true)); }
         }
+        function logout() { localStorage.removeItem("f_session"); location.reload(); }
 
-        function logout() { localStorage.removeItem("flora_pro_session"); location.reload(); }
-
-        function previewImg() {
-            const f = document.getElementById("file-in").files[0];
+        function prev() {
+            const f = document.getElementById("fin").files[0];
             const r = new FileReader();
             r.onload = (e) => { curImg = e.target.result; document.getElementById("p-img").src = curImg; document.getElementById("draft-area").style.display = "block"; };
             r.readAsDataURL(f);
         }
-        function removeImg() { curImg = null; document.getElementById("draft-area").style.display = "none"; }
+        function clearImg() { curImg = null; document.getElementById("draft-area").style.display = "none"; }
 
-        function loadHistory(n) {
-            const saved = localStorage.getItem(`hist_${n}`);
-            if(saved) {
-                chatHist = JSON.parse(saved);
-                chatHist.forEach(m => addMsg(m.content, m.role === 'user' ? 'user' : 'bot', true));
-            }
-        }
-
-        async function send() {
+        async function kirim() {
             const t = document.getElementById("pesan").value; if(!t && !curImg) return;
-            addMsg(t, 'user'); document.getElementById("pesan").value = ""; removeImg();
+            add(t, 'user'); document.getElementById("pesan").value = ""; clearImg();
             document.getElementById("typing").style.display = "flex";
-            chatHist.push({ role: "user", content: t });
-
+            hist.push({ role: "user", content: t });
             try {
-                const res = await fetch('/api', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ history: chatHist })
-                });
+                const res = await fetch('/api', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ history: hist }) });
                 const d = await res.json();
-                addMsg(d.reply, 'bot');
-                chatHist.push({ role: "assistant", content: d.reply });
-                localStorage.setItem(`hist_${localStorage.getItem("flora_pro_session")}`, JSON.stringify(chatHist));
-            } catch (e) { addMsg("System connection lost.", 'bot'); }
+                add(d.reply, 'bot');
+                hist.push({ role: "assistant", content: d.reply });
+                localStorage.setItem(`h_${localStorage.getItem("f_session")}`, JSON.stringify(hist));
+            } catch (e) { add("Gagal terhubung.", 'bot'); }
             document.getElementById("typing").style.display = "none";
         }
 
-        function addMsg(h, type, isLoad = false) {
+        function add(h, type, load = false) {
             const d = document.createElement('div');
             d.className = `msg ${type}`;
-            if(type === 'bot') {
-                d.innerHTML = `<span class="bot-tag">FLORA RESPONSE</span><div class="bot-text">${h}</div>`;
-            } else {
-                d.innerHTML = h;
-            }
+            d.innerHTML = type === 'bot' ? `<span class="bot-label">FLORA AI</span><div class="bot-content">${h}</div>` : h;
             document.getElementById("chat-box").appendChild(d);
-            if(!isLoad) document.getElementById("chat-box").scrollTo({ top: document.getElementById("chat-box").scrollHeight, behavior: 'smooth' });
+            if(!load) document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
         }
     </script>
 </body>
