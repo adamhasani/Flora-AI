@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
     <title>Flora AI</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* --- MODERN MINIMALIST STYLE --- */
+        /* --- MODERN MINIMALIST & AI ANIMATION STYLE --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         :root {
-            --primary: #007AFF;       /* Biru iOS Modern */
+            --primary: #007AFF;
             --bg: #FFFFFF;
-            --secondary-bg: #F2F2F7;  /* Abu-abu Apple */
+            --secondary-bg: #F2F2F7;
             --text-main: #1C1C1E;
             --text-sub: #8E8E93;
-            --glass: rgba(255, 255, 255, 0.8);
+            --glass: rgba(255, 255, 255, 0.85);
         }
 
         body { 
@@ -25,144 +25,201 @@
             color: var(--text-main);
         }
         
-        /* Header Modern Transparan */
+        /* HEADER DENGAN ANIMASI GERAK */
         .header { 
             background: var(--glass);
-            backdrop-filter: blur(10px);
-            padding: 16px; 
+            backdrop-filter: blur(15px);
+            padding: 15px 20px; 
             text-align: center; 
             border-bottom: 0.5px solid #E5E5EA;
-            z-index: 10; 
-        }
-        .header-title { 
-            font-weight: 700; font-size: 18px; 
-            letter-spacing: -0.5px;
-            margin-bottom: 8px;
+            z-index: 10;
+            position: relative;
+            overflow: hidden;
         }
 
-        /* Dropdown Minimalis */
+        /* Animasi Aura AI (Gerak-gerak di Header) */
+        .ai-aura-container {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            width: 120%;
+            height: 80px;
+            pointer-events: none;
+            opacity: 0.5;
+            z-index: 1;
+        }
+        .aura {
+            position: absolute;
+            width: 180px;
+            height: 50px;
+            filter: blur(35px);
+            border-radius: 50%;
+            animation: moveAura 7s infinite ease-in-out;
+        }
+        .aura-1 { background: rgba(0, 122, 255, 0.6); animation-delay: 0s; }
+        .aura-2 { background: rgba(175, 82, 222, 0.5); animation-delay: -2s; width: 140px; }
+        .aura-3 { background: rgba(52, 199, 89, 0.4); animation-delay: -4s; width: 220px; }
+
+        @keyframes moveAura {
+            0%, 100% { transform: translateX(-60px) scale(1); }
+            50% { transform: translateX(60px) scale(1.3); }
+        }
+
+        .header-content {
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            width: 100%; 
+            position: relative; 
+            z-index: 2;
+        }
+
+        .header-title { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; margin: 0; }
+        .status-active { font-size: 9px; color: #34C759; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+
+        .avatar-container { position: relative; }
+        .avatar-flora {
+            width: 42px; height: 42px; 
+            background: white; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 22px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 1px solid #E5E5EA;
+        }
+        .online-dot {
+            position: absolute; bottom: 1px; right: 1px; 
+            width: 11px; height: 11px; background: #34C759; 
+            border-radius: 50%; border: 2.5px solid white;
+            animation: pulse 2s infinite;
+        }
+
+        /* Dropdown Modern */
         .model-select {
-            padding: 6px 12px; border-radius: 12px;
-            border: none;
-            background: var(--secondary-bg); 
-            font-size: 12px;
-            color: var(--text-main); font-weight: 500;
+            padding: 6px 12px; border-radius: 14px;
+            border: none; background: var(--secondary-bg); 
+            font-size: 11px; color: var(--text-main); font-weight: 600;
             outline: none; cursor: pointer;
         }
 
-        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
+        /* AREA CHAT */
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 18px; scroll-behavior: smooth; }
         
-        /* Bubble Chat Bubble Modern */
         .msg { 
-            padding: 12px 16px; border-radius: 20px; 
-            max-width: 80%; font-size: 14px; line-height: 1.5; 
+            padding: 12px 18px; border-radius: 22px; 
+            max-width: 82%; font-size: 14.5px; line-height: 1.5; 
             position: relative; word-wrap: break-word; 
-            animation: fadeIn 0.3s ease;
+            animation: slideUp 0.3s ease-out forwards;
         }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* User: Biru & Putih */
-        .user { 
-            background: var(--primary); color: #FFFFFF; 
-            align-self: flex-end; 
-            border-bottom-right-radius: 4px;
-        }
-        
-        /* Bot: Abu-abu Soft */
-        .bot { 
-            background: var(--secondary-bg); color: var(--text-main); 
-            align-self: flex-start; 
-            border-bottom-left-radius: 4px;
-        }
+        .user { background: var(--primary); color: #FFFFFF; align-self: flex-end; border-bottom-right-radius: 5px; box-shadow: 0 4px 12px rgba(0,122,255,0.2); }
+        .bot { background: var(--secondary-bg); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 5px; }
         
         .bot b { font-weight: 700; color: var(--primary); }
-        .bot img { width: 100%; border-radius: 14px; margin-top: 10px; }
+        .bot img { width: 100%; border-radius: 16px; margin-top: 10px; border: 1px solid #E5E5EA; }
 
         .user-content { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
-        .mini-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 12px; }
+        .mini-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 12px; border: 1.5px solid white; }
 
-        /* Area Input Floating */
-        .input-wrapper { 
-            background: var(--bg); 
-            padding: 10px 16px 30px 16px; 
-            display: flex; flex-direction: column; gap: 10px;
-        }
+        /* INPUT AREA */
+        .input-wrapper { background: var(--bg); padding: 12px 18px 30px 18px; display: flex; flex-direction: column; gap: 12px; }
         
-        #draft-area { 
-            display: none; background: var(--secondary-bg); 
-            padding: 12px; border-radius: 18px;
-        }
-        .preview-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-        #preview-img { width: 60px; height: 60px; object-fit: cover; border-radius: 14px; }
-        .preview-info { flex: 1; font-size: 12px; color: var(--text-sub); font-weight: 500; }
+        #draft-area { display: none; background: var(--secondary-bg); padding: 14px; border-radius: 20px; animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes bounceIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .preview-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        #preview-img { width: 65px; height: 65px; object-fit: cover; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .preview-info { flex: 1; font-size: 12px; color: var(--text-sub); font-weight: 600; }
         
-        /* Style Chips Minimalis */
-        .style-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; }
+        .style-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+        .style-scroll::-webkit-scrollbar { display: none; }
         .chip { 
-            padding: 8px 16px; border-radius: 14px;
+            padding: 8px 18px; border-radius: 16px;
             background: var(--bg); border: 1px solid #E5E5EA;
-            font-size: 12px; font-weight: 500;
-            color: var(--text-main); cursor: pointer; transition: 0.2s;
-            white-space: nowrap;
+            font-size: 12px; font-weight: 600; color: var(--text-main); 
+            cursor: pointer; transition: 0.2s; white-space: nowrap;
         }
-        .chip.active { background: var(--text-main); color: #FFF; border-color: var(--text-main); }
+        .chip.active { background: var(--text-main); color: #FFF; border-color: var(--text-main); transform: scale(1.05); }
 
-        /* Controls */
+        /* CONTROLS AREA */
         .controls { 
-            display: flex; gap: 10px; align-items: center; 
-            background: var(--secondary-bg); padding: 8px 8px 8px 16px; border-radius: 24px;
+            display: flex; gap: 12px; align-items: center; 
+            background: var(--secondary-bg); padding: 8px 8px 8px 18px; border-radius: 28px;
+            transition: 0.3s; border: 1.5px solid transparent;
         }
-        .btn-cam { 
-            background: none; border: none; 
-            font-size: 20px; cursor: pointer; color: var(--text-sub); 
-            display: flex; align-items: center; justify-content: center;
-        }
-        input[type="text"] { 
-            flex: 1; border: none; outline: none; background: transparent; 
-            font-size: 15px; color: var(--text-main);
-        }
-        .btn-send { 
-            background: var(--primary); color: #FFF; 
-            border: none; width: 36px; height: 36px; border-radius: 50%; 
-            font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: 0.2s;
-        }
-        .btn-send:active { transform: scale(0.9); }
+        .controls:focus-within { background: #FFF; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(0,122,255,0.1); }
+        
+        .btn-cam { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-sub); transition: 0.2s; }
+        .btn-cam:hover { color: var(--primary); }
 
-        /* Loader */
+        input[type="text"] { flex: 1; border: none; outline: none; background: transparent; font-size: 15px; color: var(--text-main); }
+        
+        .btn-send { 
+            background: var(--primary); color: #FFF; border: none; 
+            width: 38px; height: 38px; border-radius: 50%; 
+            font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; box-shadow: 0 4px 10px rgba(0,122,255,0.3);
+        }
+        .btn-send:active { transform: scale(0.85); }
+
+        /* LOADER */
         .loader-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(4px); z-index: 999; 
+            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(6px); z-index: 999; 
             justify-content: center; align-items: center;
         }
         .spinner { 
-            width: 24px; height: 24px; border: 3px solid var(--secondary-bg); 
-            border-top: 3px solid var(--primary); border-radius: 50%; 
+            width: 28px; height: 28px; border: 3.5px solid var(--secondary-bg); 
+            border-top: 3.5px solid var(--primary); border-radius: 50%; 
             animation: spin 0.8s linear infinite; 
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.5); }
+            70% { box-shadow: 0 0 0 8px rgba(52, 199, 89, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="header-title">Flora AI</div>
-        <select id="model-selector" class="model-select">
-            <option value="groq">⚡ RESPON CEPAT</option>
-            <option value="anabot">🚙 ANABOT V1</option>
-            <option value="gemini">🧠 GEMINI PRO</option>
-        </select>
+        <div class="ai-aura-container">
+            <div class="aura aura-1"></div>
+            <div class="aura aura-2"></div>
+            <div class="aura aura-3"></div>
+        </div>
+
+        <div class="header-content">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="avatar-container">
+                    <div class="avatar-flora">🌸</div>
+                    <div class="online-dot"></div>
+                </div>
+                <div style="text-align: left;">
+                    <h1 class="header-title">Flora AI</h1>
+                    <div class="status-active">Sistem Aktif</div>
+                </div>
+            </div>
+
+            <select id="model-selector" class="model-select">
+                <option value="groq">⚡ CEPAT</option>
+                <option value="anabot">🚙 ANABOT</option>
+                <option value="gemini">🧠 PRO</option>
+            </select>
+        </div>
     </div>
 
     <div id="chat-box">
-        <div class="msg bot">Halo! 👋<br>Saya Flora. Ada yang bisa saya bantu hari ini?</div>
+        <div class="msg bot">Halo Adam! 👋<br>Saya Flora. Ada yang bisa saya bantu hari ini?</div>
     </div>
     
     <div class="loader-overlay" id="loader">
-        <div style="background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center;">
+        <div style="background: white; padding: 25px; border-radius: 24px; box-shadow: 0 15px 40px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center;">
             <div class="spinner"></div>
-            <div id="status-text" style="margin-top:12px; font-size: 13px; font-weight:600; color:var(--text-main);">Memproses...</div>
+            <div id="status-text" style="margin-top:15px; font-size: 14px; font-weight:700; color:var(--text-main);">Memproses...</div>
         </div>
     </div>
 
@@ -170,14 +227,14 @@
         <div id="draft-area">
             <div class="preview-row">
                 <img id="preview-img" src="">
-                <div class="preview-info">Foto terpilih<br>Pilih gaya visual:</div>
-                <button style="background:none; border:none; color:var(--text-sub); cursor:pointer; font-size: 18px;" onclick="cancelImage()">✕</button>
+                <div class="preview-info">Media siap dikirim<br>Pilih gaya visual:</div>
+                <button style="background:none; border:none; color:var(--text-sub); cursor:pointer; font-size: 20px;" onclick="cancelImage()">✕</button>
             </div>
             <div class="style-scroll">
                 <div class="chip" onclick="selectStyle(this, 'anime style')">Anime</div>
                 <div class="chip" onclick="selectStyle(this, 'cyberpunk style')">Cyberpunk</div>
                 <div class="chip" onclick="selectStyle(this, 'ghibli style')">Ghibli</div>
-                <div class="chip" onclick="selectStyle(this, '3d render style')">3D Disney</div>
+                <div class="chip" onclick="selectStyle(this, '3d render style')">Disney</div>
                 <div class="chip" onclick="selectStyle(this, 'realistic 8k')">Realistik</div>
             </div>
         </div>
@@ -185,13 +242,12 @@
         <div class="controls">
             <button class="btn-cam" onclick="document.getElementById('fileInput').click()">📷</button>
             <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect()">
-            <input type="text" id="pesan" placeholder="Tulis pesan..." onkeypress="if(event.key === 'Enter') kirim()">
+            <input type="text" id="pesan" placeholder="Tanyakan sesuatu..." onkeypress="if(event.key === 'Enter') kirim()">
             <button class="btn-send" onclick="kirim()">➤</button>
         </div>
     </div>
 
     <script>
-        // --- SCRIPT TETAP ORI (Hanya ganti teks bahasa Indonesia) ---
         let chatHistory = []; 
         let currentImageBase64 = null;
         let selectedStylePrompt = "";
@@ -248,7 +304,7 @@
             } else {
                 addBubbleHTML(txt, 'user');
                 document.getElementById("pesan").value = "";
-                statusText.innerText = "FLORA SEDANG BERPIKIR...";
+                statusText.innerText = "SEDANG BERPIKIR...";
                 loader.style.display = "flex";
                 chatHistory.push({ role: "user", content: txt });
                 try {
@@ -285,7 +341,7 @@
                 const interval = setInterval(async () => {
                     attempts++;
                     statusText.innerText = `MEMPROSES... ${attempts}%`;
-                    if (attempts > 60) { clearInterval(interval); loader.style.display = "none"; addBubbleHTML("⚠️ Proses memakan waktu terlalu lama.", 'bot'); return; }
+                    if (attempts > 60) { clearInterval(interval); loader.style.display = "none"; addBubbleHTML("⚠️ Waktu habis.", 'bot'); return; }
                     try {
                         const checkRes = await fetch('/api/edit', {
                             method: 'POST',
@@ -295,10 +351,10 @@
                         const checkData = await checkRes.json();
                         if (checkData.status === 'done') {
                             clearInterval(interval); loader.style.display = "none";
-                            addBubbleHTML(`Karya seni kamu sudah jadi! ✨<br><img src="${checkData.url}">`, 'bot');
+                            addBubbleHTML(`Selesai! ✨<br><img src="${checkData.url}">`, 'bot');
                         } else if (checkData.status === 'failed') {
                             clearInterval(interval); loader.style.display = "none";
-                            addBubbleHTML(`Gagal memproses: ${checkData.error}`, 'bot');
+                            addBubbleHTML(`Gagal: ${checkData.error}`, 'bot');
                         }
                     } catch (e) {}
                 }, 2000);
@@ -333,4 +389,4 @@
         }
     </script>
 </body>
-    </html>
+</html>
