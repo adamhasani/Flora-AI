@@ -84,7 +84,7 @@ async function runGroq(history) {
 // C. GEMINI
 async function runGemini(history) {
     if (!geminiKey) throw new Error("Gemini Key Kosong");
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: promptStrictHTML });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.0-flash", systemInstruction: promptStrictHTML });
     const cleanHist = getCleanHistory(history).map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }]
