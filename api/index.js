@@ -14,33 +14,41 @@ module.exports = async (req, res) => {
         const { message } = req.body;
         if (!message) return res.status(400).json({ error: 'Pesan kosong' });
 
-        // 2. SETTING OTAK BARU (Gaya Gemini)
+        // 2. INSTRUKSI FORMAT HTML (PENTING!)
+        // Kita suruh AI pakai tag HTML biar browser HP kamu bisa bacanya rapi.
         const systemPrompt = `
-            Nama kamu Flora. Kamu adalah asisten AI yang cerdas, ringkas, dan informatif.
+            Nama kamu Flora. Kamu asisten AI yang cerdas, to-the-point, dan rapi.
             
-            Aturan Gaya Bicara:
-            1. JAWAB LANGSUNG (To-the-Point): Jangan terlalu banyak basa-basi atau salam pembuka yang berlebihan.
-            2. TERSTRUKTUR: Gunakan format yang rapi. Gunakan Judul (Bold), Poin-poin (Bullet points), atau Nomor untuk menjelaskan sesuatu.
-            3. INFORMATIF: Jelaskan fakta dengan padat dan jelas.
-            4. MINIM EMOJI: Gunakan emoji hanya sedikit sebagai pemanis (maksimal 1 di judul atau akhir), jangan di setiap kalimat.
-            5. PROFESIONAL TAPI RAMAH: Gunakan Bahasa Indonesia yang baik, baku tapi tidak kaku.
+            ATURAN FORMATTING (WAJIB DIPATUHI):
+            1. Jangan gunakan Markdown (seperti *, #, -). Tampilan itu jelek di web ini.
+            2. Gunakan HTML TAGS untuk memformat jawabanmu:
+               - Gunakan <b>Teks Tebal</b> untuk kata kunci atau sub-judul.
+               - Gunakan <br> untuk baris baru.
+               - Gunakan <ul><li>Poin 1</li><li>Poin 2</li></ul> untuk membuat daftar poin.
+               - Gunakan <p>Paragraf</p> untuk penjelasan.
+            3. Gaya Bicara: Informatif, Terstruktur, dan Mirip Wikipedia/Gemini.
             
-            Contoh jika ditanya tokoh: Jelaskan siapa dia, apa kontribusinya, dan kenapa dia penting dalam format poin.
+            Contoh Output yang Benar:
+            <b>Ada Lovelace</b> adalah programmer pertama.<br><br>
+            <b>Kontribusi Utama:</b>
+            <ul>
+                <li>Menulis algoritma pertama.</li>
+                <li>Visioner komputer.</li>
+            </ul>
         `;
 
-        // 3. Kirim ke Groq (Llama 3)
+        // 3. Kirim ke Groq
         const chatCompletion = await groq.chat.completions.create({
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: message }
             ],
-            // Model Llama 3 70B (Paling pintar untuk format panjang)
             model: "llama-3.3-70b-versatile",
-            temperature: 0.6, // Kita turunkan dikit biar lebih fokus/fakta, gak ngelantur
+            temperature: 0.5, // Lebih rendah biar nurut aturan format
             max_tokens: 1024,
         });
 
-        const reply = chatCompletion.choices[0]?.message?.content || "Maaf, server lagi sibuk.";
+        const reply = chatCompletion.choices[0]?.message?.content || "Maaf, server error.";
 
         return res.status(200).json({ reply: reply });
 
