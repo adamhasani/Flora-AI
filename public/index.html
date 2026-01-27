@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flora AI - Server Connected</title>
+    <title>Flora AI - Edit Mode</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* --- CORE VARIABLES --- */
+        /* --- CORE STYLES --- */
         :root {
             --bg-dark: #0f0f11;
-            --bg-sidebar: rgba(20, 20, 23, 0.75);
+            --bg-sidebar: rgba(20, 20, 23, 0.85);
             --glass-border: rgba(255, 255, 255, 0.08);
-            --primary-gradient: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+            --primary-grad: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
             --text-main: #ffffff;
             --text-muted: #8b8b93;
         }
@@ -28,45 +28,43 @@
             height: 100dvh; overflow: hidden; display: flex;
         }
 
-        /* Aura Background */
         .aura-bg {
             position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
-            background: radial-gradient(circle at 50% 50%, rgba(255, 75, 75, 0.08), transparent 60%),
+            background: radial-gradient(circle at 50% 50%, rgba(255, 75, 75, 0.06), transparent 50%),
                         radial-gradient(circle at 80% 20%, rgba(100, 100, 255, 0.05), transparent 40%);
-            z-index: -1; animation: spinAura 20s linear infinite; pointer-events: none;
+            z-index: -1; animation: spinAura 25s linear infinite; pointer-events: none;
         }
         @keyframes spinAura { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* --- AUTH SCREEN --- */
+        /* AUTH LAYER */
         #auth-layer {
-            position: fixed; inset: 0; z-index: 999;
-            background: rgba(15, 15, 17, 0.9);
+            position: fixed; inset: 0; z-index: 2000;
+            background: rgba(15, 15, 17, 0.95);
             backdrop-filter: blur(20px);
             display: flex; justify-content: center; align-items: center;
-            transition: opacity 0.5s;
+            transition: opacity 0.5s ease;
         }
         .glass-card {
-            width: 90%; max-width: 380px;
+            width: 90%; max-width: 380px; text-align: center;
+            padding: 40px; border-radius: 32px;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--glass-border);
-            border-radius: 32px; padding: 40px; text-align: center;
         }
         .custom-input {
             width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
-            padding: 16px; border-radius: 16px; color: white; margin-bottom: 15px; font-size: 15px;
+            padding: 16px; border-radius: 16px; color: white; margin: 20px 0; font-size: 16px;
         }
         .btn-glow {
             width: 100%; padding: 16px; border-radius: 16px; border: none;
-            background: var(--primary-gradient); color: #4a1e20; font-weight: 700; cursor: pointer;
+            background: var(--primary-grad); color: #4a1e20; font-weight: 700; cursor: pointer;
         }
 
-        /* --- MAIN LAYOUT --- */
+        /* MAIN UI */
         #app-interface {
             display: none; width: 100%; height: 100%;
             opacity: 0; transition: opacity 0.8s ease;
         }
 
-        /* SIDEBAR */
         .sidebar {
             width: 280px; background: var(--bg-sidebar);
             border-right: 1px solid var(--glass-border);
@@ -74,85 +72,63 @@
             display: flex; flex-direction: column; padding: 25px; gap: 20px; flex-shrink: 0;
         }
 
-        /* MODEL SELECTOR */
-        .model-switcher {
-            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
-            border-radius: 12px; padding: 10px 15px; display: flex; align-items: center; gap: 10px;
-            position: relative; cursor: pointer; transition: 0.3s;
-        }
-        .model-select {
-            appearance: none; background: transparent; border: none; color: white;
-            width: 100%; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-        }
-        .model-select option { background: #1E1F20; color: white; }
-
-        /* MAIN AREA */
         .main-view { flex: 1; display: flex; flex-direction: column; position: relative; }
         
-        /* HEADER MOBILE */
         .mobile-top {
             display: none; padding: 15px 20px; align-items: center; justify-content: space-between;
-            border-bottom: 1px solid var(--glass-border); background: rgba(15, 15, 17, 0.8); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border); background: rgba(15, 15, 17, 0.85); backdrop-filter: blur(10px);
         }
 
-        /* CHAT AREA */
-        #chat-stream { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
+        #chat-stream { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; scroll-behavior: smooth; }
+
+        /* SUGGESTION CHIPS */
+        #welcome-screen { margin: auto; width: 100%; max-width: 700px; text-align: center; animation: fadeIn 0.8s; }
+        .greet-title { font-size: 42px; font-weight: 700; margin-bottom: 10px; background: linear-gradient(to right, #fff, #999); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .msg-group { display: flex; gap: 12px; margin-bottom: 24px; animation: slideUp 0.4s; }
+        .prompt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 40px; text-align: left; }
+        .prompt-card {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+            padding: 16px; border-radius: 16px; cursor: pointer; transition: 0.3s;
+            display: flex; flex-direction: column; justify-content: space-between; height: 110px;
+        }
+        .prompt-card:hover { background: rgba(255,255,255,0.08); border-color: #FF9A9E; }
+
+        /* BUBBLES */
+        .msg-group { display: flex; gap: 12px; margin-bottom: 24px; animation: slideUp 0.3s; width: 100%; }
         .msg-group.user { justify-content: flex-end; }
         
-        .bubble { padding: 12px 18px; font-size: 15px; line-height: 1.6; max-width: 85%; word-wrap: break-word;}
-        .user .bubble { background: white; color: black; border-radius: 18px 18px 4px 18px; }
-        .bot .bubble { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #EEE; border-radius: 18px 18px 18px 4px; }
-        .bot .bubble img, .user .bubble img { max-width: 100%; border-radius: 12px; margin-top: 10px; display: block; }
-        
-        .avatar-bot {
-            width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
-            background: linear-gradient(135deg, #FF9A9E, #A18CD1);
-            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;
-        }
+        .bubble { padding: 12px 18px; font-size: 15px; line-height: 1.6; max-width: 85%; word-wrap: break-word; }
+        .user .bubble { background: #fff; color: #000; border-radius: 20px 20px 4px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .bot .bubble { background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: #eee; border-radius: 20px 20px 20px 4px; }
+        .chat-img { max-width: 100%; border-radius: 12px; margin-bottom: 8px; border: 1px solid rgba(0,0,0,0.1); }
 
-        .model-tag {
-            font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
-            margin-bottom: 4px; display: block; font-weight: 700;
-            background: linear-gradient(90deg, #FF9A9E, #A18CD1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
+        .avatar-bot { width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; background: linear-gradient(135deg, #FF9A9E, #A18CD1); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
 
-        /* INPUT DOCK (UPDATED WITH CAMERA) */
-        .input-dock {
-            padding: 20px; background: linear-gradient(to top, var(--bg-dark), transparent);
-            display: flex; flex-direction: column; align-items: center; z-index: 50; flex-shrink: 0; gap: 10px;
-        }
-        
-        /* Preview Image Area */
-        #preview-area {
-            display: none; width: 100%; max-width: 700px;
-            background: rgba(30,30,35,0.8); padding: 10px; border-radius: 16px;
-            border: 1px solid var(--glass-border); backdrop-filter: blur(10px);
-            margin-bottom: -10px; z-index: 51; position: relative;
-        }
-        .preview-img { height: 60px; border-radius: 8px; border: 1px solid #555; }
-        .close-preview { 
-            position: absolute; top: 5px; right: 5px; background: red; color: white;
-            border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px;
-        }
+        /* INPUT AREA */
+        .input-dock { padding: 20px; background: linear-gradient(to top, var(--bg-dark) 20%, transparent); display: flex; flex-direction: column; align-items: center; z-index: 50; flex-shrink: 0; }
 
-        .glass-bar {
-            width: 100%; max-width: 700px; background: rgba(30,30,35,0.9);
+        #preview-container { display: none; margin-bottom: 10px; width: 100%; max-width: 750px; }
+        .preview-badge { display: inline-flex; align-items: center; gap: 10px; background: rgba(40, 40, 45, 0.9); padding: 8px 12px 8px 8px; border-radius: 12px; border: 1px solid var(--glass-border); backdrop-filter: blur(10px); }
+        .thumb-img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; }
+        .remove-img { background: rgba(255, 255, 255, 0.1); border: none; color: #ff5e62; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; }
+
+        .glass-input-bar {
+            width: 100%; max-width: 750px; background: rgba(30,30,35,0.85);
             backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
-            border-radius: 24px; padding: 8px 15px; display: flex; align-items: center; gap: 10px;
+            border-radius: 24px; padding: 10px; display: flex; align-items: flex-end; gap: 10px;
         }
-        textarea { flex: 1; background: transparent; border: none; color: white; font-size: 16px; resize: none; height: 24px; padding: 0; }
+        textarea { flex: 1; background: transparent; border: none; color: white; font-size: 16px; resize: none; max-height: 120px; padding: 8px 0; }
         
-        /* Tombol Aksi */
-        .icon-btn { background: none; border: none; color: #8b8b93; font-size: 18px; cursor: pointer; padding: 5px; transition: 0.2s; }
-        .icon-btn:hover { color: #FF9A9E; }
-        
-        .send-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: white; color: black; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;}
-        .send-btn:hover { transform: scale(1.05); }
+        .icon-btn { padding: 10px; border: none; background: transparent; color: #aaa; cursor: pointer; font-size: 18px; }
+        .send-btn { width: 42px; height: 42px; border-radius: 50%; border: none; background: white; color: black; cursor: pointer; flex-shrink: 0; }
 
-        @keyframes slideUp { from { transform: translateY(15px); opacity: 0; } }
-        @media (max-width: 768px) { .sidebar { display: none; } .mobile-top { display: flex; } }
+        /* Markdown Helpers */
+        .bubble code { background: rgba(0,0,0,0.3); padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 90%; }
+        .bubble b { font-weight: 700; color: #fff; } .user .bubble b { color: #000; }
+
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; } }
+        @media (max-width: 768px) { .sidebar { display: none; } .mobile-top { display: flex; } .greet-title { font-size: 32px; } .prompt-grid { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
@@ -162,75 +138,70 @@
     <div id="auth-layer">
         <div class="glass-card">
             <h1>🌸 Flora AI</h1>
-            <input type="text" id="username" class="custom-input" placeholder="Nama kamu?">
-            <button class="btn-glow" onclick="enterApp()">Masuk</button>
+            <input type="text" id="username" class="custom-input" placeholder="Nama kamu?" autocomplete="off">
+            <button class="btn-glow" onclick="handleLogin()">Mulai</button>
         </div>
     </div>
 
     <div id="app-interface">
-        
         <div class="sidebar">
             <h2 style="margin:0;">🌸 Flora AI</h2>
-            <div class="model-switcher">
-                <i class="fa-solid fa-microchip" style="color: #FF9A9E;"></i>
-                <select id="model-select-desktop" class="model-select" onchange="syncModel(this.value)">
-                    <option value="gemini">⚡ Gemini Pro</option>
-                    <option value="gpt4">🧠 GPT-4 Turbo</option>
-                    <option value="claude">🌿 Claude 3</option>
-                </select>
-            </div>
             <div style="margin-top:20px; font-size:12px; color:#666;">HISTORY</div>
-            <div id="history-list" style="color: #888; font-size: 14px;">Belum ada chat</div>
+            <div style="color:#888; font-size:14px;">Belum ada riwayat</div>
         </div>
 
         <div class="main-view">
             <div class="mobile-top">
                 <span style="font-weight:700;">Flora AI</span>
-                <div class="model-switcher" style="padding: 5px 10px; width: 130px;">
-                    <select id="model-select-mobile" class="model-select" style="font-size:12px;" onchange="syncModel(this.value)">
-                        <option value="gemini">⚡ Gemini</option>
-                        <option value="gpt4">🧠 GPT-4</option>
-                        <option value="claude">🌿 Claude</option>
-                    </select>
-                </div>
+                <div style="width:28px; height:28px; background:#FF9A9E; border-radius:50%; text-align:center; line-height:28px; font-weight:bold; color:#000;" id="u-avatar-mob">U</div>
             </div>
 
             <div id="chat-stream">
-                <div id="welcome-msg" style="text-align:center; margin-top: 15vh;">
-                    <h1 style="font-size:36px; background: linear-gradient(to right, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Halo, <span id="u-name">User</span></h1>
-                    <p style="color:#888;">AI siap terhubung ke Server API.</p>
+                <div id="welcome-screen">
+                    <div class="greet-title">Halo, <span id="u-name" style="color:#FF9A9E;">User</span></div>
+                    <p style="color:#8b8b93;">Ada yang bisa dibantu?</p>
+                    
+                    <div class="prompt-grid">
+                        <div class="prompt-card" onclick="autoPrompt('Edit gambar ini jadi anime')">
+                            <i class="fa-solid fa-wand-magic-sparkles" style="color:#E1306C; font-size:20px; margin-bottom:10px;"></i>
+                            <span style="font-size:13px; font-weight:500;">Edit gambar jadi anime</span>
+                        </div>
+                        <div class="prompt-card" onclick="autoPrompt('Jelaskan kodingan ini')">
+                            <i class="fa-solid fa-code" style="color:#4AA9FF; font-size:20px; margin-bottom:10px;"></i>
+                            <span style="font-size:13px; font-weight:500;">Jelaskan kodingan</span>
+                        </div>
+                    </div>
                 </div>
-                <div id="chat-container"></div>
+                <div id="msg-container"></div>
             </div>
 
             <div class="input-dock">
-                <div id="preview-area">
-                    <img id="img-preview" class="preview-img">
-                    <button class="close-preview" onclick="clearImage()">×</button>
+                <div id="preview-container">
+                    <div class="preview-badge">
+                        <img id="img-thumb" class="thumb-img">
+                        <span style="font-size:12px; color:#ddd;">Gambar siap dikirim</span>
+                        <button class="remove-img" onclick="clearImage()">×</button>
+                    </div>
                 </div>
 
-                <div class="glass-bar">
-                    <button class="icon-btn" onclick="document.getElementById('file-input').click()">
-                        <i class="fa-solid fa-camera"></i>
-                    </button>
-                    <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFileSelect(this)">
-                    
-                    <textarea id="user-input" rows="1" placeholder="Ketik pesan..." oninput="this.style.height='24px'; this.style.height=this.scrollHeight+'px'"></textarea>
-                    
-                    <button class="send-btn" onclick="kirim()"><i class="fa-solid fa-arrow-up"></i></button>
+                <div class="glass-input-bar">
+                    <button class="icon-btn" onclick="document.getElementById('file-input').click()"><i class="fa-solid fa-image"></i></button>
+                    <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFile(this)">
+                    <textarea id="user-input" rows="1" placeholder="Ketik pesan..." oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
+                    <button class="send-btn" onclick="sendMessage()"><i class="fa-solid fa-arrow-up"></i></button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        let currentModel = 'gemini';
-        let chatHistory = []; // Menyimpan history untuk dikirim ke API
-        let currentImageBase64 = null;
+        let currentImg64 = null;
+        let chatHistory = [];
 
-        function enterApp() {
-            const name = document.getElementById('username').value || "Teman";
+        function handleLogin() {
+            const name = document.getElementById('username').value || "User";
             document.getElementById('u-name').innerText = name;
+            document.getElementById('u-avatar-mob').innerText = name.charAt(0).toUpperCase();
             document.getElementById('auth-layer').style.opacity = 0;
             setTimeout(() => {
                 document.getElementById('auth-layer').style.display = 'none';
@@ -239,137 +210,124 @@
             }, 500);
         }
 
-        function syncModel(val) {
-            currentModel = val;
-            document.getElementById('model-select-desktop').value = val;
-            document.getElementById('model-select-mobile').value = val;
-        }
-
-        // --- IMAGE HANDLING ---
-        function handleFileSelect(input) {
+        function handleFile(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    currentImageBase64 = e.target.result; // Data URL Base64
-                    document.getElementById('img-preview').src = currentImageBase64;
-                    document.getElementById('preview-area').style.display = 'block';
+                reader.onload = (e) => {
+                    currentImg64 = e.target.result;
+                    document.getElementById('img-thumb').src = currentImg64;
+                    document.getElementById('preview-container').style.display = 'block';
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
 
         function clearImage() {
-            currentImageBase64 = null;
+            currentImg64 = null;
             document.getElementById('file-input').value = "";
-            document.getElementById('preview-area').style.display = 'none';
+            document.getElementById('preview-container').style.display = 'none';
         }
 
-        // --- SEND LOGIC (REAL API) ---
-        async function kirim() {
+        function autoPrompt(txt) {
+            document.getElementById('user-input').value = txt;
+            if(!currentImg64) {
+                 // Jika prompt butuh gambar tapi belum ada, bisa trigger upload atau langsung kirim teks
+            }
+            sendMessage();
+        }
+
+        async function sendMessage() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
-            
-            // Validasi: harus ada text ATAU gambar
-            if(!txt && !currentImageBase64) return;
 
-            document.getElementById('welcome-msg').style.display = 'none';
-            
-            // 1. Tampilkan Pesan User di UI
-            addBubble(txt, 'user', currentImageBase64);
-            
-            // Simpan konteks sementara
-            const userMessage = { role: "user", content: txt };
-            if (currentImageBase64) userMessage.image = currentImageBase64;
-            chatHistory.push(userMessage);
+            if (!txt && !currentImg64) return;
 
-            // Reset Input UI
+            // UI Updates
+            document.getElementById('welcome-screen').style.display = 'none';
+            addBubble(txt, 'user', currentImg64);
+            
+            // Simpan data sebelum reset
+            const payloadImg = currentImg64;
+            const payloadTxt = txt;
+            
             input.value = '';
-            input.style.height = '24px';
-            const imageToSend = currentImageBase64; // Simpan copy untuk dikirim
+            input.style.height = 'auto';
             clearImage();
 
-            // 2. Loading State
-            const loadId = addBubble(null, 'bot', null, true); // true = is loading
+            const loadId = addBubble("...", 'bot', null, true);
+
+            // LOGIKA PENENTUAN ENDPOINT (Sesuai Request)
+            // Jika ada gambar -> api/edit, Jika tidak -> api/chat (atau default)
+            const targetEndpoint = payloadImg ? '/api/edit' : '/api'; 
 
             try {
-                // 3. FETCH KE SERVER API
-                // Endpoint diasumsikan '/api' sesuai request user
-                const response = await fetch('/api', {
+                const res = await fetch(targetEndpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        message: txt,
-                        history: chatHistory,
-                        model: currentModel,
-                        image: imageToSend // Kirim base64 jika ada
+                        message: payloadTxt,
+                        image: payloadImg,
+                        history: chatHistory
                     })
                 });
 
-                if (!response.ok) throw new Error("Gagal terhubung ke API");
-
-                const data = await response.json();
+                if (!res.ok) throw new Error("Gagal terhubung ke " + targetEndpoint);
+                const data = await res.json();
                 
-                // 4. Update UI dengan Jawaban Asli
                 document.getElementById(loadId).remove();
+                const reply = data.reply || data.result || "Tidak ada respon.";
                 
-                // Asumsi respon server ada di data.reply atau data.result
-                const botReply = data.reply || data.result || data.text || "Maaf, server tidak memberikan respon teks.";
-                
-                addBubble(botReply, 'bot');
-                chatHistory.push({ role: "assistant", content: botReply });
+                addBubble(reply, 'bot');
+                chatHistory.push({ role: "user", content: payloadTxt });
+                chatHistory.push({ role: "assistant", content: reply });
 
-            } catch (error) {
+            } catch (err) {
                 document.getElementById(loadId).remove();
-                addBubble("⚠️ Error: " + error.message + ". Pastikan server backend berjalan.", 'bot');
+                addBubble(`⚠️ Error: ${err.message}`, 'bot');
             }
         }
 
-        // --- UI BUBBLE BUILDER ---
-        function addBubble(text, role, imgBase64 = null, isLoading = false) {
-            const cont = document.getElementById('chat-container');
+        function addBubble(text, role, img = null, isLoading = false) {
+            const container = document.getElementById('msg-container');
             const div = document.createElement('div');
             div.className = `msg-group ${role}`;
-            div.id = isLoading ? 'loading-' + Date.now() : '';
-            
-            let contentHtml = '';
-            let imageHtml = imgBase64 ? `<img src="${imgBase64}">` : '';
+            if (isLoading) div.id = 'loading-' + Date.now();
 
-            if(role === 'user') {
-                contentHtml = `<div class="bubble">${text || ''} ${imageHtml}</div>`;
-            } else {
-                let modelLabel = currentModel === 'gemini' ? 'GEMINI' : (currentModel === 'gpt4' ? 'GPT-4' : 'CLAUDE');
-                
-                if (isLoading) {
-                    contentHtml = `
-                        <div class="avatar-bot">AI</div>
-                        <div class="bubble"><i class="fa-solid fa-circle-notch fa-spin"></i> Sedang berpikir...</div>
-                    `;
-                } else {
-                    // Konversi \n jadi <br> untuk tampilan rapi
-                    let formattedText = text.replace(/\n/g, '<br>');
-                    
-                    contentHtml = `
-                        <div class="avatar-bot">AI</div>
-                        <div class="bubble">
-                            <span class="model-tag">⚡ ${modelLabel}</span>
-                            ${formattedText}
-                        </div>
-                    `;
-                }
-            }
+            let contentHTML = '';
             
-            div.innerHTML = contentHtml;
-            cont.appendChild(div);
-            // Auto scroll ke bawah
+            if (role === 'user') {
+                contentHTML = `
+                    <div class="bubble">
+                        ${img ? `<img src="${img}" class="chat-img">` : ''}
+                        ${text.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+            } else {
+                let formatted = text || '';
+                if (!isLoading) {
+                    formatted = formatted
+                        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                        .replace(/```([\s\S]*?)```/g, '<pre style="background:#222; padding:10px; border-radius:8px; overflow-x:auto;"><code>$1</code></pre>')
+                        .replace(/\n/g, '<br>');
+                }
+
+                contentHTML = `
+                    <div class="avatar-bot">AI</div>
+                    <div class="bubble">
+                        ${isLoading ? '<i class="fa-solid fa-circle-notch fa-spin"></i> Memproses...' : formatted}
+                    </div>
+                `;
+            }
+            div.innerHTML = contentHTML;
+            container.appendChild(div);
             const stream = document.getElementById('chat-stream');
             stream.scrollTop = stream.scrollHeight;
             return div.id;
         }
-        
-        // Enter key shortcut
-        document.getElementById('user-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); kirim(); }
+
+        document.getElementById('user-input').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         });
     </script>
 </body>
-                    </html>
+</html>
