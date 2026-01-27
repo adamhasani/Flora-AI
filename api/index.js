@@ -2,7 +2,7 @@ const Groq = require("groq-sdk");
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 module.exports = async (req, res) => {
-    // 1. Setup Header agar bisa diakses dari Web
+    // 1. SETUP HEADER (Wajib untuk Web)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,7 +14,7 @@ module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
     try {
-        // Menerima 'history' (Daftar percakapan), bukan cuma satu pesan
+        // Ambil riwayat chat dari Web
         const { history } = req.body;
 
         // Validasi data
@@ -22,30 +22,41 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'Data history tidak valid' });
         }
 
-        // 2. Setting Kepribadian & Aturan Format
+        // 2. DAPATKAN TANGGAL HARI INI (Supaya Bot Sadar Waktu)
+        const today = new Date().toLocaleDateString('id-ID', { 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        });
+
+        // 3. SETTING KEPRIBADIAN & ATURAN
         const systemPrompt = {
             role: "system",
             content: `Nama kamu Flora. Kamu asisten AI yang cerdas, to-the-point, dan rapi.
             
-            ATURAN FORMATTING (WAJIB):
-            1. Gunakan HTML Tags agar jawaban rapi di web:
-               - Gunakan <b>Teks Tebal</b> untuk Judul atau Poin Penting.
-               - Gunakan <br> untuk ganti baris.
-               - Gunakan <ul><li>Poin 1</li><li>Poin 2</li></ul> untuk daftar/poin-poin.
-               - Gunakan <p>Paragraf</p> untuk penjelasan panjang.
-            2. JANGAN gunakan Markdown (*, #, -) karena akan terlihat berantakan.
-            3. Jawablah dengan struktur yang jelas (Intro -> Poin-poin -> Kesimpulan).
-            4. Ingat konteks percakapan sebelumnya.`
+            INFORMASI WAKTU:
+            Hari ini adalah: ${today}.
+            (Gunakan informasi ini jika user bertanya tentang waktu/kejadian terkini).
+            
+            ATURAN FORMATTING (WAJIB DIPATUHI):
+            1. Gunakan HTML Tags untuk format teks:
+               - <b>Teks Tebal</b> untuk Judul/Poin Penting.
+               - <br> untuk ganti baris.
+               - <ul><li>Poin 1</li><li>Poin 2</li></ul> untuk daftar.
+               - <p>Paragraf</p> untuk penjelasan.
+            2. JANGAN gunakan Markdown (*, #, -) karena akan berantakan di web.
+            3. Jawablah dengan struktur yang jelas.
+            
+            ATURAN JAWABAN:
+            - Jika ditanya TERJEMAHAN: Langsung jawab artinya. (Contoh: "Inggrisnya makan apa?" -> "Eat.")
+            - Jika ditanya fakta terbaru: Cek tanggal hari ini dulu.`
         };
 
-        // 3. Gabungkan System Prompt + Riwayat Chat User
-        // Ini kuncinya biar dia ingat omongan sebelumnya
+        // 4. GABUNGKAN (System Prompt + Chat User)
         const finalMessages = [systemPrompt, ...history];
 
-        // 4. Kirim ke Groq (Llama 3)
+        // 5. KIRIM KE GROQ (Llama 3)
         const chatCompletion = await groq.chat.completions.create({
             messages: finalMessages,
-            model: "llama-3.3-70b-versatile", // Model Cerdas & Gratis
+            model: "llama-3.3-70b-versatile",
             temperature: 0.6, // Fokus & Tidak Halu
             max_tokens: 1024,
         });
