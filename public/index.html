@@ -1,193 +1,245 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <title>Flora AI | Premium</title>
+    <title>Flora AI - Smart Assistant</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* --- SEMUA STYLE ASLI KAMU PERTAHANKAN --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        :root { 
-            --primary: #007AFF; 
-            --bg: #F8F9FB; 
-            --text: #1C1C1E; 
-            --sub: #8E8E93; 
+        :root {
+            --primary: #007AFF;
+            --bg: #FFFFFF;
+            --secondary-bg: #F2F2F7;
+            --text-main: #1C1C1E;
+            --text-sub: #8E8E93;
+            --glass: rgba(255, 255, 255, 0.85);
         }
 
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background: var(--bg); overflow: hidden; 
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); overflow: hidden; }
+
+        /* LOGIN SCREEN */
+        #login-screen {
+            position: fixed; inset: 0; background: #FFF; z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 30px; transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        .login-card { width: 100%; max-width: 360px; text-align: center; animation: fadeIn 0.8s ease; }
+        .login-card h2 { font-weight: 700; font-size: 26px; margin: 15px 0 5px; }
+        .login-card p { color: var(--text-sub); font-size: 14px; margin-bottom: 35px; }
+        .input-group { width: 100%; margin-bottom: 20px; text-align: left; }
+        .input-group label { font-size: 12px; font-weight: 700; color: var(--text-sub); margin-left: 10px; text-transform: uppercase; }
+        .input-group input {
+            width: 100%; padding: 15px; border-radius: 16px; border: 1.5px solid #E5E5EA;
+            background: var(--secondary-bg); outline: none; font-size: 15px; margin-top: 6px;
+        }
+        .btn-login { width: 100%; padding: 16px; border-radius: 16px; border: none; background: var(--primary); color: white; font-weight: 700; cursor: pointer; }
 
-        /* --- AUTH SCREEN --- */
-        #auth-screen { position: fixed; inset: 0; background: #FFF; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 30px; transition: 0.8s; }
-        .auth-card { width: 100%; max-width: 340px; text-align: center; }
-        .input-auth { width: 100%; padding: 16px; border-radius: 16px; border: 1px solid #E5E5EA; background: #F2F2F7; outline: none; margin-bottom: 12px; font-size: 15px; }
-        .btn-auth { width: 100%; padding: 16px; border-radius: 16px; border: none; background: var(--text); color: #FFF; font-weight: 700; cursor: pointer; }
+        /* MAIN APP */
+        #main-app { display: none; height: 100%; flex-direction: column; opacity: 0; transition: 0.5s; }
+        .header { background: var(--glass); backdrop-filter: blur(20px); padding: 15px 20px; border-bottom: 0.5px solid #E5E5EA; position: relative; overflow: hidden; z-index: 10; }
+        .ai-aura-container { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); display: flex; width: 140%; height: 80px; opacity: 0.4; pointer-events: none; }
+        .aura { position: absolute; width: 200px; height: 60px; filter: blur(40px); border-radius: 50%; animation: moveAura 8s infinite ease-in-out; }
+        .aura-1 { background: #007AFF; left: 20%; } .aura-2 { background: #AF52DE; right: 20%; animation-delay: -3s; }
+        @keyframes moveAura { 0%, 100% { transform: translateX(-50px) scale(1); } 50% { transform: translateX(50px) scale(1.2); } }
 
-        /* --- MAIN APP --- */
-        #main-app { display: none; height: 100%; flex-direction: column; }
+        /* CHAT BOX */
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 25px; }
+        .msg { padding: 14px 18px; border-radius: 22px; max-width: 82%; font-size: 14.5px; line-height: 1.6; animation: slideUp 0.4s ease; }
+        .user { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
         
-        .header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); padding: 15px 25px; border-bottom: 1px solid #EEE; position: relative; z-index: 100; }
-        .aura-header { position: absolute; top: -40px; left: 50%; transform: translateX(-50%); width: 120%; height: 100px; filter: blur(40px); background: radial-gradient(circle, #007AFF, #AF52DE, transparent); opacity: 0.25; pointer-events: none; }
-
-        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-
-        /* BUBBLE USER */
-        .msg.user { 
-            align-self: flex-end; background: var(--primary); color: #FFF; 
-            padding: 12px 18px; border-radius: 20px 20px 4px 20px; 
-            max-width: 80%; font-size: 14.5px; box-shadow: 0 4px 12px rgba(0,122,255,0.2);
+        /* BOT MESSAGE (CLEAN BORDERLESS VERSION) */
+        .bot { 
+            background: transparent !important; 
+            color: var(--text-main); 
+            align-self: flex-start; 
+            padding: 0 !important; 
+            box-shadow: none !important; 
+            max-width: 100%;
         }
+        .bot-tag { font-size: 9px; font-weight: 800; color: var(--primary); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 5px; display: block; }
 
-        /* BUBBLE BOT (BORDERLESS BUT ELEGANT) */
-        .msg.bot { align-self: flex-start; max-width: 90%; }
-        .bot-label { font-size: 9px; font-weight: 800; color: var(--primary); letter-spacing: 1.5px; margin-bottom: 6px; display: block; opacity: 0.8; }
-        .bot-content { font-size: 15.5px; line-height: 1.7; color: var(--text); }
+        /* CONTROLS & INPUT */
+        .quick-actions { display: flex; gap: 10px; overflow-x: auto; padding: 0 20px 15px; scrollbar-width: none; }
+        .action-chip { padding: 10px 18px; background: var(--secondary-bg); border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        #draft-area { display: none; background: var(--secondary-bg); padding: 15px; border-radius: 24px 24px 0 0; border-top: 1px solid #E5E5EA; }
+        .input-wrapper { padding: 0 15px 30px; background: #FFF; }
+        .controls-container { background: var(--secondary-bg); border-radius: 28px; padding: 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        #pesan { width: 100%; border: none; outline: none; background: transparent; font-size: 16px; padding: 5px 10px; }
+        .btn-send { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 18px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
 
-        /* IMAGE PROMPT AREA (FIXED) */
-        #draft-area { display: none; padding: 10px 20px; }
-        .prompt-card { 
-            background: #FFF; border-radius: 18px; padding: 10px; 
-            display: flex; align-items: center; justify-content: space-between;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #EEE;
-        }
-        .img-preview { width: 45px; height: 45px; border-radius: 10px; object-fit: cover; }
-        
-        /* INPUT AREA (MODERN & NO PENYOK) */
-        .input-wrapper { padding: 10px 20px 30px; background: transparent; }
-        .glass-container { 
-            background: #FFF; border-radius: 35px; padding: 6px 6px 6px 18px; 
-            display: flex; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.06);
-            border: 1px solid rgba(0,0,0,0.03);
-        }
-        #pesan { flex: 1; border: none; outline: none; background: transparent; font-size: 16px; padding: 10px 0; font-family: inherit; }
-        
-        .btn-action { background: none; border: none; font-size: 22px; cursor: pointer; padding: 0 10px; flex-shrink: 0; }
-        
-        .btn-send { 
-            width: 46px; height: 46px; border-radius: 50%; border: none; 
-            background: var(--text); color: #FFF; cursor: pointer; 
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; /* Mencegah tombol jadi penyok */
-            transition: 0.2s;
-        }
-        .btn-send:active { transform: scale(0.9); }
-
-        .loader { display: none; padding: 0 25px 15px; gap: 4px; }
-        .dot { width: 5px; height: 5px; background: var(--primary); border-radius: 50%; animation: blink 1.4s infinite; }
+        .loader-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(8px); z-index: 3000; justify-content: center; align-items: center; }
+        .spinner { width: 30px; height: 30px; border: 3px solid #EEE; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } }
     </style>
 </head>
-<body onload="initAuth()">
+<body onload="autoLogin()">
 
-    <div id="auth-screen">
-        <div class="auth-card">
-            <div style="font-size: 50px; margin-bottom: 15px;">🌸</div>
-            <h2 id="at">Flora AI</h2>
-            <p style="color:var(--sub); font-size:13px; margin-bottom:25px;">Satu asisten untuk segalanya.</p>
-            <input type="text" id="au" class="input-auth" placeholder="Username">
-            <input type="password" id="ap" class="input-auth" placeholder="Password">
-            <button class="btn-auth" onclick="auth()">Lanjutkan</button>
-            <p id="tog" style="font-size:12px; margin-top:20px; cursor:pointer;" onclick="toggle()">Belum punya akun? <b>Daftar</b></p>
+    <div id="login-screen">
+        <div class="login-card">
+            <div style="font-size: 60px;">🌸</div>
+            <h2 id="log-title">Flora AI</h2>
+            <p id="log-desc">Silakan buat akun atau masuk.</p>
+            
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Nama kamu">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+            
+            <button class="btn-login" id="main-btn" onclick="handleAuth()">Masuk / Daftar</button>
+            <button class="btn-guest" onclick="toggleMode()" id="toggle-btn">Belum punya akun? Daftar Baru</button>
+            
+            <div style="margin-top: 40px; font-size: 11px; color: #BBB; font-weight: 600; letter-spacing: 1px;">
+                V3.0 HYBRID EDITION
+            </div>
         </div>
     </div>
 
     <div id="main-app">
         <div class="header">
-            <div class="aura-header"></div>
-            <div style="display:flex; align-items:center; justify-content:space-between; position:relative;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:36px; height:36px; background:#FFF; border-radius:10px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.05);">🌸</div>
+            <div class="ai-aura-container"><div class="aura aura-1"></div><div class="aura aura-2"></div></div>
+            <div style="display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="position: relative;">
+                        <div style="width: 42px; height: 42px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #E5E5EA; font-size: 22px;">🌸</div>
+                        <div style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #34C759; border: 2px solid #FFF; border-radius: 50%;"></div>
+                    </div>
                     <div>
-                        <div style="font-weight:800; font-size:15px;">Flora AI</div>
-                        <div style="font-size:9px; color:#34C759; font-weight:700;">ACTIVE</div>
+                        <div style="font-weight: 800; font-size: 16px; letter-spacing: -0.5px;">Flora AI</div>
+                        <div id="u-display" style="font-size: 10px; color: #34C759; font-weight: 700;">USER: GUEST</div>
                     </div>
                 </div>
-                <button onclick="logout()" style="background:none; border:none; color:red; font-size:10px; font-weight:800; cursor:pointer;">KELUAR</button>
+                <button onclick="logout()" style="background:none; border:none; color:red; font-size:10px; font-weight:800; cursor:pointer;">LOGOUT</button>
             </div>
         </div>
 
-        <div id="chat-box"></div>
-
-        <div id="typing" class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-
-        <div id="draft-area">
-            <div class="prompt-card">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <img id="p-img" class="img-preview">
-                    <span style="font-size:11px; font-weight:700; color:var(--sub);">SIAP DIKIRIM</span>
-                </div>
-                <button onclick="clearImg()" style="border:none; background:none; color:red; font-weight:800; cursor:pointer; font-size:11px;">HAPUS</button>
+        <div id="chat-box">
             </div>
+
+        <div class="quick-actions">
+            <div class="action-chip" onclick="qSend('Siapa kamu?')">✨ Profil Flora</div>
+            <div class="action-chip" onclick="qSend('Bantu saya hari ini')">💻 Bantuan</div>
         </div>
 
         <div class="input-wrapper">
-            <div class="glass-container">
-                <button class="btn-action" onclick="document.getElementById('fin').click()">📷</button>
-                <input type="file" id="fin" hidden onchange="prev()">
-                <input type="text" id="pesan" placeholder="Tanya Flora..." onkeypress="if(event.key==='Enter') kirim()">
-                <button class="btn-send" onclick="kirim()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                </button>
+            <div id="draft-area">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <img id="p-img" src="" style="width: 55px; height: 55px; border-radius: 12px; object-fit: cover; border: 2px solid #FFF; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                    <button onclick="cImg()" style="background:#FF3B30; color:#FFF; border:none; width:24px; height:24px; border-radius:50%; cursor:pointer;">✕</button>
+                </div>
+            </div>
+            <div class="controls-container">
+                <input type="text" id="pesan" placeholder="Ketik pesan..." onkeypress="if(event.key==='Enter') kirim()">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 5px;">
+                    <div style="display: flex; gap: 15px;">
+                        <button style="background:none; border:none; font-size: 22px; cursor:pointer;" onclick="document.getElementById('fileInput').click()">📷</button>
+                        <button style="background:none; border:none; font-size: 22px; cursor:pointer;" onclick="startVoice()">🎙️</button>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="hSelect()">
+                    <button class="btn-send" onclick="kirim()">Kirim</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        let isReg = false; let curImg = null; let hist = [];
-        function initAuth() { 
-            const s = localStorage.getItem("f_session"); 
-            if(s) show(s); 
-        }
-        function toggle() { 
-            isReg = !isReg; 
-            document.getElementById("at").innerText = isReg ? "Buat Akun" : "Flora AI"; 
-            document.getElementById("tog").innerHTML = isReg ? "Sudah punya akun? <b>Masuk</b>" : "Belum punya akun? <b>Daftar</b>";
-        }
-        function auth() {
-            const u = document.getElementById("au").value; const p = document.getElementById("ap").value;
-            if(!u || !p) return;
-            if(isReg) { localStorage.setItem(`u_${u}`, p); alert("Berhasil! Silakan Login."); toggle(); }
-            else { if(localStorage.getItem(`u_${u}`) === p) show(u); else alert("Salah!"); }
-        }
-        function show(n) {
-            localStorage.setItem("f_session", n);
-            document.getElementById("auth-screen").style.display = "none";
-            document.getElementById("main-app").style.display = "flex";
-            const saved = localStorage.getItem(`h_${n}`);
-            if(saved) { hist = JSON.parse(saved); hist.forEach(m => add(m.content, m.role === 'user' ? 'user' : 'bot', true)); }
-        }
-        function logout() { localStorage.removeItem("f_session"); location.reload(); }
+    <div class="loader-overlay" id="loader"><div class="spinner"></div></div>
 
-        function prev() {
-            const f = document.getElementById("fin").files[0];
-            const r = new FileReader();
-            r.onload = (e) => { curImg = e.target.result; document.getElementById("p-img").src = curImg; document.getElementById("draft-area").style.display = "block"; };
-            r.readAsDataURL(f);
+    <script>
+        let isRegister = false;
+        let chatHistory = [];
+        let curImg = null;
+
+        // AUTH LOGIC (MEMORY)
+        function autoLogin() {
+            const saved = localStorage.getItem("flora_user");
+            if(saved) successLogin(saved);
         }
-        function clearImg() { curImg = null; document.getElementById("draft-area").style.display = "none"; }
+
+        function toggleMode() {
+            isRegister = !isRegister;
+            document.getElementById("log-title").innerText = isRegister ? "Daftar Akun" : "Flora AI";
+            document.getElementById("main-btn").innerText = isRegister ? "Daftar Sekarang" : "Masuk Sekarang";
+            document.getElementById("toggle-btn").innerText = isRegister ? "Sudah punya akun? Login" : "Belum punya akun? Daftar Baru";
+        }
+
+        function handleAuth() {
+            const u = document.getElementById("username").value.trim();
+            const p = document.getElementById("password").value.trim();
+            if(!u || !p) return alert("Isi data!");
+
+            if(isRegister) {
+                localStorage.setItem(`u_${u}`, p);
+                alert("Berhasil Daftar! Silakan Login.");
+                toggleMode();
+            } else {
+                if(localStorage.getItem(`u_${u}`) === p) successLogin(u);
+                else alert("Username/Password salah!");
+            }
+        }
+
+        function successLogin(n) {
+            localStorage.setItem("flora_user", n);
+            document.getElementById("login-screen").style.transform = "translateY(-100%)";
+            setTimeout(() => {
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("main-app").style.display = "flex";
+                setTimeout(() => document.getElementById("main-app").style.opacity = "1", 50);
+                document.getElementById("u-display").innerText = "USER: " + n.toUpperCase();
+            }, 600);
+        }
+
+        function logout() { localStorage.removeItem("flora_user"); location.reload(); }
+
+        // CHAT LOGIC
+        function qSend(t) { document.getElementById("pesan").value = t; kirim(); }
+        function cImg() { curImg = null; document.getElementById("draft-area").style.display = "none"; }
+        
+        async function hSelect() {
+            const f = document.getElementById("fileInput").files[0]; if(!f) return;
+            const r = new FileReader(); r.readAsDataURL(f);
+            r.onload = (e) => {
+                curImg = e.target.result; document.getElementById("p-img").src = curImg;
+                document.getElementById("draft-area").style.display = "block";
+            }
+        }
+
+        function startVoice() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'id-ID';
+            recognition.start();
+            recognition.onresult = (e) => { document.getElementById("pesan").value = e.results[0][0].transcript; };
+        }
 
         async function kirim() {
             const t = document.getElementById("pesan").value; if(!t && !curImg) return;
-            add(t, 'user'); document.getElementById("pesan").value = ""; clearImg();
-            document.getElementById("typing").style.display = "flex";
-            hist.push({ role: "user", content: t });
+            addB(t, 'user'); document.getElementById("pesan").value = ""; cImg();
+            document.getElementById("loader").style.display = "flex";
+            chatHistory.push({ role: "user", content: t });
+            
             try {
-                const res = await fetch('/api', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ history: hist }) });
-                const d = await res.json();
-                add(d.reply, 'bot');
-                hist.push({ role: "assistant", content: d.reply });
-                localStorage.setItem(`h_${localStorage.getItem("f_session")}`, JSON.stringify(hist));
-            } catch (e) { add("Gagal terhubung.", 'bot'); }
-            document.getElementById("typing").style.display = "none";
+                const res = await fetch('/api', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ history: chatHistory })
+                });
+                const d = await res.json(); 
+                addB(d.reply, 'bot');
+                chatHistory.push({ role: "assistant", content: d.reply });
+            } catch (e) { addB("Gagal terhubung.", 'bot'); }
+            document.getElementById("loader").style.display = "none";
         }
 
-        function add(h, type, load = false) {
+        function addB(h, t) {
             const d = document.createElement('div');
-            d.className = `msg ${type}`;
-            d.innerHTML = type === 'bot' ? `<span class="bot-label">FLORA AI</span><div class="bot-content">${h}</div>` : h;
+            d.className = `msg ${t}`;
+            d.innerHTML = t === 'bot' ? `<span class="bot-tag">FLORA AI</span>${h}` : h;
             document.getElementById("chat-box").appendChild(d);
-            if(!load) document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
+            document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
         }
     </script>
 </body>
