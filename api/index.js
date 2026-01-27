@@ -9,87 +9,78 @@ const groqKey = getCleanKey(process.env.GROQ_API_KEY);
 const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 const groq = new Groq({ apiKey: groqKey || "dummy" });
 
-// --- 2. DEFINISI PROMPT (DIPERKUAT) ---
+// --- 2. PROMPT SISTEM ---
 const promptStrictHTML = `
-    Nama kamu Flora. Kamu asisten AI cerdas & santai.
-    ATURAN WAJIB:
-    1. Gunakan format HTML: <b>tebal</b>, <br> baris baru, <ul><li>untuk daftar.
-    2. JANGAN PERNAH gunakan simbol bintang (**) atau simbol Markdown lainnya.
-    3. Jawab langsung ke inti masalah (On-Point).
+    Nama kamu Flora. Kamu asisten AI yang cerdas dan modern.
+    WAJIB GUNAKAN HTML: <b>tebal</b>, <br> untuk baris baru, <ul><li> untuk daftar.
+    DILARANG gunakan Markdown (** atau #). Jawab dalam Bahasa Indonesia yang santai tapi sopan.
 `;
 
-// --- 3. HELPER: PEMBERSIH & PENERJEMAH MARKDOWN (SOLUSI BINTANG) ---
+// --- 3. HELPER: PEMBERSIH ---
 const cleanResponse = (text) => {
     if (!text) return "";
     let clean = text
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') // Ubah **teks** jadi <b>teks</b>
-        .replace(/\*(.*?)\*/g, '<i>$1</i>')     // Ubah *teks* jadi <i>teks</i>
-        .replace(/^- (.*$)/gim, '<li>$1</li>')  // Ubah baris (-) jadi list item
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') // Convert ** ke <b>
+        .replace(/\*(.*?)\*/g, '<i>$1</i>')     // Convert * ke <i>
+        .replace(/^- (.*$)/gim, '<li>$1</li>')  // Convert list - ke <li>
         .replace(/```html/g, '').replace(/```/g, '')
         .replace(/\\n/g, "<br>").replace(/\n/g, "<br>")
         .trim();
-    
-    // Bungkus <li> kalau ada
     if (clean.includes('<li>')) clean = `<ul>${clean}</ul>`;
-    
     return clean;
 };
 
-// --- HELPER NORMALISASI (Agar Gak Error Pas Pindah Model) ---
 const getCleanHistory = (history) => {
     return history.map(msg => ({
-        // Samakan role: user tetap user, sisanya (model/assistant) jadi assistant
         role: (msg.role === 'model' || msg.role === 'assistant') ? 'assistant' : 'user',
-        // Buang tag HTML agar model baru gak bingung baca riwayat
         content: msg.content.replace(/<[^>]*>/g, '').replace(/\[.*?\]/g, '').trim()
     }));
 };
 
 // --- 4. FUNGSI EKSEKUTOR ---
 
-// A. ANABOT
-async function runAnabot(history) {
+// A. QWEN (GANTI ANABOT) - Gratis & Stabil
+async function runQwen(history) {
     const cleanHist = getCleanHistory(history);
-    const conversationText = cleanHist.map(m => `${m.role === 'user' ? 'User' : 'Flora'}: ${m.content}`).join('\n');
+    const payload = {
+        messages: [{ role: "system", content: promptStrictHTML }, ...cleanHist],
+        model: "qwen",
+        seed: 42
+    };
 
-    const finalPrompt = `${promptStrictHTML}\n\nRiwayat Chat:\n${conversationText}\n\nFlora:`;
-    const apiUrl = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(finalPrompt)}&type=Chat&apikey=freeApikey`;
-    
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    
-    let replyText = data.data?.result?.text || data.result?.text || data.result || "";
-    if (!replyText || replyText.includes("Tidak dapat menemukan pola")) throw new Error("Anabot Gagal");
+    const response = await fetch('https://text.pollinations.ai/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
 
+    const replyText = await response.text();
+    if (!replyText) throw new Error("Qwen Sedang Sibuk");
     return cleanResponse(replyText);
 }
 
 // B. GROQ
 async function runGroq(history) {
     if (!groqKey) throw new Error("API Key GROQ Kosong!");
-    const cleanHist = getCleanHistory(history);
-    
-    const messagesGroq = [{ role: "system", content: promptStrictHTML }, ...cleanHist];
-    const chatCompletion = await groq.chat.completions.create({
+    const messagesGroq = [{ role: "system", content: promptStrictHTML }, ...getCleanHistory(history)];
+    const res = await groq.chat.completions.create({
         messages: messagesGroq,
         model: "llama-3.3-70b-versatile",
         temperature: 0.6,
     });
-    return cleanResponse(chatCompletion.choices[0]?.message?.content);
+    return cleanResponse(res.choices[0]?.message?.content);
 }
 
 // C. GEMINI
 async function runGemini(history) {
     if (!geminiKey) throw new Error("API Key GEMINI Kosong!");
-    const modelGemini = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: promptStrictHTML });
-
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: promptStrictHTML });
     const cleanHist = getCleanHistory(history).map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }]
     }));
-    
     const lastMsg = cleanHist.pop().parts[0].text;
-    const chat = modelGemini.startChat({ history: cleanHist });
+    const chat = model.startChat({ history: cleanHist });
     const result = await chat.sendMessage(lastMsg);
     return cleanResponse(result.response.text());
 }
@@ -103,33 +94,21 @@ module.exports = async (req, res) => {
 
     try {
         const { history, model } = req.body;
-        const selectedModel = model ? model.toLowerCase() : 'anabot';
-
-        let result = "";
-        let label = "Flora AI"; // Default Label
+        const selectedModel = model ? model.toLowerCase() : 'qwen';
+        let result = "", label = "Flora AI";
         
         try {
             if (selectedModel === 'groq') {
-                result = await runGroq(history);
-                label = "Flora AI ⚡";
-            } 
-            else if (selectedModel === 'gemini') {
-                result = await runGemini(history);
-                label = "Flora AI 🧠";
-            } 
-            else {
-                result = await runAnabot(history);
-                label = "Flora AI 🚙";
+                result = await runGroq(history); label = "Flora AI ⚡";
+            } else if (selectedModel === 'gemini') {
+                result = await runGemini(history); label = "Flora AI 🧠";
+            } else {
+                result = await runQwen(history); label = "Flora AI 🌿";
             }
-            
             return res.json({ reply: `<b>[${label}]</b><br>${result}` });
-
-        } catch (modelError) {
-            return res.json({ 
-                reply: `<b>[❌ Flora Error]</b><br>Maaf Adam, sepertinya sistem ${selectedModel} sedang sibuk. Coba model lain ya!` 
-            });
+        } catch (e) {
+            return res.json({ reply: `<b>[❌ Flora Error]</b><br>Sistem ${selectedModel} sedang limit. Coba model lain ya!` });
         }
-
     } catch (sysError) {
         return res.status(500).json({ reply: `System Crash: ${sysError.message}` });
     }
