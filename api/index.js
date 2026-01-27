@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
-// Inisialisasi SDK (Pastikan API Key ada di Vercel Settings)
+// Inisialisasi SDK
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -17,13 +17,12 @@ module.exports = async (req, res) => {
         const { history } = req.body;
         if (!history || !Array.isArray(history)) return res.status(400).json({ error: 'History invalid' });
 
-        // --- PERSIAPAN DATA UMUM ---
-        const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        
+        // --- HAPUS LOGIKA TANGGAL (Biar Ga Halu) ---
+        // Kita biarkan dia pakai tanggal default database dia sendiri.
+
         // System Prompt (Instruksi Utama)
         const systemInstructionText = `
             Nama kamu Flora. Asisten AI cerdas & rapi.
-            Info Waktu: Hari ini ${today}.
             
             ATURAN:
             1. Gunakan HTML (<b>, <br>, <ul>). JANGAN Markdown.
@@ -37,11 +36,10 @@ module.exports = async (req, res) => {
         try {
             console.log("Mencoba Layer 1: Google Gemini...");
             const modelGemini = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash", 
+                model: "gemini-2.5-flash", // Kita set ke 2.0 biar balance
                 systemInstruction: systemInstructionText 
             });
 
-            // Format History khusus Gemini (user/model)
             const geminiHistory = history.map(msg => ({
                 role: msg.role === 'user' ? 'user' : 'model', 
                 parts: [{ text: msg.content }]
@@ -62,19 +60,31 @@ module.exports = async (req, res) => {
             try {
                 console.log("Mencoba Layer 2: Anabot API...");
                 
-                // Anabot butuh String Panjang, bukan Array
                 const conversationText = history.map(msg => {
                     return `${msg.role === 'user' ? 'User' : 'Flora'}: ${msg.content}`;
                 }).join('\n');
 
                 const finalPrompt = `[System: ${systemInstructionText}]\n\nChat History:\n${conversationText}\n\nFlora:`;
-                
                 const apiUrl = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(finalPrompt)}&type=Chat&apikey=freeApikey`;
                 
                 const response = await fetch(apiUrl, { method: 'GET' });
                 const data = await response.json();
                 
-                let replyText = data.result || (typeof data === 'string' ? data : JSON.stringify(data));
+                // --- BAGIAN PERBAIKAN BACA DATA (JSON FIX) ---
+                let replyText = "";
+
+                // Kita cek struktur datanya pelan-pelan
+                if (data.data && data.data.result && data.data.result.text) {
+                    replyText = data.data.result.text; // Ini path terdalam (sesuai error kamu tadi)
+                } else if (data.result && data.result.text) {
+                    replyText = data.result.text;
+                } else if (data.result) {
+                    replyText = data.result;
+                } else if (typeof data === 'string') {
+                    replyText = data;
+                } else {
+                    replyText = "Maaf, format jawaban dari server aneh.";
+                }
                 
                 return res.status(200).json({ reply: replyText + " <br><br><i>(Dijawab via Backup 1)</i>" });
 
@@ -82,7 +92,7 @@ module.exports = async (req, res) => {
                 console.error("Layer 2 Gagal (Anabot):", err2.message);
 
                 // ============================================================
-                // LAYER 3: GROQ LLAMA 3 (Backup Terakhir/Nuklir)
+                // LAYER 3: GROQ LLAMA 3 (Backup Terakhir)
                 // ============================================================
                 try {
                     console.log("Mencoba Layer 3: Groq...");
@@ -104,8 +114,7 @@ module.exports = async (req, res) => {
                     return res.status(200).json({ reply: replyGroq + " <br><br><i>(Dijawab via Backup Akhir)</i>" });
 
                 } catch (err3) {
-                    console.error("Layer 3 Gagal (Fatal):", err3.message);
-                    return res.status(200).json({ reply: "⚠️ Maaf, Flora pingsan. Semua server (Google, Anabot, Groq) lagi down." });
+                    return res.status(200).json({ reply: "⚠️ Maaf, Flora pingsan. Semua server lagi down." });
                 }
             }
         }
