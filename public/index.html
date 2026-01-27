@@ -1,269 +1,226 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Flora AI</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flora AI - Hybrid Interface</title>
     <style>
-        /* --- CSS STYLING --- */
-        * { box-sizing: border-box; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; padding: 0; margin: 0; background: #f0f2f5; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        .header { background: white; padding: 15px; text-align: center; font-weight: 600; box-shadow: 0 1px 5px rgba(0,0,0,0.05); z-index: 10; color: #333; }
-        
-        #chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
-        
-        /* Bubble Chat */
-        .msg { padding: 12px 16px; border-radius: 20px; max-width: 85%; font-size: 14px; line-height: 1.5; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.05); word-wrap: break-word; }
-        
-        /* User Bubble (Biru) */
-        .user { background: #0084ff; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        /* Bot Bubble (Putih) */
-        .bot { background: white; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; }
-        
-        /* Format List/Bold di Bot */
-        .bot ul { padding-left: 20px; margin: 5px 0; }
-        .bot li { margin-bottom: 5px; }
-        .bot b { font-weight: 700; color: #000; }
-        .bot img { width: 100%; border-radius: 12px; margin-top: 8px; display: block; }
+        /* --- CSS: Tampilan Dark Mode Modern --- */
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
 
-        /* Tampilan User saat kirim gambar (Thumbnail Kecil) */
-        .user-content { display: flex; align-items: center; gap: 12px; justify-content: flex-end; text-align: right; }
-        .mini-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0; }
-        .user-text { flex: 1; }
+        /* Header */
+        header {
+            background-color: #1f1f1f;
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        h2 { margin: 0; font-size: 1.2rem; color: #ff80ab; }
+        small { color: #888; font-size: 0.8rem; }
 
-        /* Input Area */
-        .input-wrapper { background: white; border-top: 1px solid #eee; padding: 10px 10px 20px 10px; display: flex; flex-direction: column; gap: 10px; }
+        /* Area Chat (Scrollable) */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            scroll-behavior: smooth;
+        }
+
+        /* Bubble Chat Style */
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.5;
+            position: relative;
+            word-wrap: break-word;
+        }
         
-        /* Draft Area */
-        #draft-area { display: none; background: #f8f9fa; border-radius: 15px; padding: 10px; border: 1px solid #eee; }
-        .preview-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        #preview-img { width: 60px; height: 60px; object-fit: cover; border-radius: 10px; border: 2px solid #0084ff; }
-        .preview-info { flex: 1; font-size: 12px; color: #666; }
-        .btn-close { background: #ff4444; color: white; border: none; width: 25px; height: 25px; border-radius: 50%; font-weight: bold; cursor: pointer; }
+        /* User Bubble (Kanan, Pink) */
+        .user {
+            align-self: flex-end;
+            background-color: #e91e63;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
 
-        /* Style Chips (Scroll) */
-        .style-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
-        .style-scroll::-webkit-scrollbar { display: none; }
-        .chip { padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd; background: white; font-size: 12px; white-space: nowrap; cursor: pointer; color: #555; transition: 0.2s; }
-        .chip.active { background: #0084ff; color: white; border-color: #0084ff; }
+        /* Bot Bubble (Kiri, Abu Gelap) */
+        .flora {
+            align-self: flex-start;
+            background-color: #2c2c2c;
+            color: #eeeeee;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #444;
+        }
 
-        /* Controls */
-        .controls { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
-        .btn-cam { background: #eee; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; cursor: pointer; color: #555; display: flex; align-items: center; justify-content: center; }
-        input[type="text"] { flex: 1; padding: 12px 18px; border-radius: 25px; border: 1px solid #ddd; outline: none; background: #f0f2f5; font-size: 14px; }
-        .btn-send { background: #0084ff; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,132,255,0.3); }
+        /* Styling HTML Output dari Bot (Bold, List, dll) */
+        .flora b { color: #ff80ab; }
+        .flora ul { margin: 5px 0; padding-left: 20px; }
+        .flora li { margin-bottom: 5px; }
 
-        /* Loader */
-        .loader-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; justify-content: center; align-items: center; flex-direction: column; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #eee; border-top: 4px solid #0084ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Area Input & Controls */
+        .input-area {
+            background-color: #1f1f1f;
+            padding: 15px;
+            border-top: 1px solid #333;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        /* Dropdown Model Selector */
+        select {
+            background-color: #333;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #555;
+            outline: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .chat-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 25px;
+            border: none;
+            background-color: #2c2c2c;
+            color: white;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            border: none;
+            background-color: #e91e63;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        button:active { background-color: #c2185b; }
+        
+        /* Loading Animation */
+        .loading-dots { display: inline-block; animation: dot-pulse 1.5s infinite linear; }
+        @keyframes dot-pulse { 0% { opacity: .2; } 50% { opacity: 1; } 100% { opacity: .2; } }
+
     </style>
 </head>
 <body>
 
-    <div class="header">Flora AI 🌸</div>
-    <div id="chat-box">
-        <div class="msg bot">Halo! 👋<br>Aku Flora. Ada yang bisa aku bantu?</div>
-    </div>
-    
-    <div class="loader-overlay" id="loader">
-        <div class="spinner"></div>
-        <div id="status-text" style="margin-top:15px; font-weight:600; color:#333;">Memproses...</div>
+    <header>
+        <h2>🌸 Flora AI</h2>
+        <small id="status-text">Online • Siap membantu</small>
+    </header>
+
+    <div id="chat-container">
+        <div class="message flora">
+            Halo! Saya <b>Flora</b>.<br>
+            Silakan pilih "otak" yang ingin digunakan di bawah, lalu mulailah mengobrol!
+        </div>
     </div>
 
-    <div class="input-wrapper">
-        <div id="draft-area">
-            <div class="preview-row">
-                <img id="preview-img" src="">
-                <div class="preview-info"><b>Foto Siap</b><br>Pilih gaya di bawah 👇</div>
-                <button class="btn-close" onclick="cancelImage()">✕</button>
-            </div>
-            <div class="style-scroll">
-                <div class="chip" onclick="selectStyle(this, 'anime style')">Anime</div>
-                <div class="chip" onclick="selectStyle(this, 'cyberpunk style')">Cyberpunk</div>
-                <div class="chip" onclick="selectStyle(this, 'ghibli style')">Ghibli</div>
-                <div class="chip" onclick="selectStyle(this, '3d render style')">3D Disney</div>
-                <div class="chip" onclick="selectStyle(this, 'realistic 8k')">Realistik</div>
-            </div>
+    <div class="input-area">
+        <div class="controls">
+            <label for="modelSelect" style="margin-right: 10px; align-self: center; font-size: 0.9rem;">Mode:</label>
+            <select id="modelSelect">
+                <option value="groq">🚀 Cepat (Default)</option>
+                <option value="gemini">🧠 Pintar (Pro)</option>
+                <option value="anabot">🚙 Santai (Semi)</option>
+            </select>
         </div>
 
-        <div class="controls">
-            <button class="btn-cam" onclick="document.getElementById('fileInput').click()">📷</button>
-            <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect()">
-            <input type="text" id="pesan" placeholder="Ketik pesan..." onkeypress="if(event.key === 'Enter') kirim()">
-            <button class="btn-send" onclick="kirim()">➤</button>
+        <div class="chat-input-group">
+            <input type="text" id="userInput" placeholder="Ketik pesan di sini..." autocomplete="off">
+            <button onclick="sendMessage()">➤</button>
         </div>
     </div>
 
     <script>
-        // === ARRAY INGATAN CHAT ===
-        let chatHistory = []; 
+        let historyChat = []; // Menyimpan riwayat percakapan di browser
 
-        let currentImageBase64 = null;
-        let selectedStylePrompt = "";
+        // Fungsi Kirim Pesan
+        async function sendMessage() {
+            const inputField = document.getElementById("userInput");
+            const chatContainer = document.getElementById("chat-container");
+            const modelSelect = document.getElementById("modelSelect");
+            const statusText = document.getElementById("status-text");
 
-        const chatBox = document.getElementById("chat-box");
-        const loader = document.getElementById("loader");
-        const statusText = document.getElementById("status-text");
-        const draftArea = document.getElementById("draft-area");
-        const previewImg = document.getElementById("preview-img");
+            const text = inputField.value.trim();
+            if (!text) return;
 
-        async function handleFileSelect() {
-            const file = document.getElementById("fileInput").files[0];
-            if (!file) return;
-            statusText.innerText = "Memuat...";
-            loader.style.display = "flex";
-            const compressed = await compressImage(file);
-            currentImageBase64 = compressed;
-            previewImg.src = compressed;
-            draftArea.style.display = "block";
-            loader.style.display = "none";
-        }
-
-        function selectStyle(el, style) {
-            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            el.classList.add('active');
-            selectedStylePrompt = style;
-        }
-
-        function cancelImage() {
-            currentImageBase64 = null;
-            selectedStylePrompt = "";
-            draftArea.style.display = "none";
-            document.getElementById("fileInput").value = "";
-            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-        }
-
-        async function kirim() {
-            const txt = document.getElementById("pesan").value;
-
-            if (!txt && !currentImageBase64) return;
-
-            // === A. JIKA KIRIM GAMBAR (EDIT) ===
-            if (currentImageBase64) {
-                let finalPrompt = txt;
-                if (selectedStylePrompt) {
-                    finalPrompt = finalPrompt ? `${finalPrompt}, ${selectedStylePrompt}` : selectedStylePrompt;
-                }
-                if (!finalPrompt) { alert("Pilih gaya dulu!"); return; }
-
-                const htmlUser = `
-                    <div class="user-content">
-                        <div class="user-text">${finalPrompt}</div>
-                        <img class="mini-thumb" src="${currentImageBase64}">
-                    </div>
-                `;
-                addBubbleHTML(htmlUser, 'user');
-                
-                prosesEditDirect(currentImageBase64, finalPrompt);
-                document.getElementById("pesan").value = "";
-                cancelImage(); 
-            } 
+            // 1. Tampilkan Pesan User ke Layar
+            chatContainer.innerHTML += `<div class="message user">${text}</div>`;
+            inputField.value = ""; // Kosongkan input
             
-            // === B. JIKA CHAT BIASA (TEKS) ===
-            else {
-                addBubbleHTML(txt, 'user');
-                document.getElementById("pesan").value = "";
-                statusText.innerText = "Mengetik...";
-                loader.style.display = "flex";
+            // Simpan ke history array
+            historyChat.push({ role: "user", content: text });
 
-                // 1. Simpan pesan user ke Ingatan
-                chatHistory.push({ role: "user", content: txt });
+            // Scroll ke bawah
+            chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                try {
-                    // 2. Kirim SELURUH INGATAN ke Server
-                    const res = await fetch('/api', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ history: chatHistory })
-                    });
-                    const data = await res.json();
-                    
-                    // 3. Tampilkan Balasan Bot
-                    addBubbleHTML(data.reply, 'bot');
+            // 2. Tampilkan Loading Bubble
+            const loadingId = "loading-" + Date.now();
+            chatContainer.innerHTML += `<div class="message flora" id="${loadingId}"><span class="loading-dots">...</span></div>`;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                    // 4. Simpan Balasan Bot ke Ingatan
-                    chatHistory.push({ role: "assistant", content: data.reply });
+            // Update status text
+            const modelName = modelSelect.options[modelSelect.selectedIndex].text;
+            statusText.innerText = `Sedang mengetik via ${modelName}...`;
 
-                } catch (e) { 
-                    addBubbleHTML("Error koneksi.", 'bot'); 
-                }
-                loader.style.display = "none";
-            }
-        }
-
-        // --- FUNGSI EDIT GAMBAR ---
-        async function prosesEditDirect(img, prompt) {
-            statusText.innerText = "Mengirim ke AI...";
-            loader.style.display = "flex";
             try {
-                const startRes = await fetch('/api/edit', {
+                // 3. KIRIM KE BACKEND (/api)
+                const response = await fetch('/api', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ step: 'start', image: img, prompt: prompt })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        history: historyChat,   // Kirim riwayat chat
+                        model: modelSelect.value // Kirim pilihan model (groq/gemini/anabot)
+                    })
                 });
-                const startData = await startRes.json();
-                if (!startData.success) throw new Error(startData.error || "Gagal");
 
-                const jobId = startData.jobId;
-                let attempts = 0;
-                const interval = setInterval(async () => {
-                    attempts++;
-                    statusText.innerText = `Melukis... ${attempts}%`;
-                    if (attempts > 60) { 
-                        clearInterval(interval); loader.style.display = "none";
-                        addBubbleHTML("⚠️ Kelamaan.", 'bot'); return;
-                    }
-                    try {
-                        const checkRes = await fetch('/api/edit', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ step: 'check', jobId: jobId })
-                        });
-                        const checkData = await checkRes.json();
-                        if (checkData.status === 'done') {
-                            clearInterval(interval); loader.style.display = "none";
-                            addBubbleHTML(`Selesai! ✨<br><img src="${checkData.url}">`, 'bot');
-                        } else if (checkData.status === 'failed') {
-                            clearInterval(interval); loader.style.display = "none";
-                            addBubbleHTML(`Gagal: ${checkData.error}`, 'bot');
-                        }
-                    } catch (e) {}
-                }, 2000);
-            } catch (e) {
-                loader.style.display = "none";
-                addBubbleHTML(`Error: ${e.message}`, 'bot');
-            }
-        }
+                const data = await response.json();
 
-        function compressImage(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.src = e.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const scale = 800 / img.width;
-                        canvas.width = 800;
-                        canvas.height = img.height * scale;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.8));
-                    }
+                // 4. Hapus Loading & Tampilkan Jawaban Bot
+                document.getElementById(loadingId).remove();
+                
+                if (data.reply) {
+                    // Render HTML dari bot (innerHTML aman karena sudah di-clean di backend)
+                    chatContainer.innerHTML += `<div class="message flora">${data.reply}</div>`;
+                    
+                    // Simpan jawaban bot ke history
+                    historyChat.push({ role: "model", content: data.reply });
+                } else {
+                    chatContainer.innerHTML += `<div class="message flora">⚠️ Maaf, tidak ada balasan.</div>`;
                 }
-            });
-        }
 
-        function addBubbleHTML(html, type) {
-            const div = document.createElement('div');
-            div.className = `msg ${type}`;
-            div.innerHTML = html;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-    </script>
-</body>
-</html>
+            } catch (
