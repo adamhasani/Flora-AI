@@ -1,70 +1,116 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
+// Init SDK
+const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const TAVILY_KEY = process.env.TAVILY_API_KEY;
+
+// --- 1. PEMBERSIH & VALIDATOR ---
+const cleanResponse = (text) => {
+    if (!text) return "";
+    let clean = text
+        .replace(/```html/g, '').replace(/```/g, '')
+        .replace(/\\n/g, "<br>").replace(/\n/g, "<br>")
+        .replace(/\\"/g, '"').replace(/\\u003c/g, "<")
+        .replace(/\\u003e/g, ">").replace(/\\/g, "")
+        .trim();
+    if (clean.startsWith('"') && clean.endsWith('"')) clean = clean.slice(1, -1);
+    return clean;
+};
+
+// --- 2. FUNGSI AI ---
+
+// MODE CEPAT (GROQ) - Pakai GEMMA 2 (Google) biar Anti-Meta
+async function callGroq(history, systemPrompt) {
+    console.log("🚀 Mode: GROQ (Gemma 2)");
+    const messages = [{ role: "system", content: systemPrompt }, ...history];
+    const chatCompletion = await groq.chat.completions.create({
+        messages: messages,
+        // GANTI MODEL YANG MATI TADI KE YANG BARU:
+        model: "gemma2-9b-it", 
+        temperature: 0.6,
+        max_tokens: 1024,
+    });
+    return cleanResponse(chatCompletion.choices[0]?.message?.content);
+}
+
+// MODE PRO (GEMINI)
+async function callGemini(history, systemPrompt) {
+    console.log("🧠 Mode: GEMINI");
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: systemPrompt });
+    const geminiHist = history.map(msg => ({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }] }));
+    const lastMsg = geminiHist.pop().parts[0].text;
+    const chat = model.startChat({ history: geminiHist });
+    const result = await chat.sendMessage(lastMsg);
+    return cleanResponse(result.response.text());
+}
+
+// MODE SANTAI (ANABOT)
+async function callAnabot(history, systemPrompt) {
+    console.log("🚙 Mode: ANABOT");
+    const conversation = history.map(m => `${m.role==='user'?'User':'Flora'}: ${m.content}`).join('\n');
+    const prompt = `[System: ${systemPrompt}]\n\nChat:\n${conversation}\n\nFlora:`;
+    const url = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(prompt)}&type=Chat&apikey=freeApikey`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    let text = data.data?.result?.text || data.result?.text || data.result || "";
+    return cleanResponse(text);
+}
+
+// --- 3. MAIN HANDLER ---
 module.exports = async (req, res) => {
-    // Header Wajib
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
-
-    // 1. CEK KUNCI RAHASIA (ENV VARS)
-    const statusKeys = {
-        Gemini_Key: process.env.API_KEY ? "✅ Ada" : "❌ KOSONG (Wajib isi API_KEY)",
-        Groq_Key: process.env.GROQ_API_KEY ? "✅ Ada" : "❌ KOSONG (Wajib isi GROQ_API_KEY)",
-        Tavily_Key: process.env.TAVILY_API_KEY ? "✅ Ada" : "⚠️ Kosong (Gapapa)",
-        Node_Version: process.version
-    };
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
     try {
-        const { history } = req.body;
-        if (!history) return res.status(400).json({ reply: "History tidak ditemukan." });
+        let { history, model } = req.body;
+        const selectedModel = model ? model.toLowerCase() : "groq";
 
-        // JIKA KUNCI KOSONG, LANGSUNG LAPOR
-        if (!process.env.API_KEY && !process.env.GROQ_API_KEY) {
-            return res.json({ 
-                reply: `<b>🛑 ERROR KONFIGURASI</b><br>` +
-                       `Bot tidak bisa jalan karena kunci belum disetting di Vercel:<br>` +
-                       `<ul>` +
-                       `<li>API_KEY (Gemini): ${statusKeys.Gemini_Key}</li>` +
-                       `<li>GROQ_API_KEY: ${statusKeys.Groq_Key}</li>` +
-                       `</ul><br>` +
-                       `Silakan buka Vercel > Settings > Environment Variables.`
-            });
+        // TAVILY SEARCH
+        let internetContext = "";
+        const cleanLastMsg = history[history.length - 1].content;
+        const keywords = ["siapa", "kapan", "dimana", "pemenang", "terbaru", "berita", "skor", "2025", "lirik", "lagu"];
+        if (TAVILY_KEY && keywords.some(w => cleanLastMsg.toLowerCase().includes(w))) {
+            try {
+                const sResp = await fetch("https://api.tavily.com/search", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ api_key: TAVILY_KEY, query: cleanLastMsg })
+                });
+                const sData = await sResp.json();
+                if (sData.results) internetContext = `\n[DATA INTERNET]:\n${sData.results.map(r => r.content).join('\n')}\n`;
+            } catch (e) { console.log("Tavily Skip"); }
         }
 
-        // 2. TES KONEKSI GROQ (Percobaan Pertama)
-        let errorLog = "";
+        const systemPrompt = `Nama kamu Flora. AI Cerdas & Rapi. ${internetContext} ATURAN: Output WAJIB HTML (<b>, <br>, <ul>). JANGAN Markdown.`;
+
+        // ROUTER
         try {
-            const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-            const chatCompletion = await groq.chat.completions.create({
-                messages: [{ role: "user", content: "Tes koneksi. Jawab singkat 'Halo'." }],
-                model: "mixtral-8x7b-32768",
-            });
-            return res.json({ reply: `<b>✅ SUKSES! Groq Berhasil Konek.</b><br>Balasan: ${chatCompletion.choices[0]?.message?.content}` });
-        } catch (errGroq) {
-            errorLog += `<b>Groq Error:</b> ${errGroq.message}<br>`;
+            if (selectedModel === "gemini") {
+                return res.json({ reply: await callGemini(history, systemPrompt) });
+            } 
+            else if (selectedModel === "anabot") {
+                return res.json({ reply: await callAnabot(history, systemPrompt) });
+            } 
+            else {
+                // Default: GROQ (Gemma 2)
+                return res.json({ reply: await callGroq(history, systemPrompt) });
+            }
+        } catch (err) {
+            console.error(`❌ ${selectedModel} Gagal:`, err.message);
+            // Fallback ke Anabot kalau Groq/Gemini mati
+            try {
+                const backup = await callAnabot(history, systemPrompt);
+                return res.json({ reply: backup });
+            } catch (fatal) {
+                return res.json({ reply: "Maaf, Flora sedang gangguan sistem." });
+            }
         }
-
-        // 3. TES KONEKSI ANABOT (Jika Groq Gagal)
-        try {
-            const url = `https://anabot.my.id/api/ai/geminiOption?prompt=Halo&type=Chat&apikey=freeApikey`;
-            const resp = await fetch(url);
-            const data = await resp.json();
-            return res.json({ reply: `<b>✅ Anabot Hidup!</b><br>Tapi Groq mati.<br><br>Log Error:<br>${errorLog}` });
-        } catch (errAnabot) {
-            errorLog += `<b>Anabot Error:</b> ${errAnabot.message}<br>`;
-        }
-
-        // JIKA SEMUA GAGAL
-        return res.json({ 
-            reply: `<b>☠️ SEMUA SERVER MATI</b><br>` +
-                   `Versi Node: ${statusKeys.Node_Version}<br>` +
-                   `Status Key: Gemini (${statusKeys.Gemini_Key}), Groq (${statusKeys.Groq_Key})<br><br>` +
-                   `<b>Detail Error:</b><br>${errorLog}` 
-        });
 
     } catch (err) {
-        return res.status(500).json({ reply: `System Crash: ${err.message}` });
+        return res.status(500).json({ reply: `Error: ${err.message}` });
     }
 };
