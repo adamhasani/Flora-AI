@@ -1,70 +1,83 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
-// (Kita biarkan import-nya biar gak perlu hapus package.json, tapi gak dipake dulu)
+// Inisialisasi
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const TAVILY_KEY = process.env.TAVILY_API_KEY; // Pastikan sudah diset di Vercel
 
 module.exports = async (req, res) => {
-    // 1. HEADER SETUP
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
     try {
         const { history } = req.body;
-        if (!history || !Array.isArray(history)) return res.status(400).json({ error: 'History invalid' });
+        if (!history) return res.status(400).json({ error: 'No history' });
 
-        // Prompt Natural (Untuk Anabot)
-        const promptNatural = `
-            Nama kamu Flora. Kamu asisten AI yang cerdas, santai, dan to-the-point.
-            Jawablah pertanyaan dengan jelas dan ringkas.
-        `;
+        // Ambil pertanyaan terakhir user
+        const lastMessage = history[history.length - 1].content;
 
-        // ============================================================
-        // LAYER 1: ANABOT API (ONLY)
-        // Backup Groq & Gemini DIBUANG DULU buat ngetes
-        // ============================================================
-        try {
-            console.log("Mencoba Layer 1: Anabot API...");
-            
-            const conversationText = history.map(msg => {
-                return `${msg.role === 'user' ? 'User' : 'Flora'}: ${msg.content}`;
-            }).join('\n');
+        // --- DETEKTOR BERITA (Router) ---
+        // Cek apakah user nanya soal berita/fakta terkini?
+        const keywords = ["siapa", "kapan", "dimana", "pemenang", "terbaru", "harga", "cuaca", "berita", "2024", "2025", "2026"];
+        const isNewsQuestion = keywords.some(word => lastMessage.toLowerCase().includes(word));
 
-            const finalPrompt = `[System: ${promptNatural}]\n\nRiwayat Chat:\n${conversationText}\n\nFlora:`;
-            const apiUrl = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(finalPrompt)}&type=Chat&apikey=freeApikey`;
-            
-            const response = await fetch(apiUrl, { method: 'GET' });
-            const data = await response.json();
-            
-            // Parsing Data
-            let replyText = "";
-            if (data.data && data.data.result && data.data.result.text) {
-                replyText = data.data.result.text;
-            } else if (data.result && data.result.text) {
-                replyText = data.result.text;
-            } else if (data.result) {
-                replyText = data.result;
-            } else if (typeof data === 'string') {
-                replyText = data;
-            } else {
-                replyText = "Maaf, format jawaban aneh.";
+        let contextInternet = "";
+
+        // JIKA PERTANYAAN BERITA & ADA KUNCI TAVILY -> CARI DI INTERNET
+        if (isNewsQuestion && TAVILY_KEY) {
+            try {
+                console.log("🔍 Sedang Googling via Tavily...");
+                const response = await fetch("https://api.tavily.com/search", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        api_key: TAVILY_KEY,
+                        query: lastMessage,
+                        search_depth: "basic",
+                        include_answer: true,
+                        max_results: 3
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Ambil ringkasan dari internet
+                if (data.results) {
+                    const texts = data.results.map(r => r.content).join("\n\n");
+                    contextInternet = `\n[DATA DARI INTERNET]:\n${texts}\n\n(Gunakan data di atas untuk menjawab pertanyaan user)`;
+                }
+            } catch (err) {
+                console.error("Gagal searching:", err);
             }
-            
-            // SUKSES
-            return res.status(200).json({ reply: replyText });
-
-        } catch (err1) {
-            console.error("Layer 1 Gagal:", err1.message);
-            
-            // LANGSUNG ERROR (JANGAN KE BACKUP)
-            return res.status(200).json({ 
-                reply: `⚠️ TEST MODE: Anabot Gagal/Error. <br>Pesan Error: ${err1.message}` 
-            });
         }
 
-    } catch (finalError) {
-        return res.status(500).json({ reply: `Error Sistem Fatal: ${finalError.message}` });
+        // --- TAHAP AKHIR: GROQ MENJAWAB ---
+        // Kita kasih Groq: Instruksi + Data Internet (kalau ada) + Chat History
+        const systemPrompt = {
+            role: "system",
+            content: `Nama kamu Flora. Kamu asisten AI yang cerdas.
+            
+            ATURAN:
+            1. Jika ada [DATA DARI INTERNET], gunakan itu sebagai sumber kebenaran (Fakta Real-time).
+            2. Gunakan format HTML (<b>, <br>, <ul>).
+            3. Jawab to-the-point.
+            ${contextInternet}` // <--- Data internet masuk sini
+        };
+
+        const finalMessages = [systemPrompt, ...history];
+
+        const chatCompletion = await groq.chat.completions.create({
+            messages: finalMessages,
+            model: "llama-3.3-70b-versatile",
+            temperature: 0.6,
+        });
+
+        const reply = chatCompletion.choices[0]?.message?.content || "Error.";
+
+        return res.status(200).json({ reply: reply });
+
+    } catch (error) {
+        return res.status(500).json({ reply: `Error: ${error.message}` });
     }
 };
