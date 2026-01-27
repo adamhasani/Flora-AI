@@ -1,4 +1,196 @@
+<!DOCTYPE html>
+<html>
 <head>
     <title>Flora AI</title>
-    <link rel="stylesheet" href="style.css"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
 </head>
+<body>
+
+    <div class="header">
+        <div class="header-title">Flora AI 🌸</div>
+        <select id="model-selector" class="model-select">
+            <option value="groq">⚡ Cepat</option>
+            <option value="anabot">🚙 Anabot (Gemini v1)</option>
+            <option value="gemini">🧠 Gemini Pro</option>
+        </select>
+    </div>
+
+    <div id="chat-box">
+        <div class="msg bot">Halo! 👋<br>Aku Flora. Pilih model di atas dan ayo ngobrol!</div>
+    </div>
+    
+    <div class="loader-overlay" id="loader">
+        <div class="spinner"></div>
+        <div id="status-text" style="margin-top:15px; font-weight:600; color:#333;">Memproses...</div>
+    </div>
+
+    <div class="input-wrapper">
+        <div id="draft-area">
+            <div class="preview-row">
+                <img id="preview-img" src="">
+                <div class="preview-info"><b>Foto Siap</b><br>Pilih gaya di bawah 👇</div>
+                <button class="btn-close" onclick="cancelImage()">✕</button>
+            </div>
+            <div class="style-scroll">
+                <div class="chip" onclick="selectStyle(this, 'anime style')">Anime</div>
+                <div class="chip" onclick="selectStyle(this, 'cyberpunk style')">Cyberpunk</div>
+                <div class="chip" onclick="selectStyle(this, 'ghibli style')">Ghibli</div>
+                <div class="chip" onclick="selectStyle(this, '3d render style')">3D Disney</div>
+                <div class="chip" onclick="selectStyle(this, 'realistic 8k')">Realistik</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-cam" onclick="document.getElementById('fileInput').click()">📷</button>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect()">
+            <input type="text" id="pesan" placeholder="Ketik pesan..." onkeypress="if(event.key === 'Enter') kirim()">
+            <button class="btn-send" onclick="kirim()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // SEMUA SCRIPT KAMU DI SINI (JANGAN DIUBAH)
+        let chatHistory = []; 
+        let currentImageBase64 = null;
+        let selectedStylePrompt = "";
+
+        const chatBox = document.getElementById("chat-box");
+        const loader = document.getElementById("loader");
+        const statusText = document.getElementById("status-text");
+        const draftArea = document.getElementById("draft-area");
+        const previewImg = document.getElementById("preview-img");
+        const modelSelector = document.getElementById("model-selector");
+
+        async function handleFileSelect() {
+            const file = document.getElementById("fileInput").files[0];
+            if (!file) return;
+            statusText.innerText = "Memuat...";
+            loader.style.display = "flex";
+            const compressed = await compressImage(file);
+            currentImageBase64 = compressed;
+            previewImg.src = compressed;
+            draftArea.style.display = "block";
+            loader.style.display = "none";
+        }
+
+        function selectStyle(el, style) {
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            selectedStylePrompt = style;
+        }
+
+        function cancelImage() {
+            currentImageBase64 = null;
+            selectedStylePrompt = "";
+            draftArea.style.display = "none";
+            document.getElementById("fileInput").value = "";
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        }
+
+        async function kirim() {
+            const txt = document.getElementById("pesan").value;
+            if (!txt && !currentImageBase64) return;
+
+            if (currentImageBase64) {
+                let finalPrompt = txt;
+                if (selectedStylePrompt) {
+                    finalPrompt = finalPrompt ? `${finalPrompt}, ${selectedStylePrompt}` : selectedStylePrompt;
+                }
+                if (!finalPrompt) { alert("Pilih gaya dulu!"); return; }
+
+                const htmlUser = `<div class="user-content"><div class="user-text">${finalPrompt}</div><img class="mini-thumb" src="${currentImageBase64}"></div>`;
+                addBubbleHTML(htmlUser, 'user');
+                prosesEditDirect(currentImageBase64, finalPrompt);
+                document.getElementById("pesan").value = "";
+                cancelImage(); 
+            } else {
+                addBubbleHTML(txt, 'user');
+                document.getElementById("pesan").value = "";
+                statusText.innerText = "Mengetik...";
+                loader.style.display = "flex";
+                chatHistory.push({ role: "user", content: txt });
+                try {
+                    const res = await fetch('/api', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ history: chatHistory, model: modelSelector.value })
+                    });
+                    const data = await res.json();
+                    addBubbleHTML(data.reply, 'bot');
+                    const cleanReply = data.reply.replace(/<[^>]*>?/gm, ''); 
+                    chatHistory.push({ role: "assistant", content: cleanReply });
+                } catch (e) { addBubbleHTML("Error koneksi.", 'bot'); }
+                loader.style.display = "none";
+            }
+        }
+
+        async function prosesEditDirect(img, prompt) {
+            statusText.innerText = "Mengirim ke AI...";
+            loader.style.display = "flex";
+            try {
+                const startRes = await fetch('/api/edit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ step: 'start', image: img, prompt: prompt })
+                });
+                const startData = await startRes.json();
+                if (!startData.success) throw new Error(startData.error || "Gagal");
+
+                const jobId = startData.jobId;
+                let attempts = 0;
+                const interval = setInterval(async () => {
+                    attempts++;
+                    statusText.innerText = `Melukis... ${attempts}%`;
+                    if (attempts > 60) { clearInterval(interval); loader.style.display = "none"; addBubbleHTML("⚠️ Kelamaan.", 'bot'); return; }
+                    try {
+                        const checkRes = await fetch('/api/edit', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ step: 'check', jobId: jobId })
+                        });
+                        const checkData = await checkRes.json();
+                        if (checkData.status === 'done') {
+                            clearInterval(interval); loader.style.display = "none";
+                            addBubbleHTML(`Selesai! ✨<br><img src="${checkData.url}">`, 'bot');
+                        } else if (checkData.status === 'failed') {
+                            clearInterval(interval); loader.style.display = "none";
+                            addBubbleHTML(`Gagal: ${checkData.error}`, 'bot');
+                        }
+                    } catch (e) {}
+                }, 2000);
+            } catch (e) { loader.style.display = "none"; addBubbleHTML(`Error: ${e.message}`, 'bot'); }
+        }
+
+        function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const scale = 800 / img.width;
+                        canvas.width = 800;
+                        canvas.height = img.height * scale;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.8));
+                    }
+                }
+            });
+        }
+
+        function addBubbleHTML(html, type) {
+            const div = document.createElement('div');
+            div.className = `msg ${type}`;
+            div.innerHTML = html;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+    </html>
