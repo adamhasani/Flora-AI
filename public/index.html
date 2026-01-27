@@ -1,50 +1,125 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <title>Flora AI - Ultra</title>
+    <title>Flora AI | Premium</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        :root { --primary: #007AFF; --bg: #FFFFFF; --secondary-bg: #F2F2F7; --text-main: #1C1C1E; --text-sub: #8E8E93; --glass: rgba(255, 255, 255, 0.7); }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); overflow: hidden; }
+        :root { 
+            --accent: #007AFF; 
+            --bg: #FAFAFB; 
+            --card: #FFFFFF;
+            --text-main: #1A1A1E; 
+            --text-sub: #929298; 
+        }
 
-        /* --- AUTH SCREEN --- */
-        #auth-screen { position: fixed; inset: 0; background: #FFF; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 30px; transition: 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-        .auth-card { width: 100%; max-width: 350px; text-align: center; }
-        .input-group { margin-bottom: 12px; text-align: left; }
-        .input-group label { font-size: 11px; font-weight: 800; color: var(--text-sub); margin-left: 10px; text-transform: uppercase; }
-        .input-group input { width: 100%; padding: 15px; border-radius: 16px; border: 1.5px solid #E5E5EA; background: var(--secondary-bg); outline: none; font-size: 15px; margin-top: 5px; }
-        .btn-main { width: 100%; padding: 16px; border-radius: 16px; border: none; background: var(--primary); color: #FFF; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(0,122,255,0.2); }
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: var(--bg); color: var(--text-main); overflow: hidden; 
+        }
+
+        /* --- AUTH SCREEN (ELEGANT MINIMALIST) --- */
+        #auth-screen { 
+            position: fixed; inset: 0; background: #FFF; z-index: 2000; 
+            display: flex; align-items: center; justify-content: center; 
+            padding: 40px; transition: 1s cubic-bezier(0.85, 0, 0.15, 1); 
+        }
+        .auth-card { width: 100%; max-width: 320px; text-align: left; }
+        .auth-card h2 { font-weight: 800; font-size: 28px; letter-spacing: -1px; margin: 20px 0 10px; }
+        .input-field { 
+            width: 100%; padding: 18px; border-radius: 20px; border: 1px solid #EFEFEF; 
+            background: #F9F9FB; outline: none; font-size: 15px; margin-bottom: 12px;
+            transition: 0.3s;
+        }
+        .input-field:focus { border-color: var(--accent); background: #FFF; box-shadow: 0 10px 20px rgba(0,0,0,0.03); }
+        .btn-auth { 
+            width: 100%; padding: 18px; border-radius: 20px; border: none; 
+            background: var(--text-main); color: #FFF; font-weight: 700; cursor: pointer; 
+            margin-top: 10px; transition: 0.3s;
+        }
+        .btn-auth:active { transform: scale(0.98); opacity: 0.9; }
 
         /* --- MAIN APP --- */
-        #main-app { display: none; height: 100%; flex-direction: column; }
-        
-        .header { background: var(--glass); backdrop-filter: blur(25px); padding: 15px 20px; border-bottom: 1px solid rgba(0,0,0,0.05); position: relative; overflow: hidden; z-index: 100; }
-        .ai-aura-container { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); display: flex; width: 140%; height: 80px; opacity: 0.5; pointer-events: none; }
-        .aura { position: absolute; width: 200px; height: 60px; filter: blur(45px); border-radius: 50%; animation: moveAura 10s infinite ease-in-out; }
-        .aura-1 { background: #007AFF; left: 10%; } .aura-2 { background: #AF52DE; right: 10%; animation-delay: -4s; }
-        @keyframes moveAura { 0%, 100% { transform: translate(-40px, 0px) scale(1); } 50% { transform: translate(40px, 10px) scale(1.3); } }
+        #main-app { display: none; height: 100%; flex-direction: column; opacity: 0; transition: 1s; }
 
-        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 30px; scroll-behavior: smooth; }
-        .msg.user { align-self: flex-end; background: var(--primary); color: #FFF; padding: 12px 20px; border-radius: 22px 22px 4px 22px; font-size: 14.5px; max-width: 85%; box-shadow: 0 4px 15px rgba(0,122,255,0.15); animation: slideUp 0.3s ease; }
-        .msg.bot { align-self: flex-start; background: transparent; color: var(--text-main); padding: 0; max-width: 100%; font-size: 16px; line-height: 1.8; animation: fadeIn 0.5s ease; }
-        .bot-label { font-size: 10px; font-weight: 900; color: var(--primary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; display: block; }
+        .header { 
+            padding: 25px 25px 15px; background: rgba(250, 250, 251, 0.8); 
+            backdrop-filter: blur(20px); z-index: 100; position: relative;
+        }
+        .nav-content { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 10; }
+        .logo-box { display: flex; align-items: center; gap: 12px; }
+        .logo-circle { 
+            width: 42px; height: 42px; background: #FFF; border-radius: 14px; 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 8px 15px rgba(0,0,0,0.05); font-size: 20px; 
+        }
         
-        /* INPUT AREA GLASSMORPISM */
-        .input-wrapper { padding: 10px 20px 30px 20px; background: transparent; position: relative; }
-        .input-container { background: rgba(242, 242, 247, 0.8); backdrop-filter: blur(10px); border-radius: 35px; padding: 8px 12px; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.5); }
-        #pesan { border: none; outline: none; background: transparent; padding: 10px 15px; font-size: 16px; width: 100%; color: var(--text-main); }
-        .action-row { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
-        .icon-btn { background: #FFF; border: 1px solid #EEE; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.2s; }
-        .icon-btn:active { transform: scale(0.9); }
-        .btn-send { background: var(--text-main); color: #FFF; border: none; padding: 10px 25px; border-radius: 20px; font-weight: 700; cursor: pointer; }
+        /* AURA ANIMATION */
+        .aura-bg {
+            position: absolute; top: -50px; left: 50%; transform: translateX(-50%);
+            width: 150%; height: 120px; filter: blur(50px); opacity: 0.3; pointer-events: none;
+            background: radial-gradient(circle, var(--accent), #AF52DE, transparent);
+            animation: flow 10s infinite alternate;
+        }
+        @keyframes flow { from { transform: translateX(-60%) scale(1); } to { transform: translateX(-40%) scale(1.2); } }
 
-        #draft-area { display: none; padding: 10px; border-radius: 20px; margin-bottom: 10px; background: var(--secondary-bg); }
-        .loader { display: none; padding: 0 20px 10px; gap: 4px; }
-        .dot { width: 5px; height: 5px; background: var(--primary); border-radius: 50%; animation: bounce 1.4s infinite; }
-        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } }
+        /* CHAT BOX */
+        #chat-box { flex: 1; overflow-y: auto; padding: 10px 25px; display: flex; flex-direction: column; gap: 40px; }
+        #chat-box::-webkit-scrollbar { width: 0; }
+
+        /* USER BUBBLE (MODERN NEUMORPHIC) */
+        .msg.user { 
+            align-self: flex-end; background: var(--accent); color: #FFF; 
+            padding: 14px 22px; border-radius: 24px 24px 4px 24px; 
+            font-size: 15px; font-weight: 500; max-width: 80%; 
+            box-shadow: 0 10px 20px rgba(0,122,255,0.2);
+            animation: popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* BOT CONTENT (BORDERLESS ELEGANT) */
+        .msg.bot { align-self: flex-start; width: 100%; animation: fadeIn 0.8s ease; }
+        .bot-tag { 
+            font-size: 10px; font-weight: 800; color: var(--accent); 
+            letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; display: block; 
+            opacity: 0.7;
+        }
+        .bot-text { font-size: 16px; line-height: 1.8; color: var(--text-main); font-weight: 400; }
+
+        /* INPUT AREA (FLOATING GLASS) */
+        .input-wrapper { padding: 20px 25px 40px; background: transparent; }
+        .glass-input { 
+            background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(0,0,0,0.03);
+            backdrop-filter: blur(15px); border-radius: 30px; padding: 10px;
+            display: flex; align-items: center; box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+        }
+        #pesan { 
+            flex: 1; border: none; outline: none; background: transparent; 
+            padding: 12px 15px; font-size: 16px; font-family: inherit;
+        }
+        .btn-circle {
+            width: 48px; height: 48px; border-radius: 50%; border: none; 
+            background: var(--text-main); color: #FFF; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: 0.3s;
+        }
+        .btn-circle:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+
+        /* IMAGE PREVIEW */
+        #draft-area { display: none; padding: 10px 25px; }
+        .img-preview-card { 
+            display: inline-flex; align-items: center; gap: 10px; 
+            background: #FFF; padding: 8px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .img-preview-card img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
+
+        /* UTILS */
+        .loader { display: none; gap: 5px; padding: 0 25px 20px; }
+        .dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: blink 1.4s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        @keyframes popUp { from { opacity: 0; transform: scale(0.9) translateY(10px); } }
         @keyframes fadeIn { from { opacity: 0; } }
     </style>
 </head>
@@ -52,135 +127,140 @@
 
     <div id="auth-screen">
         <div class="auth-card">
-            <span style="font-size: 60px;">🌸</span>
-            <h2 id="auth-title">Flora AI</h2>
-            <p id="auth-desc">Masuk untuk menyimpan riwayat chat kamu.</p>
-            <div class="input-group"><label>Username</label><input type="text" id="auth-user" placeholder="adam"></div>
-            <div class="input-group"><label>Password</label><input type="password" id="auth-pass" placeholder="••••••"></div>
-            <button class="btn-main" onclick="processAuth()">Masuk</button>
-            <div onclick="toggleMode()" style="margin-top:20px; font-size:13px; color:var(--text-sub); cursor:pointer;" id="auth-toggle">Belum punya akun? <b>Daftar</b></div>
-            <button style="background:none; border:none; color:var(--primary); margin-top:20px; cursor:pointer; font-weight:600;" onclick="enterApp('Guest')">Mode Tamu</button>
+            <div class="logo-circle" style="width: 60px; height: 60px; font-size: 30px; margin-bottom: 20px;">🌸</div>
+            <h2 id="title-text">Flora AI</h2>
+            <p style="color: var(--text-sub); font-size: 14px; margin-bottom: 30px;">Elevate your daily intelligence.</p>
+            
+            <input type="text" id="u-name" class="input-field" placeholder="Username">
+            <input type="password" id="u-pass" class="input-field" placeholder="Password">
+            
+            <button class="btn-auth" onclick="handleAuth()">Continue</button>
+            <p id="toggle-link" style="font-size: 13px; text-align: center; margin-top: 20px; cursor: pointer;" onclick="toggleAuth()">
+                Don't have an account? <span style="color: var(--accent); font-weight: 700;">Create one</span>
+            </p>
         </div>
     </div>
 
     <div id="main-app">
         <div class="header">
-            <div class="ai-aura-container"><div class="aura aura-1"></div><div class="aura aura-2"></div></div>
-            <div style="display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 40px; height: 40px; background: #FFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #EEE; font-size: 20px;">🌸</div>
-                    <div><div style="font-weight: 800; font-size: 17px; letter-spacing: -0.5px;">Flora AI</div><div id="u-tag" style="font-size: 9px; color: #34C759; font-weight: 800;">ACTIVE</div></div>
+            <div class="aura-bg"></div>
+            <div class="nav-content">
+                <div class="logo-box">
+                    <div class="logo-circle">🌸</div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 16px; letter-spacing: -0.5px;">Flora AI</div>
+                        <div style="font-size: 9px; font-weight: 700; color: #34C759; letter-spacing: 1px;">PREMIUM SYSTEM</div>
+                    </div>
                 </div>
-                <button onclick="logout()" style="background:none; border:none; color:red; font-size: 10px; font-weight: 800; cursor:pointer;">LOGOUT</button>
+                <button onclick="logout()" style="background:none; border:none; color:var(--text-sub); font-size: 10px; font-weight: 800; cursor:pointer;">SIGN OUT</button>
             </div>
         </div>
 
         <div id="chat-box"></div>
 
-        <div id="typing" class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div id="typing" class="loader">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+
+        <div id="draft-area">
+            <div class="img-preview-card">
+                <img id="p-img" src="">
+                <button onclick="removeImg()" style="border:none; background:none; color:red; font-size:12px; font-weight:800; cursor:pointer;">REMOVE</button>
+            </div>
+        </div>
 
         <div class="input-wrapper">
-            <div id="draft-area">
-                <img id="p-img" style="width: 50px; height: 50px; border-radius: 10px; object-fit: cover;">
-                <button onclick="clearImg()" style="float:right; border:none; background:none; color:red; font-weight:bold;">✕</button>
-            </div>
-            <div class="input-container">
-                <input type="text" id="pesan" placeholder="Tanyakan apa saja..." onkeypress="if(event.key==='Enter') kirim()">
-                <div class="action-row">
-                    <div style="display:flex; gap:10px;">
-                        <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📷</button>
-                        <button id="voice-btn" class="icon-btn" onclick="startVoice()">🎙️</button>
-                    </div>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImage()">
-                    <button class="btn-send" onclick="kirim()">Kirim</button>
-                </div>
+            <div class="glass-input">
+                <button onclick="document.getElementById('file-in').click()" style="background:none; border:none; font-size: 20px; cursor:pointer; padding: 0 10px;">📷</button>
+                <input type="file" id="file-in" hidden onchange="previewImg()">
+                <input type="text" id="pesan" placeholder="Ask Flora anything..." onkeypress="if(event.key==='Enter') send()">
+                <button class="btn-circle" onclick="send()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        let isReg = false; let curImg = null; let chatHistory = [];
-        
-        function initAuth() { 
-            const s = localStorage.getItem("flora_session"); 
-            if(s) {
-                // LOAD CHAT HISTORY
-                const savedHistory = localStorage.getItem(`chat_${s}`);
-                if(savedHistory) {
-                    chatHistory = JSON.parse(savedHistory);
-                    chatHistory.forEach(msg => addB(msg.content, msg.role === 'user' ? 'user' : 'bot', true));
-                } else {
-                    addB("Halo! Saya Flora AI. Ada yang bisa saya bantu hari ini?", 'bot');
-                }
-                enterApp(s); 
+        let isReg = false; let curImg = null; let chatHist = [];
+
+        function initAuth() {
+            const session = localStorage.getItem("flora_pro_session");
+            if(session) showApp(session);
+        }
+
+        function toggleAuth() {
+            isReg = !isReg;
+            document.getElementById("title-text").innerText = isReg ? "Create Account" : "Flora AI";
+            document.getElementById("toggle-link").innerHTML = isReg ? "Already have an account? <span style='color:var(--accent); font-weight:700;'>Sign In</span>" : "Don't have an account? <span style='color:var(--accent); font-weight:700;'>Create one</span>";
+        }
+
+        function handleAuth() {
+            const u = document.getElementById("u-name").value;
+            const p = document.getElementById("u-pass").value;
+            if(!u || !p) return;
+            if(isReg) { localStorage.setItem(`u_${u}`, p); alert("Account created!"); toggleAuth(); }
+            else { if(localStorage.getItem(`u_${u}`) === p) showApp(u); else alert("Invalid credentials"); }
+        }
+
+        function showApp(n) {
+            localStorage.setItem("flora_pro_session", n);
+            document.getElementById("auth-screen").style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById("auth-screen").style.display = "none";
+                document.getElementById("main-app").style.display = "flex";
+                setTimeout(() => document.getElementById("main-app").style.opacity = "1", 50);
+                loadHistory(n);
+            }, 800);
+        }
+
+        function logout() { localStorage.removeItem("flora_pro_session"); location.reload(); }
+
+        function previewImg() {
+            const f = document.getElementById("file-in").files[0];
+            const r = new FileReader();
+            r.onload = (e) => { curImg = e.target.result; document.getElementById("p-img").src = curImg; document.getElementById("draft-area").style.display = "block"; };
+            r.readAsDataURL(f);
+        }
+        function removeImg() { curImg = null; document.getElementById("draft-area").style.display = "none"; }
+
+        function loadHistory(n) {
+            const saved = localStorage.getItem(`hist_${n}`);
+            if(saved) {
+                chatHist = JSON.parse(saved);
+                chatHist.forEach(m => addMsg(m.content, m.role === 'user' ? 'user' : 'bot', true));
             }
         }
 
-        function toggleMode() {
-            isReg = !isReg;
-            document.getElementById("auth-title").innerText = isReg ? "Daftar Akun" : "Masuk ke Flora";
-            document.getElementById("auth-toggle").innerHTML = isReg ? "Sudah punya akun? <b>Login</b>" : "Belum punya akun? <b>Daftar Baru</b>";
-        }
-
-        function processAuth() {
-            const u = document.getElementById("auth-user").value; const p = document.getElementById("auth-pass").value;
-            if(!u || !p) return alert("Lengkapi data!");
-            if(isReg) { localStorage.setItem(`user_${u}`, p); alert("Berhasil daftar! Silakan login."); toggleMode(); }
-            else { if(localStorage.getItem(`user_${u}`) === p) enterApp(u); else alert("Salah!"); }
-        }
-
-        function enterApp(n) { 
-            localStorage.setItem("flora_session", n); 
-            document.getElementById("auth-screen").style.display = "none"; 
-            document.getElementById("main-app").style.display = "flex"; 
-            document.getElementById("u-tag").innerText = "USER: " + n.toUpperCase(); 
-        }
-
-        function logout() { localStorage.removeItem("flora_session"); location.reload(); }
-
-        // VOICE RECOGNITION (CANGGIH)
-        function startVoice() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'id-ID';
-            document.getElementById("voice-btn").style.background = "#FF3B30";
-            recognition.start();
-            recognition.onresult = (e) => {
-                document.getElementById("pesan").value = e.results[0][0].transcript;
-                document.getElementById("voice-btn").style.background = "#FFF";
-            };
-            recognition.onerror = () => document.getElementById("voice-btn").style.background = "#FFF";
-        }
-
-        function handleImage() {
-            const f = document.getElementById("fileInput").files[0];
-            const r = new FileReader(); r.readAsDataURL(f);
-            r.onload = (e) => { curImg = e.target.result; document.getElementById("p-img").src = curImg; document.getElementById("draft-area").style.display = "block"; };
-        }
-        function clearImg() { curImg = null; document.getElementById("draft-area").style.display = "none"; }
-
-        async function kirim() {
+        async function send() {
             const t = document.getElementById("pesan").value; if(!t && !curImg) return;
-            addB(t, 'user'); document.getElementById("pesan").value = ""; clearImg();
+            addMsg(t, 'user'); document.getElementById("pesan").value = ""; removeImg();
             document.getElementById("typing").style.display = "flex";
-            chatHistory.push({ role: "user", content: t });
-            
+            chatHist.push({ role: "user", content: t });
+
             try {
-                const res = await fetch('/api', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ history: chatHistory }) });
-                const d = await res.json(); 
-                addB(d.reply, 'bot');
-                chatHistory.push({ role: "assistant", content: d.reply });
-                // SAVE TO LOCALSTORAGE
-                const s = localStorage.getItem("flora_session");
-                localStorage.setItem(`chat_${s}`, JSON.stringify(chatHistory));
-            } catch (e) { addB("Koneksi bermasalah.", 'bot'); }
+                const res = await fetch('/api', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ history: chatHist })
+                });
+                const d = await res.json();
+                addMsg(d.reply, 'bot');
+                chatHist.push({ role: "assistant", content: d.reply });
+                localStorage.setItem(`hist_${localStorage.getItem("flora_pro_session")}`, JSON.stringify(chatHist));
+            } catch (e) { addMsg("System connection lost.", 'bot'); }
             document.getElementById("typing").style.display = "none";
         }
 
-        function addB(h, t, isLoad = false) {
-            const d = document.createElement('div'); d.className = `msg ${t}`;
-            d.innerHTML = t === 'bot' ? `<span class="bot-label">Flora AI</span>${h}` : h;
+        function addMsg(h, type, isLoad = false) {
+            const d = document.createElement('div');
+            d.className = `msg ${type}`;
+            if(type === 'bot') {
+                d.innerHTML = `<span class="bot-tag">FLORA RESPONSE</span><div class="bot-text">${h}</div>`;
+            } else {
+                d.innerHTML = h;
+            }
             document.getElementById("chat-box").appendChild(d);
-            if(!isLoad) document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
+            if(!isLoad) document.getElementById("chat-box").scrollTo({ top: document.getElementById("chat-box").scrollHeight, behavior: 'smooth' });
         }
     </script>
 </body>
