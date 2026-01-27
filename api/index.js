@@ -11,58 +11,65 @@ const groq = new Groq({ apiKey: groqKey || "dummy" });
 
 // --- 2. DEFINISI PROMPT ---
 const promptNatural = `
-    Nama kamu Flora. Kamu asisten AI yang cerdas, santai, dan to-the-point.
-    Jawablah pertanyaan dengan jelas dan ringkas.
+    Nama kamu Flora. Asisten AI cerdas, santai, dan membantu.
+    Jika menerima gambar, analisislah dengan detail.
 `;
 
 const promptStrictHTML = `
     Nama kamu Flora. Asisten AI cerdas & rapi.
-    ATURAN FORMATTING (WAJIB HTML):
-    1. Gunakan <b>Teks Tebal</b> untuk poin penting.
-    2. Gunakan <br> untuk ganti baris.
-    3. Gunakan <ul><li>List</li></ul> untuk daftar.
-    4. JANGAN gunakan Markdown (* atau #).
+    ATURAN FORMATTING (WAJIB HTML): Gunakan <b>tebal</b>, <br> baris baru, <ul><li>daftar</li></ul>. JANGAN Markdown.
 `;
 
 // --- 3. HELPER: PEMBERSIH ---
 const cleanResponse = (text) => {
     if (!text) return "";
-    let clean = text
-        .replace(/```html/g, '').replace(/```/g, '')
-        .replace(/\\n/g, "<br>").replace(/\n/g, "<br>")
-        .replace(/\\"/g, '"').replace(/\\u003c/g, "<")
-        .replace(/\\u003e/g, ">").replace(/\\/g, "")
-        .trim();
-    if (clean.startsWith('"') && clean.endsWith('"')) clean = clean.slice(1, -1);
-    return clean;
+    return text.replace(/```html/g, '').replace(/```/g, '').replace(/\n/g, "<br>").trim();
 };
 
-// --- HELPER BARU: PENERJEMAH ROLE (Biar Gak Error Pas Pindah Model) ---
-const normalizeHistoryForGroq = (history) => {
+// --- 4. HELPER BARU: NORMALISASI HISTORY (Kunci Fitur Gambar) ---
+
+// A. Untuk Groq & Anabot (Hanya Teks, HAPUS DATA GAMBAR)
+const normalizeForTextOnly = (history) => {
+    // Kita map ulang history, pastikan hanya properti 'role' dan 'content' yang diambil.
+    // Properti 'imageData' (base64) akan otomatis terbuang di sini.
     return history.map(msg => ({
-        // Kalau role-nya 'model' (bekas Gemini), ubah jadi 'assistant' (Standar Groq)
-        role: msg.role === 'model' ? 'assistant' : msg.role, 
-        content: msg.content
+        role: msg.role === 'model' ? 'assistant' : msg.role, // Standarisasi role
+        content: msg.content // Hanya ambil teksnya
     }));
 };
 
-const normalizeHistoryForGemini = (history) => {
-    return history.map(msg => ({
-        // Kalau role-nya 'assistant' (bekas Groq), ubah jadi 'model' (Standar Gemini)
-        role: msg.role === 'assistant' ? 'model' : msg.role,
-        parts: [{ text: msg.content }]
-    }));
+// B. Untuk Gemini (Support Multimodal/Gambar)
+const normalizeForGemini = (history) => {
+    return history.map(msg => {
+        let role = msg.role === 'assistant' ? 'model' : msg.role;
+        let parts = [{ text: msg.content }]; // Bagian teks dasar
+
+        // JIKA ADA DATA GAMBAR DI PESAN USER
+        // (Frontend akan mengirim properti 'imageData' berisi base64)
+        if (msg.role === 'user' && msg.imageData) {
+            // Hapus prefix data:image/...;base64, agar tinggal datanya saja
+            const base64Data = msg.imageData.split(',')[1];
+            parts.push({
+                inlineData: {
+                    data: base64Data,
+                    mimeType: "image/jpeg" // Asumsikan jpeg/png, Gemini cukup pintar menanganinya
+                }
+            });
+        }
+        return { role, parts };
+    });
 };
 
-// --- 4. FUNGSI EKSEKUTOR ---
 
-// A. ANABOT
+// --- 5. FUNGSI EKSEKUTOR ---
+
+// A. ANABOT (Teks Only)
 async function runAnabot(history) {
-    // Anabot butuh String biasa, jadi amanin aja semua role selain 'user' jadi 'Flora'
-    const conversationText = history.map(msg => {
+    // Pakai normalisasi Teks Only
+    const cleanHist = normalizeForTextOnly(history);
+    const conversationText = cleanHist.map(msg => {
         const roleName = msg.role === 'user' ? 'User' : 'Flora';
-        // Hapus tag HTML di history biar Anabot gak pusing bacanya
-        const cleanContent = msg.content.replace(/<[^>]*>/g, ''); 
+        const cleanContent = msg.content.replace(/<[^>]*>/g, ''); // Hapus HTML di input
         return `${roleName}: ${cleanContent}`;
     }).join('\n');
 
@@ -72,64 +79,46 @@ async function runAnabot(history) {
     const response = await fetch(apiUrl);
     const data = await response.json();
     
-    let replyText = "";
-    if (data.data?.result?.text) replyText = data.data.result.text;
-    else if (data.result?.text) replyText = data.result.text;
-    else if (data.result) replyText = data.result;
-    else replyText = typeof data === 'string' ? data : "";
-
-    if (!replyText || replyText.includes("Tidak dapat menemukan pola")) {
-        throw new Error("Respon Anabot Kosong/Gagal");
-    }
+    let replyText = data.data?.result?.text || data.result?.text || data.result || (typeof data === 'string' ? data : "");
+    if (!replyText || replyText.includes("Tidak dapat menemukan pola")) throw new Error("Respon Anabot Kosong");
     return cleanResponse(replyText);
 }
 
-// B. GROQ
+// B. GROQ (Teks Only)
 async function runGroq(history) {
     if (!groqKey) throw new Error("API Key GROQ Kosong!");
-    
-    // TERJEMAHKAN HISTORY DULU!
-    const cleanHistory = normalizeHistoryForGroq(history);
+    // Pakai normalisasi Teks Only (Gambar dibuang di sini)
+    const cleanHistory = normalizeForTextOnly(history);
     
     const messagesGroq = [{ role: "system", content: promptStrictHTML }, ...cleanHistory];
     const chatCompletion = await groq.chat.completions.create({
         messages: messagesGroq,
         model: "llama-3.3-70b-versatile",
-        temperature: 0.6,
-        max_tokens: 1024,
+        temperature: 0.6, max_tokens: 1024,
     });
     return cleanResponse(chatCompletion.choices[0]?.message?.content);
 }
 
-// C. GEMINI
+// C. GEMINI (Multimodal - Bisa Gambar)
 async function runGemini(history) {
     if (!geminiKey) throw new Error("API Key GEMINI Kosong!");
 
-    const safetySettings = [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-    ];
-
-    const modelGemini = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash", 
-        systemInstruction: promptNatural,
-        safetySettings: safetySettings
-    });
-
-    // TERJEMAHKAN HISTORY DULU!
-    const geminiHistory = normalizeHistoryForGemini(history);
+    // Pakai normalisasi Gemini (Gambar diproses di sini)
+    const geminiHistoryFull = normalizeForGemini(history);
     
-    // Ambil pesan terakhir user untuk dikirim (Gemini SDK butuh format ini)
-    const lastMsgContent = geminiHistory.pop().parts[0].text;
+    // Pisahkan pesan terakhir untuk dikirim via sendMessage
+    const lastMessageStruct = geminiHistoryFull.pop(); 
+    const historyContext = geminiHistoryFull;
+
+    const modelGemini = genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: promptNatural });
+    const chat = modelGemini.startChat({ history: historyContext });
     
-    const chat = modelGemini.startChat({ history: geminiHistory });
-    const result = await chat.sendMessage(lastMsgContent);
+    // Kirim array 'parts' yang bisa berisi teks DAN gambar
+    const result = await chat.sendMessage(lastMessageStruct.parts);
     return cleanResponse(result.response.text());
 }
 
-// --- 5. MAIN HANDLER ---
+// --- 6. MAIN HANDLER ---
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -137,32 +126,34 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
+        // Frontend sekarang mengirim struktur: { role, content, imageData (opsional) }
         const { history, model } = req.body;
         const selectedModel = model ? model.toLowerCase() : 'anabot';
 
         let result = "";
-        
+        let label = "";
+
         try {
             if (selectedModel === 'groq') {
                 result = await runGroq(history);
-                result = `<b>[⚡ Groq]</b><br>${result}`;
+                label = "⚡ Groq";
             } 
             else if (selectedModel === 'gemini') {
                 result = await runGemini(history);
-                result = `<b>[🧠 Gemini]</b><br>${result}`;
+                // Cek apakah pesan terakhir user ada gambarnya untuk label
+                const lastUserMsg = history[history.length-1];
+                label = lastUserMsg.imageData ? "🧠 Gemini Vision" : "🧠 Gemini";
             } 
             else {
                 result = await runAnabot(history);
-                result = `<b>[🚙 Anabot]</b><br>${result}`;
+                label = "🚙 Anabot";
             }
             
-            return res.json({ reply: result });
+            return res.json({ reply: `<b>[${label}]</b><br>${result}` });
 
         } catch (modelError) {
-            console.error(`Error pada ${selectedModel}:`, modelError);
-            return res.json({ 
-                reply: `<b>[❌ ${selectedModel.toUpperCase()} ERROR]</b><br>${modelError.message}<br><br><i>(Mode Backup dimatikan, silakan pilih model lain manual)</i>` 
-            });
+            console.error(`Error ${selectedModel}:`, modelError);
+            return res.json({ reply: `<b>[❌ ${selectedModel.toUpperCase()} ERROR]</b><br>${modelError.message}` });
         }
 
     } catch (sysError) {
