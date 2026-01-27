@@ -1,117 +1,147 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Flora AI Web</title>
+    <title>Flora AI</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        /* --- 1. SETTING DASAR BIAR GAK OFFSIDE --- */
+        /* --- 1. SETTING DASAR --- */
+        * { box-sizing: border-box; }
         body { 
-            font-family: 'Inter', sans-serif; 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
             padding: 0; margin: 0; 
             background: #f0f2f5; 
-            height: 100dvh; /* Pakai dvh biar pas di HP */
+            height: 100dvh; 
             display: flex; flex-direction: column; 
-            overflow-x: hidden; /* Anti geser samping */
+            overflow: hidden;
         }
         
-        .header { background: white; padding: 15px; text-align: center; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 10; }
+        /* HEADER */
+        .header { background: white; padding: 15px; text-align: center; font-weight: 600; box-shadow: 0 1px 5px rgba(0,0,0,0.05); z-index: 10; color: #333; }
         
-        /* --- 2. CHAT AREA --- */
+        /* CHAT AREA */
         #chat-box { 
             flex: 1; 
             overflow-y: auto; 
             padding: 15px; 
-            display: flex; flex-direction: column; gap: 12px; 
+            display: flex; flex-direction: column; gap: 15px; 
             scroll-behavior: smooth;
         }
         
-        /* Bubble Chat */
         .msg { 
             padding: 12px 16px; 
-            border-radius: 18px; 
-            max-width: 80%; /* Batasi lebar maksimal biar gak offside */
+            border-radius: 20px; 
+            max-width: 85%; 
             font-size: 14px; 
             line-height: 1.5;
-            word-wrap: break-word; /* Biar teks panjang turun ke bawah */
             position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         .user { background: #0084ff; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .bot { background: white; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        
-        /* PENTING: Gambar Hasil di Chat (Biar gak offside) */
-        .msg img { 
-            width: 100%;       /* Ikuti lebar bubble */
-            height: auto;      /* Tinggi menyesuaikan */
-            border-radius: 12px; 
-            margin-top: 8px; 
-            display: block;
-            object-fit: cover;
-        }
+        .bot { background: white; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .msg img { width: 100%; border-radius: 12px; margin-top: 8px; display: block; }
 
-        /* --- 3. INPUT AREA & PREVIEW --- */
+        /* --- 2. AREA INPUT (DRAFTING) --- */
         .input-wrapper {
             background: white;
             border-top: 1px solid #eee;
-            padding: 10px;
+            padding: 10px 10px 20px 10px; /* Padding bawah agak gede buat HP */
             display: flex;
             flex-direction: column;
             gap: 10px;
+            transition: 0.3s;
         }
 
-        /* PREVIEW GAMBAR KECIL (Style Gemini) */
-        #preview-box {
-            display: none; /* Sembunyi kalau gak ada gambar */
-            width: fit-content;
-            position: relative;
-            margin-left: 5px;
+        /* CONTAINER PREVIEW (Muncul pas upload) */
+        #draft-area {
+            display: none; /* Sembunyi default */
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 10px;
+            border: 1px solid #eee;
+        }
+
+        /* 1. Baris Gambar + Tombol Hapus */
+        .preview-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
         }
         #preview-img {
-            width: 60px;  /* Lebar KECIL */
-            height: 60px; /* Tinggi KECIL */
-            object-fit: cover; /* Potong rapi kotak */
-            border-radius: 8px;
+            width: 60px; height: 60px;
+            object-fit: cover;
+            border-radius: 10px;
             border: 2px solid #0084ff;
         }
-        #btn-cancel {
-            position: absolute; top: -5px; right: -5px;
-            background: #ff4444; color: white;
-            width: 20px; height: 20px;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px; cursor: pointer; border: 2px solid white;
+        .preview-info { flex: 1; font-size: 12px; color: #666; }
+        .btn-close {
+            background: #ff4444; color: white; border: none;
+            width: 25px; height: 25px; border-radius: 50%;
+            font-weight: bold; cursor: pointer;
         }
 
-        /* Controls Bawah */
-        .controls { display: flex; gap: 8px; align-items: center; }
+        /* 2. Baris Bubble Style (Horizontal Scroll) */
+        .style-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        .style-scroll::-webkit-scrollbar { display: none; } /* Hide Chrome */
+
+        .chip {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: white;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #555;
+        }
+        .chip.active {
+            background: #0084ff;
+            color: white;
+            border-color: #0084ff;
+        }
+
+        /* BARIS INPUT UTAMA */
+        .controls { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
         
-        /* Dropdown Gaya */
-        select { 
-            padding: 10px; border-radius: 20px; border: 1px solid #ddd; 
-            background: #f8f9fa; outline: none; font-size: 12px; 
-            max-width: 90px;
+        .btn-cam { 
+            background: #eee; border: none; 
+            width: 40px; height: 40px; border-radius: 50%; 
+            font-size: 20px; cursor: pointer; color: #555;
+            display: flex; align-items: center; justify-content: center;
         }
 
         input[type="text"] { 
-            flex: 1; padding: 12px 15px; 
+            flex: 1; padding: 12px 18px; 
             border-radius: 25px; border: 1px solid #ddd; 
             outline: none; background: #f0f2f5; font-size: 14px; 
         }
-        
-        button { border: none; background: none; padding: 5px; cursor: pointer; }
-        .icon-btn { font-size: 22px; color: #555; }
-        .send-btn { color: #0084ff; font-size: 22px; margin-left: 5px; }
 
-        /* LOADER */
+        .btn-send { 
+            background: #0084ff; color: white; border: none;
+            width: 45px; height: 45px; border-radius: 50%;
+            font-size: 18px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,132,255,0.3);
+        }
+
+        /* LOADER OVERLAY */
         .loader-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.85); z-index: 999;
+            background: rgba(255,255,255,0.9); z-index: 999;
             justify-content: center; align-items: center; flex-direction: column;
         }
         .spinner {
-            width: 40px; height: 40px; border: 4px solid #f3f3f3; 
+            width: 40px; height: 40px; border: 4px solid #eee; 
             border-top: 4px solid #0084ff; border-radius: 50%; 
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -121,7 +151,7 @@
     <div class="header">Flora AI 🌸</div>
 
     <div id="chat-box">
-        <div class="msg bot">Halo! 👋<br>Mau edit foto? Klik kamera, pilih gaya, lalu kirim.</div>
+        <div class="msg bot">Halo! 👋<br>Klik ikon kamera 📷 di bawah untuk mulai edit foto.</div>
     </div>
 
     <div class="loader-overlay" id="loader">
@@ -131,93 +161,116 @@
 
     <div class="input-wrapper">
         
-        <div id="preview-box">
-            <img id="preview-img" src="">
-            <div id="btn-cancel" onclick="cancelImage()">✕</div>
+        <div id="draft-area">
+            <div class="preview-row">
+                <img id="preview-img" src="">
+                <div class="preview-info">
+                    <b>Foto Terpilih</b><br>
+                    Pilih gaya di bawah ini 👇
+                </div>
+                <button class="btn-close" onclick="cancelImage()">✕</button>
+            </div>
+
+            <div class="style-scroll">
+                <div class="chip" onclick="selectStyle(this, 'anime style')">Anime</div>
+                <div class="chip" onclick="selectStyle(this, 'cyberpunk style')">Cyberpunk</div>
+                <div class="chip" onclick="selectStyle(this, 'ghibli style')">Ghibli</div>
+                <div class="chip" onclick="selectStyle(this, '3d render style')">3D Disney</div>
+                <div class="chip" onclick="selectStyle(this, 'pencil sketch')">Sketsa</div>
+                <div class="chip" onclick="selectStyle(this, 'oil painting')">Lukisan</div>
+                <div class="chip" onclick="selectStyle(this, 'realistic 8k')">Realistik</div>
+            </div>
         </div>
 
         <div class="controls">
-            <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📷</button>
+            <button class="btn-cam" onclick="document.getElementById('fileInput').click()">📷</button>
             <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect()">
             
-            <select id="styleInput">
-                <option value="">✨ Normal</option>
-                <option value="anime style">Anime</option>
-                <option value="cyberpunk style">Cyberpunk</option>
-                <option value="ghibli style">Ghibli</option>
-                <option value="3d render style">3D Disney</option>
-                <option value="pencil sketch style">Sketsa</option>
-                <option value="realistic 8k">Realistik</option>
-            </select>
-
-            <input type="text" id="pesan" placeholder="Ketik..." onkeypress="if(event.key === 'Enter') kirim()">
+            <input type="text" id="pesan" placeholder="Ketik pesan..." onkeypress="if(event.key === 'Enter') kirim()">
             
-            <button class="send-btn" onclick="kirim()">➤</button>
+            <button class="btn-send" onclick="kirim()">➤</button>
         </div>
     </div>
 
     <script>
         let currentImageBase64 = null;
+        let selectedStylePrompt = ""; // Menyimpan gaya yang dipilih
+
         const chatBox = document.getElementById("chat-box");
         const loader = document.getElementById("loader");
         const statusText = document.getElementById("status-text");
-        const previewBox = document.getElementById("preview-box");
+        const draftArea = document.getElementById("draft-area");
         const previewImg = document.getElementById("preview-img");
-        const styleInput = document.getElementById("styleInput");
 
-        // 1. PREVIEW GAMBAR (Jadi Kecil)
+        // 1. SAAT PILIH GAMBAR
         async function handleFileSelect() {
             const file = document.getElementById("fileInput").files[0];
             if (!file) return;
 
-            statusText.innerText = "Memuat preview...";
-            loader.style.display = "flex"; // Tampil loader sebentar
+            statusText.innerText = "Memuat...";
+            loader.style.display = "flex";
             
             const compressed = await compressImage(file);
             currentImageBase64 = compressed;
             
-            // Masukkan ke kotak kecil
+            // Tampilkan Area Draft
             previewImg.src = compressed;
-            previewBox.style.display = "block"; // Munculkan kotak
+            draftArea.style.display = "block";
             
             loader.style.display = "none";
         }
 
-        function cancelImage() {
-            currentImageBase64 = null;
-            previewBox.style.display = "none"; // Sembunyikan kotak
-            document.getElementById("fileInput").value = "";
-            styleInput.value = ""; 
+        // 2. PILIH STYLE (BUBBLE)
+        function selectStyle(el, style) {
+            // Hapus warna biru dari tombol lain
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            
+            // Warnai tombol ini
+            el.classList.add('active');
+            selectedStylePrompt = style;
         }
 
-        // 2. KIRIM PESAN
+        // 3. BATAL
+        function cancelImage() {
+            currentImageBase64 = null;
+            selectedStylePrompt = "";
+            draftArea.style.display = "none";
+            document.getElementById("fileInput").value = "";
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        }
+
+        // 4. KIRIM
         async function kirim() {
             const txt = document.getElementById("pesan").value;
-            const style = styleInput.value;
 
             if (!txt && !currentImageBase64) return;
 
             // --- MODE GAMBAR ---
             if (currentImageBase64) {
-                // Gabung Prompt
+                // Gabung Prompt Manual + Style Bubble
                 let finalPrompt = txt;
-                if (style) finalPrompt = finalPrompt ? `${finalPrompt}, ${style}` : style;
-                if (!finalPrompt) { alert("Pilih gaya atau ketik sesuatu!"); return; }
+                if (selectedStylePrompt) {
+                    finalPrompt = finalPrompt ? `${finalPrompt}, ${selectedStylePrompt}` : selectedStylePrompt;
+                }
 
-                // Tampilkan Chat User (Gambar Kecil Disini juga bisa diatur, tapi standar WA besar)
-                // Kita buat tampilan chat user juga rapi
+                if (!finalPrompt) { 
+                    alert("Klik salah satu gaya di atas gambar dulu!"); 
+                    return; 
+                }
+
+                // Tampil di chat
                 addBubble(`<b>${finalPrompt}</b><br><img src="${currentImageBase64}">`, 'user');
-                
                 prosesEditDirect(currentImageBase64, finalPrompt);
                 
+                // Reset
                 document.getElementById("pesan").value = "";
-                cancelImage(); // Hilangkan preview setelah kirim
+                cancelImage(); 
             } 
-            // --- MODE TEXT ---
+            // --- MODE CHAT BIASA ---
             else {
                 addBubble(txt, 'user');
                 document.getElementById("pesan").value = "";
-                statusText.innerText = "Bot mengetik...";
+                statusText.innerText = "Mengetik...";
                 loader.style.display = "flex";
                 try {
                     const res = await fetch('/api', {
@@ -232,13 +285,12 @@
             }
         }
 
-        // 3. PROSES BACKEND
+        // 5. PROSES BACKEND (Sama persis kayak sebelumnya)
         async function prosesEditDirect(img, prompt) {
             statusText.innerText = "Mengirim ke AI...";
             loader.style.display = "flex";
 
             try {
-                // Start
                 const startRes = await fetch('/api/edit', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -249,11 +301,10 @@
 
                 const jobId = startData.jobId;
 
-                // Looping Cek Status
                 let attempts = 0;
                 const interval = setInterval(async () => {
                     attempts++;
-                    statusText.innerText = `Melukis... ${attempts}%`; // Fake persen biar keren
+                    statusText.innerText = `Melukis... ${attempts}%`;
                     
                     if (attempts > 60) { 
                         clearInterval(interval);
@@ -273,7 +324,6 @@
                         if (checkData.status === 'done') {
                             clearInterval(interval);
                             loader.style.display = "none";
-                            // Hasil Gambar Besar
                             addBubble(`Selesai! ✨<br><img src="${checkData.url}">`, 'bot');
                         } else if (checkData.status === 'failed') {
                             clearInterval(interval);
@@ -289,7 +339,6 @@
             }
         }
 
-        // 4. UTILS
         function compressImage(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
