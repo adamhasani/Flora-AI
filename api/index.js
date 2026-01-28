@@ -5,11 +5,63 @@ const Groq = require("groq-sdk");
 const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
 const groqKey = getCleanKey(process.env.GROQ_API_KEY);
 const geminiKey = getCleanKey(process.env.GEMINI_API_KEY || process.env.API_KEY);
+const mistralKey = getCleanKey(process.env.MISTRAL_API_KEY); // WAJIB ADA!
 
 const groq = new Groq({ apiKey: groqKey || "dummy" });
 const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 
 const promptFlora = "Nama kamu Flora AI. Jawab santai, singkat, dan jelas dalam Bahasa Indonesia. Gunakan HTML <b> untuk tebal.";
+
+// --- 1. MISTRAL VISION (PIXTRAL) - UTAMA ---
+async function runMistralVision(message, imageBase64) {
+    if (!mistralKey) throw new Error("MISTRAL_API_KEY belum dipasang di Vercel!");
+
+    // Mistral API butuh format 'data:image/jpeg;base64,...'
+    // Jadi imageBase64 dari frontend sudah aman (biasanya sudah ada header data:...)
+
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${mistralKey}`
+        },
+        body: JSON.stringify({
+            model: "pixtral-12b-2409", // <--- INI MODEL VISION MISTRAL
+            messages: [
+                { role: "system", content: promptFlora },
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: message || "Jelaskan gambar ini" },
+                        { type: "image_url", image_url: url = imageBase64 } 
+                    ]
+                }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(`Mistral Error: ${err.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+}
+
+// --- 2. GEMINI VISION (BACKUP) ---
+async function runGeminiVision(message, imageBase64) {
+    // Kita pakai Gemini 2.0 Flash (Backup kalau Pixtral gagal)
+    const base64Data = imageBase64.split(",")[1];
+    const mimeType = imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"));
+    const imagePart = { inlineData: { data: base64Data, mimeType: mimeType } };
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: promptFlora });
+    const result = await model.generateContent([message || "Jelaskan gambar ini", imagePart]);
+    return result.response.text();
+}
 
 // --- HANDLER UTAMA ---
 module.exports = async (req, res) => {
@@ -20,64 +72,38 @@ module.exports = async (req, res) => {
 
     const { history = [], message, image } = req.body;
 
-    // ==========================================
-    // 🔍 FITUR RAHASIA: CEK MODEL
-    // ==========================================
-    if (message && message.toLowerCase() === "cek model") {
-        try {
-            if (!groqKey) throw new Error("Key Groq Kosong");
-            
-            // Minta daftar model ke Groq
-            const list = await groq.models.list();
-            
-            // Filter biar rapi
-            const allModels = list.data.map(m => m.id);
-            const visionModels = allModels.filter(id => id.includes("vision"));
-            const textModels = allModels.filter(id => !id.includes("vision") && !id.includes("whisper"));
-
-            let reply = "<b>📡 HASIL SCAN MODEL GROQ:</b><br><br>";
-            
-            reply += "👁️ <b>MODEL VISION (Mata):</b><br>";
-            if (visionModels.length > 0) {
-                visionModels.forEach(m => reply += `- ${m}<br>`);
-            } else {
-                reply += "❌ Tuh kan! Tidak ada model Vision yang aktif!<br>";
-            }
-
-            reply += "<br>📝 <b>MODEL TEKS (Otak):</b><br>";
-            textModels.forEach(m => reply += `- ${m}<br>`);
-
-            return res.json({ reply: reply });
-
-        } catch (e) {
-            return res.json({ reply: `Gagal Cek Model: ${e.message}` });
-        }
-    }
-    // ==========================================
-
-    // --- JALUR VISION (GAMBAR) ---
-    // Sementara kita pakai Gemini 1.5 Flash (Tanpa embel-embel latest)
-    // Karena kita belum tau model vision Groq yg bener apa (tunggu hasil cek model kamu)
+    // --- VISION (GAMBAR) ---
     if (image) {
+        // Coba MISTRAL (PIXTRAL) Dulu
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptFlora });
-            const base64Data = imageBase64.split(",")[1];
-            const mimeType = imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"));
+            console.log("Mencoba Mistral Pixtral...");
+            const reply = await runMistralVision(message, image);
+            return res.json({ reply: `<b>[Flora Vision (Pixtral)]</b><br>${reply}` });
+        } catch (e1) {
+            console.log("Mistral Gagal:", e1.message);
             
-            const result = await model.generateContent([
-                message || "Jelaskan gambar ini", 
-                { inlineData: { data: base64Data, mimeType: mimeType } }
-            ]);
-            return res.json({ reply: `<b>[Flora Vision (Gemini)]</b><br>${result.response.text()}` });
-        } catch (e) {
-            return res.json({ reply: `<b>[GAGAL]</b><br>Tunggu hasil 'cek model' dulu.<br>Error Gemini: ${e.message}` });
+            // Backup ke GEMINI
+            try {
+                console.log("Switch ke Gemini 2.0...");
+                const reply = await runGeminiVision(message, image);
+                return res.json({ reply: `<b>[Flora Vision (Gemini 2.0)]</b><br>${reply}` });
+            } catch (e2) {
+                return res.json({ 
+                    reply: `<b>[GAGAL TOTAL]</b><br>Mistral & Gemini menyerah.<br><small>Mistral: ${e1.message}<br>Gemini: ${e2.message}</small>` 
+                });
+            }
         }
     }
 
-    // --- JALUR TEKS BIASA ---
+    // --- TEKS (GROQ LLAMA 3.3) ---
     try {
+        if (!groqKey) throw new Error("Key Groq Kosong");
         const resText = await groq.chat.completions.create({
-            messages: [{ role: "user", content: message }],
+            messages: [
+                { role: "system", content: promptFlora },
+                ...history.map(m => ({ role: m.role==='model'?'assistant':'user', content: m.content.replace(/<[^>]*>/g,'') })),
+                { role: "user", content: message }
+            ],
             model: "llama-3.3-70b-versatile"
         });
         return res.json({ reply: `<b>[Flora AI]</b><br>${resText.choices[0]?.message?.content}` });
