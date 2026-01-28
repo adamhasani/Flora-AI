@@ -449,7 +449,7 @@
             if(window.innerWidth <= 768) toggleSidebar();
         }
 
-        // --- [UPDATED] INPUT CONTROLLER ---
+        // --- INPUT CONTROLLER ---
         function processInput() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
@@ -483,44 +483,74 @@
             input.focus();
         }
 
-        // --- [NEW] DRAW REQUEST (FIX: DIRECT LINK) ---
+        // --- [NEW] DRAW REQUEST (DREAMFACE POLLING) ---
         async function sendDrawRequest(prompt) {
             const input = document.getElementById('user-input');
-            
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
 
-            // Tampilkan User Bubble
+            // 1. UI Awal
             addBubble(`🎨 Gambarkan: ${prompt}`, 'user', null, false, true);
-            input.value = ""; // Clear input
-
-            // Loading Bubble
+            input.value = "";
             const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
-                const res = await fetch('/api/draw', {
+                // STEP 1: MULAI JOB (Submit ke DreamFace)
+                const resStart = await fetch('/api/draw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt })
+                    body: JSON.stringify({ step: 'start', prompt: prompt })
                 });
 
-                if (!res.ok) throw new Error("Gagal request gambar.");
-                const data = await res.json();
+                const dataStart = await resStart.json();
+                if(!dataStart.success) throw new Error(dataStart.error || "Gagal memulai job.");
 
-                if (!data.success) throw new Error(data.error || "Gagal membuat gambar.");
+                // Kita simpan "Kunci Rahasia" (jobData) dari server
+                const jobData = dataStart.jobData;
 
-                document.getElementById(loadingId).remove();
+                // STEP 2: CEK STATUS SETIAP 3 DETIK (Polling)
+                let attempts = 0;
+                const maxAttempts = 30; // Max 90 detik nunggu
                 
-                // [FIX] GUNAKAN URL LANGSUNG (TANPA PROXY WESERV)
-                // Ini untuk menghindari Rate Limit "Anonymous Tier" dari Pollinations.
-                const finalUrl = data.url; 
-                
-                addBubble(`Nih gambarnya: <b>${prompt}</b> ✨`, 'bot', finalUrl, false, true);
+                const pollInterval = setInterval(async () => {
+                    attempts++;
+                    try {
+                        const resCheck = await fetch('/api/draw', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ step: 'check', jobData: jobData })
+                        });
+                        const dataCheck = await resCheck.json();
+
+                        // A. SUKSES
+                        if (dataCheck.status === 'done') {
+                            clearInterval(pollInterval);
+                            document.getElementById(loadingId).remove();
+                            // Tampilkan Gambar
+                            addBubble(`✨ Jadi nih: <b>${prompt}</b>`, 'bot', dataCheck.url, false, true);
+                        } 
+                        // B. GAGAL
+                        else if (dataCheck.status === 'failed') {
+                            clearInterval(pollInterval);
+                            throw new Error("Gambar ditolak server.");
+                        }
+                        // C. TIMEOUT
+                        else if (attempts >= maxAttempts) {
+                            clearInterval(pollInterval);
+                            throw new Error("Waktu habis (Timeout).");
+                        }
+                        // D. MASIH LOADING -> Loop lagi...
+
+                    } catch (errLoop) {
+                        clearInterval(pollInterval);
+                        document.getElementById(loadingId).innerHTML = `<div style="color:red">Error: ${errLoop.message}</div>`;
+                    }
+                }, 3000); // Cek tiap 3 detik
 
             } catch (e) {
                 document.getElementById(loadingId).innerHTML = `
                     <div style="color:#ff6b6b; padding:10px;">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Gagal Melukis: ${e.message}
+                        <i class="fa-solid fa-triangle-exclamation"></i> Gagal: ${e.message}
                     </div>`;
             }
         }
@@ -568,7 +598,6 @@
                         if (dataCheck.status === 'done') {
                             clearInterval(pollInterval);
                             document.getElementById(loadingId).remove();
-                            // [FIX] Gunakan URL Langsung juga untuk hasil edit
                             const finalUrl = dataCheck.url;
                             addBubble(`✨ Selesai! Hasil edit: <b>${txt}</b>`, 'bot', finalUrl, false, true);
                         } 
@@ -671,7 +700,6 @@
                 } else {
                     let imgHtml = '';
                     if (img) {
-                        // Tambahkan referrerpolicy agar browser tidak mengirim header yang bikin error
                         imgHtml = `<div style="margin-bottom:10px;"><a href="${img}" target="_blank"><img src="${img}" referrerpolicy="no-referrer" style="width:100%; max-width:300px; border-radius:10px; border:1px solid #444;"></a></div>`;
                     }
 
