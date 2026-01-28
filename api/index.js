@@ -11,10 +11,9 @@ const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 
 const promptFlora = "Nama kamu Flora AI. Jawab santai, singkat, dan jelas dalam Bahasa Indonesia. Gunakan HTML <b> untuk tebal.";
 
-// --- 1. GROQ VISION ---
+// --- 1. GROQ VISION (GANTI MODEL KE 90B) ---
 async function runGroq(history, message, imageBase64) {
-    // Cek Key dengan teliti
-    if (!groqKey || groqKey === "dummy") throw new Error("API Key Groq BELUM DIPASANG di Vercel!");
+    if (!groqKey || groqKey === "dummy") throw new Error("API Key Groq Kosong/Salah");
 
     let messages = [{ role: "system", content: promptFlora }];
     history.forEach(m => messages.push({ role: m.role==='model'?'assistant':'user', content: m.content.replace(/<[^>]*>/g,'') }));
@@ -26,17 +25,22 @@ async function runGroq(history, message, imageBase64) {
         ]
     });
 
+    // KITA PAKAI YANG 90B KARENA YANG 11B SUDAH DIMATIKAN GROQ
     const res = await groq.chat.completions.create({
-        messages, model: "llama-3.2-11b-vision-preview", max_tokens: 512
+        messages, 
+        model: "llama-3.2-90b-vision-preview", 
+        max_tokens: 512
     });
     return res.choices[0]?.message?.content;
 }
 
-// --- 2. GEMINI VISION (VERSI POLOS) ---
+// --- 2. GEMINI VISION (GANTI KE 2.0 EXPERIMENTAL) ---
 async function runGemini(history, message, imageBase64) {
-    // Pakai nama model yang PALING STANDAR (jangan pakai latest/v2/v3 dulu)
-    // Kalau ini 404 juga, berarti Google API lagi down atau Key Gemini bermasalah.
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptFlora });
+    // Kita pakai 2.0 Flash Experimental.
+    // Kenapa? Karena 1.5 error 404 (Gak ketemu).
+    // Sedangkan 2.0 tadi error 429 (Limit). 
+    // Mending kena Limit (masih ada harapan) daripada 404 (mati total).
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp", systemInstruction: promptFlora });
     
     const base64Data = imageBase64.split(",")[1];
     const mimeType = imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"));
@@ -58,35 +62,35 @@ module.exports = async (req, res) => {
     const { history = [], message, image } = req.body;
     let errorLog = "";
 
-    // --- VISION ---
+    // --- JALUR GAMBAR (VISION) ---
     if (image) {
-        // 1. Coba GROQ
+        // 1. Coba GROQ (Prioritas Utama)
         try {
             const resGroq = await runGroq(history, message, image);
-            return res.json({ reply: `<b>[Flora Vision (Llama)]</b><br>${resGroq}` });
+            return res.json({ reply: `<b>[Flora Vision (Llama 90B)]</b><br>${resGroq}` });
         } catch (e1) {
             console.error("Groq Gagal:", e1.message);
-            errorLog += `<b>Groq Error:</b> ${e1.message}<br>`;
+            errorLog += `<b>Groq (90B) Error:</b> ${e1.message}<br>`;
         }
 
-        // 2. Coba GEMINI (Kalau Groq Gagal)
+        // 2. Coba GEMINI (Backup)
         try {
             const resGemini = await runGemini(history, message, image);
-            return res.json({ reply: `<b>[Flora Vision (Gemini)]</b><br>${resGemini}` });
+            return res.json({ reply: `<b>[Flora Vision (Gemini 2.0)]</b><br>${resGemini}` });
         } catch (e2) {
             console.error("Gemini Gagal:", e2.message);
-            errorLog += `<b>Gemini Error:</b> ${e2.message}`;
+            errorLog += `<b>Gemini (2.0) Error:</b> ${e2.message}`;
         }
 
-        // LAPORAN ERROR LENGKAP
         return res.json({ 
-            reply: `<b>[GAGAL TOTAL]</b><br>Kedua AI menyerah.<br><br>📝 <b>Laporan Error:</b><br>${errorLog}<br><br>👉 <i>Cek Environment Variables di Vercel kamu.</i>` 
+            reply: `<b>[GAGAL LAGI]</b><br>Duh, apes banget hari ini.<br><br>${errorLog}` 
         });
     }
 
-    // --- TEXT ONLY ---
+    // --- JALUR TEKS BIASA ---
     try {
-        if (!groqKey || groqKey === "dummy") throw new Error("API Key Groq Kosong");
+        if (!groqKey) throw new Error("Key Groq Kosong");
+        // Pakai Llama 3.3 (Ini masih hidup dan paling stabil buat teks)
         const resText = await groq.chat.completions.create({
             messages: [{ role: "user", content: message }],
             model: "llama-3.3-70b-versatile"
