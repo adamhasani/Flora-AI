@@ -463,12 +463,11 @@
             }
 
             // 2. CEK: Apakah Perintah Gambar (Text-to-Image)?
-            // Regex mendeteksi: "gambarkan...", "buatkan gambar...", "/img..."
             const drawRegex = /^(gambarkan|buatkan gambar|buat gambar|\/img|\/draw)\s+(.+)/i;
             const match = txt.match(drawRegex);
 
             if (match) {
-                const prompt = match[2]; // Ambil teks promptnya saja
+                const prompt = match[2]; 
                 sendDrawRequest(prompt);
                 return;
             }
@@ -477,14 +476,14 @@
             sendMessage();
         }
 
-        // [NEW] SHORTCUT BUTTON "BUAT GAMBAR"
+        // BUTTON "BUAT GAMBAR"
         function activateDrawMode() {
             const input = document.getElementById('user-input');
             input.value = "Gambarkan ";
             input.focus();
         }
 
-        // --- [NEW] DRAW REQUEST (api/draw.js) ---
+        // --- [NEW] DRAW REQUEST (FIX: DIRECT LINK) ---
         async function sendDrawRequest(prompt) {
             const input = document.getElementById('user-input');
             
@@ -512,9 +511,9 @@
 
                 document.getElementById(loadingId).remove();
                 
-                // Tampilkan Gambar
-                // Pakai Proxy biar aman dari CORS
-                const finalUrl = `https://images.weserv.nl/?url=${encodeURIComponent(data.url)}`;
+                // [FIX] GUNAKAN URL LANGSUNG (TANPA PROXY WESERV)
+                // Ini untuk menghindari Rate Limit "Anonymous Tier" dari Pollinations.
+                const finalUrl = data.url; 
                 
                 addBubble(`Nih gambarnya: <b>${prompt}</b> ✨`, 'bot', finalUrl, false, true);
 
@@ -527,7 +526,7 @@
         }
 
 
-        // --- EDIT IMAGE LOGIC (api/edit.js) ---
+        // --- EDIT IMAGE LOGIC (FIX: DIRECT LINK) ---
         async function sendImageToEditor() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
@@ -569,8 +568,9 @@
                         if (dataCheck.status === 'done') {
                             clearInterval(pollInterval);
                             document.getElementById(loadingId).remove();
-                            const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(dataCheck.url)}`;
-                            addBubble(`✨ Selesai! Hasil edit: <b>${txt}</b>`, 'bot', proxyUrl, false, true);
+                            // [FIX] Gunakan URL Langsung juga untuk hasil edit
+                            const finalUrl = dataCheck.url;
+                            addBubble(`✨ Selesai! Hasil edit: <b>${txt}</b>`, 'bot', finalUrl, false, true);
                         } 
                         else if (dataCheck.status === 'failed') {
                             clearInterval(pollInterval);
@@ -671,7 +671,8 @@
                 } else {
                     let imgHtml = '';
                     if (img) {
-                        imgHtml = `<div style="margin-bottom:10px;"><a href="${img}" target="_blank" download="flora-image.jpg"><img src="${img}" style="width:100%; max-width:300px; border-radius:10px; border:1px solid #444;"></a></div>`;
+                        // Tambahkan referrerpolicy agar browser tidak mengirim header yang bikin error
+                        imgHtml = `<div style="margin-bottom:10px;"><a href="${img}" target="_blank"><img src="${img}" referrerpolicy="no-referrer" style="width:100%; max-width:300px; border-radius:10px; border:1px solid #444;"></a></div>`;
                     }
 
                     let formatted = text
