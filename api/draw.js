@@ -1,116 +1,158 @@
-// Nama File: api/draw.js
+// Nama File: api/edit.js
+const FormData = require('form-data');
 
-// CONFIG DARI KODE KAMU
-const CONFIG = {
-    FLUX_API: 'https://flux2.cloud/api/web/generate-basic',
-    BYPASS_API: 'https://api.nekolabs.web.id/tools/bypass/cf-turnstile',
-    SITE_URL: 'https://flux2.cloud',
-    SITE_KEY: '0x4AAAAAACBE7FYcn9PdfENx',
-    TIMEOUT: 60000, // 60 Detik
-    MAX_RETRIES: 3
-};
+const API_BASE = 'https://www.createimg.com?api=v1';
 
-const HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36',
-    'Content-Type': 'application/json',
-    'origin': 'https://flux2.cloud',
-    'referer': 'https://flux2.cloud/'
-};
+// --- HELPER 1: BYPASS TURNSTILE ---
+async function bypassTurnstile() {
+    const url = 'https://api.nekolabs.web.id/tools/bypass/cf-turnstile?url=https://www.createimg.com/&siteKey=0x4AAAAAABggkaHPwa2n_WBx';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.success) throw new Error('Gagal bypass Cloudflare Turnstile');
+    return data.result;
+}
 
-// --- HELPER 1: BYPASS TURNSTILE (Sesuai kode kamu) ---
-async function bypassTurnstile(retry = 0) {
-    console.log(`🔄 Bypass Turnstile (Percobaan ${retry + 1})...`);
-    
-    try {
-        const url = `${CONFIG.BYPASS_API}?url=${encodeURIComponent(CONFIG.SITE_URL)}&siteKey=${CONFIG.SITE_KEY}`;
-        const res = await fetch(url, { 
-            headers: { 'User-Agent': HEADERS['User-Agent'] },
-            // Vercel kadang butuh signal abort untuk timeout manual, tapi fetch default oke
+// --- HELPER 2: LOGIC CREATEIMG ---
+const CreateImg = {
+    generateSecurity: () => Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+
+    initialize: async (token, security) => {
+        const params = new URLSearchParams({ token, security, action: 'turnstile', module: 'edit' });
+        const res = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
+            body: params
+        });
+        return await res.json();
+    },
+
+    upload: async (imageBuffer, token, security, server) => {
+        const form = new FormData();
+        form.append('token', token);
+        form.append('security', security);
+        form.append('action', 'upload');
+        form.append('server', server);
+        form.append('image', imageBuffer, 'image.jpg');
+
+        const res = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { ...form.getHeaders(), 'User-Agent': 'Mozilla/5.0' },
+            body: form
+        });
+        return await res.json();
+    },
+
+    submitTask: async (prompt, filename, token, security, server) => {
+        const params = new URLSearchParams({
+            token, security, action: 'edit', server,
+            prompt, negative: '', seed: Math.floor(Math.random() * 1000000000), size: 1024, // HD Size
+            'files[image]': filename
         });
 
-        if (!res.ok) throw new Error(`Bypass HTTP Error: ${res.status}`);
-        
-        const data = await res.json();
-        if (!data.success || !data.result) {
-            if (retry < CONFIG.MAX_RETRIES - 1) {
-                await new Promise(r => setTimeout(r, 2000)); // Tunggu 2 detik
-                return bypassTurnstile(retry + 1);
-            }
-            throw new Error('Bypass Failed: Token not found');
-        }
-        return data.result;
+        const res = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
+            body: params
+        });
+        return await res.json();
+    },
 
-    } catch (e) {
-        if (retry < CONFIG.MAX_RETRIES - 1) {
-            await new Promise(r => setTimeout(r, 2000));
-            return bypassTurnstile(retry + 1);
-        }
-        throw e;
+    checkQueue: async (id, queue, token, security, server) => {
+        const params = new URLSearchParams({ id, queue, module: 'edit', action: 'queue', server, token, security });
+        const res = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
+            body: params
+        });
+        return await res.json();
+    },
+
+    getFinalUrl: async (id, token, security, server) => {
+        // 1. Get History (Filename)
+        const histParams = new URLSearchParams({ id, action: 'history', server, module: 'edit', token, security });
+        const histRes = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
+            body: histParams
+        });
+        const histData = await histRes.json();
+        if (!histData.status) throw new Error("Gagal mengambil history");
+
+        // 2. Get Output (URL)
+        const outParams = new URLSearchParams({ id: histData.file, action: 'output', server, module: 'edit', token, security, page: 'home', lang: 'en' });
+        const outRes = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
+            body: outParams
+        });
+        const outData = await outRes.json();
+        return outData.data; // URL Gambar
     }
-}
+};
 
-// --- HELPER 2: GENERATE IMAGE ---
-async function generateImage(prompt, token, width, height) {
-    console.log("🎨 Mengirim request ke Flux2...");
-    const res = await fetch(CONFIG.FLUX_API, {
-        method: 'POST',
-        headers: HEADERS,
-        body: JSON.stringify({ 
-            prompt: prompt, 
-            turnstile_token: token, 
-            width: width, 
-            height: height 
-        })
-    });
-
-    if (!res.ok) throw new Error(`Flux API Error: ${res.status}`);
-    const data = await res.json();
-    
-    if (!data.image_url) throw new Error('Gagal: Flux tidak mengembalikan URL gambar.');
-    return data.image_url; // Ini biasanya format base64 (data:image/jpeg;base64,...)
-}
-
-// --- HANDLER UTAMA VERCEL ---
+// --- HANDLER VERCEL ---
 module.exports = async (req, res) => {
-    // 1. Setup Header CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        const { prompt } = req.body;
+        const { step, image, prompt, jobData } = req.body;
 
-        if (!prompt) {
-            return res.status(400).json({ success: false, error: "Prompt kosong!" });
+        // PINTU 1: START (Upload & Submit)
+        if (step === 'start') {
+            if (!image || !prompt) return res.status(400).json({ error: "Gambar/Prompt kosong" });
+
+            // 1. Setup Session
+            const token = await bypassTurnstile();
+            const security = CreateImg.generateSecurity();
+            const initData = await CreateImg.initialize(token, security);
+            
+            if (!initData.status) throw new Error("Gagal inisialisasi server createimg");
+            const server = initData.server;
+
+            // 2. Convert Base64 ke Buffer
+            const buffer = Buffer.from(image.split(',')[1], 'base64');
+
+            // 3. Upload Gambar
+            const uploadRes = await CreateImg.upload(buffer, token, security, server);
+            if (!uploadRes.status) throw new Error("Gagal upload gambar");
+
+            // 4. Submit Task Edit
+            const taskRes = await CreateImg.submitTask(prompt, uploadRes.filename.image, token, security, server);
+            if (!taskRes.status) throw new Error("Gagal memulai edit");
+
+            // 5. Kembalikan Job Data ke Client (Untuk Polling)
+            return res.json({
+                success: true,
+                jobData: {
+                    id: taskRes.id,
+                    queue: taskRes.queue,
+                    server, token, security // Simpan kredensial untuk cek status nanti
+                }
+            });
         }
 
-        // Default Ukuran (Bisa diatur 256-1024)
-        // Kita set 512 atau 1024. 512 lebih cepat, 1024 lebih bagus.
-        const width = 1024;
-        const height = 1024;
+        // PINTU 2: CHECK (Cek Antrian)
+        else if (step === 'check') {
+            const { id, queue, server, token, security } = jobData;
 
-        // 1. Dapatkan Token Bypass
-        const token = await bypassTurnstile();
-        
-        // 2. Generate Gambar
-        const imageUrl = await generateImage(prompt, token, width, height);
+            // 1. Cek Antrian
+            const queueRes = await CreateImg.checkQueue(id, queue, token, security, server);
+            
+            // Masih ngantri
+            if (queueRes.pending > 0) {
+                return res.json({ status: 'pending', pending: queueRes.pending });
+            }
 
-        // 3. Kirim Result
-        // Flux2 mengembalikan Base64 Data URI, jadi kita kirim langsung ke frontend
-        // Frontend kita sudah support base64 karena tag <img> bisa membacanya.
-        return res.status(200).json({ 
-            success: true, 
-            url: imageUrl, 
-            details: `Flux2 Cloud | ${width}x${height}`
-        });
+            // Sudah selesai -> Ambil URL
+            const finalUrl = await CreateImg.getFinalUrl(id, token, security, server);
+            return res.json({ status: 'done', url: finalUrl });
+        }
 
-    } catch (error) {
-        console.error("Draw Error:", error.message);
-        return res.status(500).json({ 
-            success: false, 
-            error: `Gagal membuat gambar: ${error.message}. (Mungkin API Bypass sedang sibuk)` 
-        });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ success: false, error: e.message });
     }
 };
