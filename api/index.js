@@ -11,23 +11,28 @@ const groqKey = getCleanKey(process.env.GROQ_API_KEY);
 const tavilyKey = getCleanKey(process.env.TAVILY_API_KEY);
 
 // ==========================================
-// 2. HELPER: CLEANING SERVICE (FIX DOUBLE LABEL)
+// 2. HELPER: CLEANING SERVICE (FIX LABEL & FORMAT)
 // ==========================================
 
-// Fungsi ini yang bertugas membuang label "sampah" yang ditulis AI
+// Fungsi pembersih Super
 function cleanReply(text) {
     if (typeof text !== 'string') return text;
     
     let clean = text;
-    // Hapus format HTML bold di awal: <b>[Flora...]</b><br>
-    clean = clean.replace(/^<b>\[.*?\]<\/b><br>/i, "");
-    // Hapus format teks biasa: [Flora (Mistral)] atau Flora: di awal kalimat
-    clean = clean.replace(/^\[Flora.*?\]/i, "").replace(/^Flora:/i, "");
-    // Hapus spasi kosong di awal/akhir
+
+    // 1. Hapus Label Sampah (AI suka nulis nama sendiri)
+    clean = clean.replace(/^<b>\[.*?\]<\/b><br>/i, ""); // Hapus bold label
+    clean = clean.replace(/^\[Flora.*?\]/i, "").replace(/^Flora:/i, ""); // Hapus text label
+    
+    // 2. FIX BINTANG DOUBLE (Masalah User)
+    // Mengubah **kata** menjadi <b>kata</b> agar rapi dan tidak ada bintang.
+    clean = clean.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    
+    // 3. Hapus spasi berlebih
     return clean.trim();
 }
 
-// Bersihkan History sebelum dikirim ke AI
+// Bersihkan History
 function getCleanHistory(history) {
     return history.map(msg => ({
         role: msg.role === 'model' ? 'assistant' : msg.role,
@@ -48,17 +53,18 @@ function needsSearch(text) {
     return triggers.some(t => text.toLowerCase().includes(t));
 }
 
-// --- [PROMPT DIPERBAIKI (LEBIH STRICT)] ---
+// --- [PROMPT BARU: ON POINT & RAPI] ---
 const promptFlora = (context) => `
 Kamu adalah Flora AI.
-Gaya bicara: Santai, akrab, cerdas, dan informatif (Bahasa Indonesia Gaul).
+Gaya: Singkat, Padat, Jelas, & Gaul.
 
-ATURAN FORMAT (WAJIB):
-1. GUNAKAN HTML <b>...</b> untuk menebalkan poin penting.
-2. JANGAN PERNAH menulis label/namamu sendiri di awal kalimat (seperti "[Flora]" atau "[Mistral]"). Langsung jawab isinya saja.
-3. Jika menyebutkan daftar/list, gunakan bullet points (-) agar rapi.
+ATURAN PENTING:
+1. JAWABAN HARUS ON POINT. Jangan kebanyakan basa-basi pembuka/penutup.
+2. JANGAN GUNAKAN FORMAT MARKDOWN BINTANG DUA (**). Gunakan tag HTML <b>...</b> untuk menebalkan kata.
+3. Jika membuat list, gunakan bullet points (-) yang rapi.
+4. DILARANG MENULIS LABEL NAMA SENDIRI (Seperti [Flora] dll).
 
-${context ? `[DATA WEB REAL-TIME / BERITA TERBARU]:\n${context}\n\nJawab pertanyaan user secara akurat berdasarkan data di atas!` : ""}
+${context ? `[DATA TERBARU]:\n${context}\n\nJawab to-the-point berdasarkan data ini!` : ""}
 `;
 
 // ==========================================
@@ -79,17 +85,16 @@ async function searchWeb(rawQuery) {
 }
 
 // ==========================================
-// 4. UTAMA: GEMINI (3.0 -> 2.0 FUTURE PROOF)
+// 4. UTAMA: GEMINI (3.0 -> 2.0 -> 1.5)
 // ==========================================
 async function runGemini(message, imageBase64, searchContext, history) {
     if (geminiKeys.length === 0) throw new Error("No Gemini Keys");
 
-    // Tetap pakai urutan CANGGIH sesuai request awal
     const MODEL_PRIORITY = [
-        "gemini-3.0-pro-exp",       
-        "gemini-3.0-flash-preview", 
-        "gemini-2.0-flash-exp",     
-        "gemini-1.5-flash"          
+        "gemini-3.0-preview",       
+        "gemini-3-preview", 
+        "gemini-2.5-flash",     
+        "gemini-2.0-flash"          
     ]; 
 
     const chatHistory = history.map(msg => ({
@@ -103,10 +108,10 @@ async function runGemini(message, imageBase64, searchContext, history) {
                 const genAI = new GoogleGenerativeAI(key);
                 const model = genAI.getGenerativeModel({ model: modelName, systemInstruction: promptFlora(searchContext) });
                 
-                let label = "Flora (Gemini)";
-                if (modelName.includes("3.0")) label = "Flora (Gemini 3.0)";
-                else if (modelName.includes("2.0")) label = "Flora (Gemini 2.0)";
-                else label = "Flora (Gemini 1.5)";
+                // --- LABEL STYLE BARU ---
+                let label = "FLORA GEMINI";
+                if (modelName.includes("3.0")) label = "FLORA GEMINI 3.0";
+                else if (modelName.includes("2.0")) label = "FLORA GEMINI 2.0";
 
                 if (imageBase64) {
                     const base64Data = imageBase64.split(",")[1];
@@ -134,7 +139,7 @@ async function runMistral(message, imageBase64, searchContext, history) {
     if (!mistralKey) throw new Error("No Mistral Key");
     
     const model = imageBase64 ? "pixtral-12b-2409" : "mistral-small-latest";
-    const label = "Flora (Mistral)";
+    const label = "FLORA MISTRAL"; // Label Rapi Kapital
 
     let messages = [{ role: "system", content: promptFlora(searchContext) }];
     
@@ -166,7 +171,7 @@ async function runMistral(message, imageBase64, searchContext, history) {
 // 6. BACKUP 2: POLLINATIONS
 // ==========================================
 async function runPollinations(message, imageBase64, searchContext) {
-    const label = "Flora (Pollinations)";
+    const label = "FLORA POLLINATIONS"; // Label Rapi Kapital
     const res = await fetch("https://text.pollinations.ai/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -192,7 +197,7 @@ async function runGroq(message, imageBase64, searchContext, history) {
     if (!groqKey) throw new Error("No Groq Key");
     
     const model = imageBase64 ? "llama-3.2-90b-vision-preview" : "llama-3.3-70b-versatile";
-    const label = "Flora (Groq)";
+    const label = "FLORA GROQ"; // Label Rapi Kapital
     
     let messages = [{ role: "system", content: promptFlora(searchContext) }];
     
@@ -263,8 +268,8 @@ module.exports = async (req, res) => {
             }
         }
 
-        // --- STEP 3: FINAL CLEANING (IMPORTANT) ---
-        // Bersihkan output dari AI jika dia bandel nulis label sendiri
+        // --- STEP 3: FINAL CLEANING (AUTO-FIX BINTANG DOUBLE) ---
+        // Ini kuncinya: Apapun output AI, kita paksa ubah **teks** jadi <b>teks</b>
         const cleanText = cleanReply(result.text);
 
         return res.json({ 
