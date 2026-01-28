@@ -53,6 +53,13 @@
             flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;
             padding-right: 5px;
         }
+        
+        /* --- [NEW] DATE HEADER STYLE --- */
+        .history-date-header {
+            font-size: 10px; font-weight: 700; color: #666; 
+            margin: 15px 0 5px 0; text-transform: uppercase; letter-spacing: 1px;
+        }
+
         .history-item {
             padding: 10px 12px; border-radius: 8px; cursor: pointer;
             color: var(--text-muted); font-size: 13px;
@@ -97,7 +104,7 @@
         /* --- 4. FIX OFFSIDE CODE BLOCKS (PATEN) --- */
         .bot-content {
             flex: 1; color: #e1e1e3; line-height: 1.6; 
-            min-width: 0; /* Mencegah flex item melebar melebihi parent */
+            min-width: 0; 
             overflow-x: hidden; 
         }
 
@@ -105,7 +112,7 @@
             background: #1e1e1e !important; 
             border-radius: 8px; margin: 10px 0; border: 1px solid #333;
             max-width: 100%; width: 100%;
-            overflow-x: auto; /* Scroll horizontal aktif */
+            overflow-x: auto; 
             white-space: pre; 
         }
 
@@ -129,19 +136,35 @@
         
         .bar-container { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 8px; }
 
-        /* Image Preview Box */
+        /* --- [UPDATED] Image Preview Box --- */
         #img-preview-box {
-            display: none; width: fit-content; background: #18181b; 
-            padding: 8px; border-radius: 12px; border: 1px solid #333;
-            align-items: flex-start; gap: 10px; animation: slideUp 0.2s;
+            display: none; width: 100%; background: #18181b; 
+            padding: 10px; border-radius: 12px; border: 1px solid #333;
+            flex-direction: row; align-items: center; gap: 15px; 
+            animation: slideUp 0.2s;
         }
         @keyframes slideUp { from {transform: translateY(10px); opacity:0;} to {transform:translateY(0); opacity:1;} }
 
         #preview-img-element { height: 60px; width: auto; border-radius: 6px; border: 1px solid #444; }
 
+        .preview-controls { flex: 1; display: flex; gap: 8px; }
+        
+        /* NEW: Mode Buttons */
+        .mode-btn {
+            background: #27272a; border: 1px solid #333; color: #888;
+            padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
+            transition: 0.2s; display: flex; align-items: center; gap: 5px;
+        }
+        .mode-btn:hover { background: #333; }
+        .mode-btn.active {
+            background: rgba(255, 154, 158, 0.15); 
+            border-color: var(--accent-color); 
+            color: var(--accent-color);
+        }
+
         .remove-img-btn {
             background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%;
-            width: 20px; height: 20px; font-size: 10px; cursor: pointer;
+            width: 24px; height: 24px; font-size: 12px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
 
@@ -222,7 +245,6 @@
                 <i class="fa-solid fa-plus"></i> Chat Baru
             </button>
 
-            <div style="font-size:11px; color:#666; font-weight:bold; margin-top:10px;">RIWAYAT</div>
             <div class="history-list" id="history-list"></div>
         </div>
 
@@ -240,8 +262,19 @@
 
             <div class="input-dock">
                 <div class="bar-container">
+                    
                     <div id="img-preview-box">
                         <img id="preview-img-element" src="" alt="Preview">
+                        
+                        <div class="preview-controls">
+                            <button id="mode-vision" class="mode-btn active" onclick="setImgMode('vision')">
+                                <i class="fa-solid fa-eye"></i> Analisis
+                            </button>
+                            <button id="mode-edit" class="mode-btn" onclick="setImgMode('edit')">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Edit (AI)
+                            </button>
+                        </div>
+
                         <button class="remove-img-btn" onclick="clearImage()"><i class="fa-solid fa-xmark"></i></button>
                     </div>
 
@@ -253,7 +286,7 @@
                         
                         <textarea id="user-input" rows="1" placeholder="Tanya sesuatu pada Flora..." oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
                         
-                        <button onclick="sendMessage()" style="width:40px; height:40px; border-radius:10px; border:none; background:white; color:black; cursor:pointer;">
+                        <button onclick="processInput()" style="width:40px; height:40px; border-radius:10px; border:none; background:white; color:black; cursor:pointer;">
                             <i class="fa-solid fa-paper-plane"></i>
                         </button>
                     </div>
@@ -272,6 +305,7 @@
         let currentSessionId = null;
         let allSessions = JSON.parse(localStorage.getItem('flora_sessions') || "{}");
         let currentImg64 = null;
+        let imgMode = 'vision'; // 'vision' atau 'edit'
 
         // --- LOGIN & INIT ---
         function handleLogin() {
@@ -299,7 +333,7 @@
             if(savedName) initApp(savedName);
         };
 
-        // --- SESSION MANAGEMENT ---
+        // --- SESSION MANAGEMENT (UPDATED WITH DATE GROUPS) ---
         function startNewChat() {
             currentSessionId = Date.now().toString();
             allSessions[currentSessionId] = {
@@ -342,20 +376,50 @@
 
         function useStarter(text) {
             document.getElementById('user-input').value = text;
-            sendMessage();
+            processInput();
         }
 
         function saveSessions() {
             localStorage.setItem('flora_sessions', JSON.stringify(allSessions));
         }
 
+        // --- [NEW] DATE HELPER ---
+        function getDateCategory(timestamp) {
+            const date = new Date(timestamp);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (date.toDateString() === today.toDateString()) return "HARI INI";
+            if (date.toDateString() === yesterday.toDateString()) return "KEMARIN";
+            
+            // Format: DD MMM YYYY (28 Jan 2026)
+            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        // --- [UPDATED] RENDER SIDEBAR WITH HEADERS ---
         function renderSidebar() {
             const list = document.getElementById('history-list');
             list.innerHTML = "";
+            
+            // Sort Descending
             const sortedIds = Object.keys(allSessions).sort((a,b) => b - a);
+            
+            let lastHeader = "";
 
             sortedIds.forEach(id => {
                 const session = allSessions[id];
+                const header = getDateCategory(session.timestamp);
+
+                // Jika tanggal berubah, buat header baru
+                if (header !== lastHeader) {
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'history-date-header';
+                    headerDiv.innerText = header;
+                    list.appendChild(headerDiv);
+                    lastHeader = header;
+                }
+
                 const div = document.createElement('div');
                 div.className = `history-item ${id === currentSessionId ? 'active' : ''}`;
                 div.onclick = () => loadSession(id);
@@ -382,7 +446,103 @@
             if(window.innerWidth <= 768) toggleSidebar();
         }
 
-        // --- MESSAGING SYSTEM (CONNECTED TO API) ---
+        // --- [UPDATED] INPUT CONTROLLER ---
+        function processInput() {
+            // Cek apakah ada gambar dan mode edit aktif
+            if (currentImg64 && imgMode === 'edit') {
+                sendImageToEditor();
+            } else {
+                sendMessage(); // Logic lama (Analisis/Chat Biasa)
+            }
+        }
+
+        // --- [NEW] EDIT IMAGE LOGIC (api/edit.js) ---
+        async function sendImageToEditor() {
+            const input = document.getElementById('user-input');
+            const txt = input.value.trim();
+            if(!txt) { alert("Tolong tulis instruksi editnya (Contoh: 'Jadi anime', 'Jadi cyberpunk')"); return; }
+
+            const welcome = document.getElementById('welcome-screen');
+            if(welcome) welcome.remove();
+
+            const imgToSend = currentImg64;
+            
+            // 1. Tampilkan Bubble User
+            addBubble(`🎨 Edit: ${txt}`, 'user', imgToSend, false, true);
+            
+            // Reset UI
+            input.value = ""; 
+            clearImage();
+            
+            // 2. Loading Bubble
+            const loadingId = addBubble("", 'bot', null, true, false);
+
+            try {
+                // STEP 1: REQUEST START JOB
+                const resStart = await fetch('/api/edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        step: 'start', 
+                        image: imgToSend, 
+                        prompt: txt 
+                    })
+                });
+                
+                const dataStart = await resStart.json();
+                if(!dataStart.success) throw new Error(dataStart.error || "Gagal memulai job.");
+
+                const jobId = dataStart.jobId;
+
+                // STEP 2: POLLING STATUS
+                let attempts = 0;
+                const maxAttempts = 20; // 1 menit (20 x 3 detik)
+                
+                const pollInterval = setInterval(async () => {
+                    attempts++;
+                    try {
+                        const resCheck = await fetch('/api/edit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ step: 'check', jobId: jobId })
+                        });
+                        const dataCheck = await resCheck.json();
+
+                        if (dataCheck.status === 'done') {
+                            clearInterval(pollInterval);
+                            document.getElementById(loadingId).remove();
+                            
+                            // Tampilkan Hasil
+                            const resultText = `✨ Selesai! Ini hasil edit gaya <b>${txt}</b>:`;
+                            // Gunakan proxy images.weserv.nl agar gambar bisa didownload/dicors
+                            const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(dataCheck.url)}`;
+                            
+                            addBubble(resultText, 'bot', proxyUrl, false, true);
+                        } 
+                        else if (dataCheck.status === 'failed') {
+                            clearInterval(pollInterval);
+                            throw new Error(dataCheck.error || "Gagal generate.");
+                        }
+                        else if (attempts >= maxAttempts) {
+                            clearInterval(pollInterval);
+                            throw new Error("Waktu habis (Timeout).");
+                        }
+                        // Kalau 'pending', lanjut loop...
+                    } catch (errLoop) {
+                        clearInterval(pollInterval);
+                        document.getElementById(loadingId).innerHTML = `<div style="color:red">Error: ${errLoop.message}</div>`;
+                    }
+                }, 3000); // Cek setiap 3 detik
+
+            } catch (e) {
+                document.getElementById(loadingId).innerHTML = `
+                    <div style="color:#ff6b6b; padding:10px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Edit Gagal: ${e.message}
+                    </div>`;
+            }
+        }
+
+        // --- STANDARD CHAT / VISION (api/index.js) ---
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
@@ -392,7 +552,7 @@
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
 
-            // Update Title
+            // Update Title Chat
             if (allSessions[currentSessionId].messages.length === 0) {
                 allSessions[currentSessionId].title = txt ? txt.substring(0, 20) + "..." : "Gambar...";
                 renderSidebar();
@@ -459,7 +619,7 @@
             if (role === 'user') {
                 div.innerHTML = `
                     <div class="bubble">
-                        ${img ? `<img src="${img}" style="width:100%; max-width:150px; height:100px; object-fit:cover; border-radius:10px; margin-bottom:5px; display:block; border:1px solid #444;">` : ''}
+                        ${img ? `<img src="${img}" style="width:100%; max-width:200px; border-radius:10px; margin-bottom:5px; display:block; border:1px solid #444;">` : ''}
                         <div>${text.replace(/\n/g, '<br>')}</div>
                     </div>
                 `;
@@ -473,6 +633,12 @@
                             </div>
                         </div>`;
                 } else {
+                    // Logic untuk render gambar hasil edit (kalau img ada di bot)
+                    let imgHtml = '';
+                    if (img) {
+                        imgHtml = `<div style="margin-bottom:10px;"><img src="${img}" style="width:100%; max-width:300px; border-radius:10px; border:1px solid #444;"></div>`;
+                    }
+
                     let formatted = text
                         .replace(/\n/g, '<br>')
                         .replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
@@ -489,7 +655,10 @@
 
                     div.innerHTML = `
                         <div class="avatar"><i class="fa-solid fa-spa"></i></div>
-                        <div class="bot-content">${formatted}</div>
+                        <div class="bot-content">
+                            ${imgHtml}
+                            ${formatted}
+                        </div>
                     `;
                 }
             }
@@ -500,7 +669,22 @@
             return div.id;
         }
 
-        // --- IMAGE UTILS (DENGAN KOMPRESI OTOMATIS) ---
+        // --- IMAGE UTILS (DENGAN KOMPRESI & MODE SWITCH) ---
+        function setImgMode(mode) {
+            imgMode = mode;
+            // Update UI Tombol
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`mode-${mode}`).classList.add('active');
+
+            // Ubah Placeholder Input biar user paham
+            const input = document.getElementById('user-input');
+            if (mode === 'edit') {
+                input.placeholder = "Tulis gaya editnya (misal: anime, cyberpunk)...";
+            } else {
+                input.placeholder = "Tanya sesuatu tentang gambar ini...";
+            }
+        }
+
         function handleFile(input) {
             const file = input.files[0];
             if (!file) return;
@@ -517,42 +701,33 @@
                 img.src = e.target.result;
                 
                 img.onload = () => {
-                    // 1. Buat Kanvas
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-                    
-                    // 2. Hitung Ukuran Baru (Max 800px)
                     const MAX_SIZE = 800;
+
                     if (width > height) {
-                        if (width > MAX_SIZE) {
-                            height *= MAX_SIZE / width;
-                            width = MAX_SIZE;
-                        }
+                        if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
                     } else {
-                        if (height > MAX_SIZE) {
-                            width *= MAX_SIZE / height;
-                            height = MAX_SIZE;
-                        }
+                        if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
                     }
 
                     canvas.width = width;
                     canvas.height = height;
-                    
-                    // 3. Gambar Ulang (Resize)
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // 4. Kompres jadi JPEG kualitas 70%
                     currentImg64 = canvas.toDataURL('image/jpeg', 0.7);
                     
-                    // 5. Tampilkan Preview
+                    // Reset ke mode default (Vision)
+                    setImgMode('vision');
                     document.getElementById('preview-img-element').src = currentImg64;
                     document.getElementById('img-preview-box').style.display = 'flex';
                 };
             };
             reader.readAsDataURL(file);
         }
+
         function clearImage() {
             currentImg64 = null;
             document.getElementById('file-input').value = "";
