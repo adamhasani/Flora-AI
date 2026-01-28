@@ -1,17 +1,17 @@
-// --- SETUP API KEYS ---
+// --- SETUP ---
 const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
-const hfKey = getCleanKey(process.env.HF_API_KEY); 
+const hfKey = getCleanKey(process.env.HF_API_KEY);
 
 const promptFlora = "Kamu Flora AI. Jawab santai, singkat, jelas. Gunakan HTML <b>.";
 
-// --- FUNGSI KHUSUS QWEN (HUGGING FACE) ---
-async function runQwenTest(message, imageBase64) {
-    if (!hfKey) throw new Error("HF_API_KEY belum dipasang di Vercel!");
+// --- QWEN 2.5 VL (Versi 7B - RINGAN & NGEBUT) ---
+async function runQwenLite(message, imageBase64) {
+    if (!hfKey) throw new Error("HF_API_KEY belum dipasang!");
 
-    const MODEL_ID = "Qwen/Qwen2.5-VL-72B-Instruct"; 
+    // Kita pakai model 7B (Bukan 72B). Ini kuncinya biar gak error.
+    const MODEL_ID = "Qwen/Qwen2.5-VL-7B-Instruct";
     
-    // UPDATE URL BARU (ROUTER)
-    // Domain lama 'api-inference' sudah mati (Error 410)
+    // URL Router terbaru
     const API_URL = `https://router.huggingface.co/hf-inference/models/${MODEL_ID}/v1/chat/completions`;
 
     const payload = {
@@ -21,20 +21,20 @@ async function runQwenTest(message, imageBase64) {
             { 
                 role: "user", 
                 content: imageBase64 
-                ? [ // Kalau ada gambar
+                ? [ // Format Vision
                     { type: "text", text: message || "Jelaskan gambar ini" },
                     { type: "image_url", image_url: { url: imageBase64 } }
                   ]
-                : [ // Kalau cuma teks
+                : [ // Format Teks Biasa
                     { type: "text", text: message }
                   ]
             }
         ],
-        max_tokens: 500,
-        temperature: 0.7
+        max_tokens: 500, // Jangan maruk token biar cepet
+        temperature: 0.6
     };
 
-    console.log("Mengirim request ke Hugging Face Router...");
+    console.log(`Menembak Hugging Face (${MODEL_ID})...`);
 
     const response = await fetch(API_URL, {
         method: "POST",
@@ -47,7 +47,9 @@ async function runQwenTest(message, imageBase64) {
 
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`HF Error (${response.status}): ${errText}`);
+        // Kalau error 503, artinya model lagi 'pemanasan' (loading).
+        // Biasanya request kedua langsung berhasil.
+        throw new Error(`HF Status ${response.status}: ${errText.substring(0, 200)}...`);
     }
 
     const data = await response.json();
@@ -56,6 +58,7 @@ async function runQwenTest(message, imageBase64) {
 
 // --- HANDLER UTAMA ---
 module.exports = async (req, res) => {
+    // Setup CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -64,17 +67,25 @@ module.exports = async (req, res) => {
     const { message, image } = req.body;
 
     try {
-        const reply = await runQwenTest(message, image);
+        const reply = await runQwenLite(message, image);
         return res.json({ 
-            reply: `<b>[QWEN 2.5 VL]</b><br>${reply}` 
+            reply: `<b>[Flora Qwen 7B]</b><br>${reply}` 
         });
 
     } catch (error) {
-        console.error("Test Gagal:", error.message);
+        console.error("Qwen Gagal:", error.message);
+        
+        // Error Handling yang informatif
+        let tips = "";
+        if (error.message.includes("503")) {
+            tips = "<br><br><i>Tips: Model lagi loading (Cold Boot). Coba kirim ulang pesan ini dalam 10 detik.</i>";
+        }
+
         return res.json({ 
-            reply: `<b>[TEST GAGAL]</b><br>
-            Error Router HF:<br>
-            <pre style="color:red; white-space:pre-wrap;">${error.message}</pre>` 
+            reply: `<b>[ERROR]</b><br>
+            Gagal connect ke Hugging Face.<br>
+            <small style="color:#ff6b6b">${error.message}</small>
+            ${tips}` 
         });
     }
 };
