@@ -500,19 +500,59 @@
             return div.id;
         }
 
-        // --- IMAGE UTILS ---
+        // --- IMAGE UTILS (DENGAN KOMPRESI OTOMATIS) ---
         function handleFile(input) {
-            if(input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    currentImg64 = e.target.result;
+            const file = input.files[0];
+            if (!file) return;
+
+            // Batasi hanya file gambar
+            if (!file.type.startsWith('image/')) {
+                alert("Harap pilih file gambar!");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                
+                img.onload = () => {
+                    // 1. Buat Kanvas
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // 2. Hitung Ukuran Baru (Max 800px)
+                    const MAX_SIZE = 800;
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // 3. Gambar Ulang (Resize)
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 4. Kompres jadi JPEG kualitas 70%
+                    currentImg64 = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    // 5. Tampilkan Preview
                     document.getElementById('preview-img-element').src = currentImg64;
                     document.getElementById('img-preview-box').style.display = 'flex';
                 };
-                reader.readAsDataURL(input.files[0]);
-            }
+            };
+            reader.readAsDataURL(file);
         }
-
         function clearImage() {
             currentImg64 = null;
             document.getElementById('file-input').value = "";
