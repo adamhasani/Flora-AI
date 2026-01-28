@@ -63,7 +63,6 @@
         .history-item.active { background: rgba(255, 154, 158, 0.1); border-color: rgba(255, 154, 158, 0.3); color: var(--accent-color); }
         
         .hist-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .hist-time { font-size: 10px; opacity: 0.6; }
 
         /* MAIN AREA */
         .main-view { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; min-width: 0; }
@@ -95,22 +94,19 @@
             color: var(--accent-color);
         }
 
-        /* --- 4. FIX OFFSIDE CODE BLOCKS --- */
-        /* Container response bot */
+        /* --- 4. FIX OFFSIDE CODE BLOCKS (PATEN) --- */
         .bot-content {
             flex: 1; color: #e1e1e3; line-height: 1.6; 
-            min-width: 0; /* PENTING: Mencegah flex item melebar melebihi parent */
-            overflow-x: hidden; /* PENTING */
+            min-width: 0; /* Mencegah flex item melebar melebihi parent */
+            overflow-x: hidden; 
         }
 
         pre { 
             background: #1e1e1e !important; 
             border-radius: 8px; margin: 10px 0; border: 1px solid #333;
-            /* LOGIKA ANTI OFFSIDE */
-            max-width: 100%; 
-            width: 100%;
-            overflow-x: auto; /* Scroll horizontal aktif jika konten panjang */
-            white-space: pre; /* Memaksa scroll, bukan wrap (opsional, bisa diganti pre-wrap) */
+            max-width: 100%; width: 100%;
+            overflow-x: auto; /* Scroll horizontal aktif */
+            white-space: pre; 
         }
 
         code { 
@@ -131,12 +127,9 @@
             display: flex; justify-content: center; width: 100%; z-index: 50; position: relative;
         }
         
-        /* Container Input */
-        .bar-container {
-            width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 8px;
-        }
+        .bar-container { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 8px; }
 
-        /* Image Preview Box (Di atas input) */
+        /* Image Preview Box */
         #img-preview-box {
             display: none; width: fit-content; background: #18181b; 
             padding: 8px; border-radius: 12px; border: 1px solid #333;
@@ -144,9 +137,7 @@
         }
         @keyframes slideUp { from {transform: translateY(10px); opacity:0;} to {transform:translateY(0); opacity:1;} }
 
-        #preview-img-element {
-            height: 60px; width: auto; border-radius: 6px; border: 1px solid #444;
-        }
+        #preview-img-element { height: 60px; width: auto; border-radius: 6px; border: 1px solid #444; }
 
         .remove-img-btn {
             background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%;
@@ -154,7 +145,6 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* Input Bar Wrapper */
         .bar-wrapper {
             background: #18181b; border: var(--glass-border);
             border-radius: 24px; padding: 8px; display: flex; gap: 8px; align-items: flex-end;
@@ -179,7 +169,7 @@
         .chip h4 { margin: 0 0 5px 0; font-size: 13px; color: #fff; }
         .chip p { margin: 0; font-size: 11px; color: #888; }
 
-        /* --- 7. TYPING ANIMATION --- */
+        /* --- 7. TYPING ANIMATION (GELOMBANG) --- */
         .typing-dots { display: flex; gap: 4px; padding: 5px 0; }
         .typing-dots span {
             width: 6px; height: 6px; background: var(--accent-color); border-radius: 50%;
@@ -189,7 +179,7 @@
         .typing-dots span:nth-child(3) { animation-delay: -0.9s; }
         @keyframes wave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
 
-        /* Mobile */
+        /* Mobile Responsive */
         @media (max-width: 768px) {
             .sidebar { position: fixed; left: -100%; height: 100%; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
             .sidebar.active { left: 0; }
@@ -199,7 +189,7 @@
         #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; pointer-events: none; transition: 0.3s; }
         #overlay.show { opacity: 1; pointer-events: auto; }
 
-        /* Auth */
+        /* Auth Screen */
         #auth-layer { position: fixed; inset: 0; z-index: 999; background: #000; display: flex; justify-content: center; align-items: center; }
         .auth-card { width: 85%; max-width: 320px; text-align: center; }
         .auth-input { width: 100%; background: #111; border: 1px solid #333; padding: 15px; border-radius: 12px; color: white; margin: 20px 0; font-size: 16px; outline: none; text-align: center; }
@@ -309,7 +299,7 @@
             if(savedName) initApp(savedName);
         };
 
-        // --- SESSION MANAGAMENT ---
+        // --- SESSION MANAGEMENT ---
         function startNewChat() {
             currentSessionId = Date.now().toString();
             allSessions[currentSessionId] = {
@@ -320,7 +310,6 @@
             saveSessions();
             renderSidebar();
             
-            // RESET TAMPILAN KE WELCOME SCREEN
             const name = localStorage.getItem('flora_username');
             document.getElementById('msg-container').innerHTML = `
                 <div id="welcome-screen" style="text-align:center; padding-top:40px; animation: fadeIn 0.5s;">
@@ -382,7 +371,6 @@
             container.innerHTML = ""; 
 
             if(session.messages.length === 0) {
-                // Jika load sesi tapi isinya kosong (misal baru dibuat), tampilkan welcome screen
                 startNewChat(); 
                 return;
             } else {
@@ -394,65 +382,65 @@
             if(window.innerWidth <= 768) toggleSidebar();
         }
 
-        // --- MESSAGING SYSTEM ---
+        // --- MESSAGING SYSTEM (CONNECTED TO API) ---
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
+            
             if (!txt && !currentImg64) return;
 
-            // Hapus welcome screen jika ada
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
 
-            // Update Title Chat Pertama
+            // Update Title
             if (allSessions[currentSessionId].messages.length === 0) {
-                allSessions[currentSessionId].title = txt.substring(0, 25) || "Gambar...";
+                allSessions[currentSessionId].title = txt ? txt.substring(0, 20) + "..." : "Gambar...";
                 renderSidebar();
             }
 
-            // Simpan gambar sementara sebelum di clear
             const imgToSend = currentImg64;
-
-            // Tampilkan pesan User
+            
+            // Render User Bubble
             addBubble(txt, 'user', imgToSend, false, true);
             
-            // Simpan ke memory object (dengan gambar jika ada)
-            const msgData = { role: 'user', content: txt };
-            if(imgToSend) msgData.image = imgToSend;
-            
-            // Reset Input
-            input.value = ""; 
-            clearImage(); // Clear preview
+            // Payload
+            const payload = {
+                history: allSessions[currentSessionId].messages.slice(-10),
+                message: txt,
+                image: imgToSend
+            };
 
-            // Loading Animation
+            // Reset UI
+            input.value = ""; 
+            clearImage(); 
+
+            // Loading
             const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
-                // Mockup Response (Ganti dengan fetch API asli Anda)
-                // const res = await fetch('/api', ...);
+                // FETCH REAL KE BACKEND (api/index.js)
+                const res = await fetch('/api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error("Gagal terhubung ke Flora AI");
+
+                const data = await res.json();
                 
-                // SIMULASI DELAY (Hapus ini saat connect API)
-                await new Promise(r => setTimeout(r, 1500));
-                
-                // Hapus loading
                 document.getElementById(loadingId).remove();
-
-                // Simulasi jawaban
-                let reply = "";
-                if(txt.toLowerCase().includes("kode") || txt.toLowerCase().includes("html")) {
-                    reply = "Tentu! Ini contoh kode HTML sederhana:\n```html\n<!DOCTYPE html>\n<html>\n<body>\n  <h1>Halo Dunia!</h1>\n</body>\n</html>\n```\nSemoga membantu!";
-                } else {
-                    reply = "Saya adalah Flora AI. Saya bisa membantu Anda membuat kode, menganalisis gambar, atau sekadar mengobrol. Silakan tanya apa saja!";
-                }
-
-                addBubble(reply, 'bot', null, false, true);
+                addBubble(data.reply, 'bot', null, false, true);
 
             } catch (e) {
-                document.getElementById(loadingId).innerHTML = "Error: " + e.message;
+                document.getElementById(loadingId).innerHTML = `
+                    <div style="color:#ff6b6b; padding:10px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Error: ${e.message}
+                    </div>`;
             }
         }
 
-        // --- RENDER BUBBLE ---
+        // --- RENDER BUBBLE & CODE ---
         function addBubble(text, role, img, isLoading, saveToMem) {
             const container = document.getElementById('msg-container');
             const div = document.createElement('div');
@@ -463,7 +451,7 @@
                 allSessions[currentSessionId].messages.push({ 
                     role: role === 'user' ? 'user' : 'assistant', 
                     content: text,
-                    image: img // Simpan gambar di history
+                    image: img 
                 });
                 saveSessions();
             }
@@ -477,7 +465,6 @@
                 `;
             } else {
                 if(isLoading) {
-                    // Animasi Bergelombang
                     div.innerHTML = `
                         <div class="avatar"><i class="fa-solid fa-spa"></i></div>
                         <div class="bubble" style="background:transparent; padding:0;">
@@ -486,12 +473,10 @@
                             </div>
                         </div>`;
                 } else {
-                    // Format Code Block
                     let formatted = text
                         .replace(/\n/g, '<br>')
                         .replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
                             const language = lang || 'javascript';
-                            // Kita pakai replace <br> kembali ke \n khusus dalam code block agar PrismJS bekerja
                             const cleanCode = code.replace(/<br>/g, '\n');
                             return `
                                 <pre><code class="language-${language}">${cleanCode}</code></pre>
@@ -515,13 +500,12 @@
             return div.id;
         }
 
-        // --- IMAGE HANDLING ---
+        // --- IMAGE UTILS ---
         function handleFile(input) {
             if(input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     currentImg64 = e.target.result;
-                    // Tampilkan Preview Box
                     document.getElementById('preview-img-element').src = currentImg64;
                     document.getElementById('img-preview-box').style.display = 'flex';
                 };
@@ -535,7 +519,6 @@
             document.getElementById('img-preview-box').style.display = 'none';
         }
 
-        // --- UTILS ---
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('overlay').classList.toggle('show');
