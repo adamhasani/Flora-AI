@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flora AI - Ultimate</title>
+    <title>Flora AI - Fixed Version</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 
     <style>
-        /* --- 1. CORE VARIABLES --- */
         :root {
             --bg-deep: #09090b;
             --bg-panel: #121214;
@@ -32,10 +30,9 @@
             overflow: hidden; display: flex;
         }
 
-        /* --- 2. LAYOUT --- */
+        /* --- LAYOUT & SIDEBAR --- */
         #app-interface { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s; }
 
-        /* SIDEBAR (HISTORY) */
         .sidebar {
             width: 280px; background: var(--bg-panel); border-right: var(--glass-border);
             display: flex; flex-direction: column; padding: 20px; gap: 15px; flex-shrink: 0;
@@ -44,116 +41,124 @@
 
         .new-chat-btn {
             width: 100%; padding: 12px; background: var(--primary-gradient);
-            border: none; border-radius: 8px; color: #4a1e20; font-weight: 700;
+            border: none; border-radius: 12px; color: #4a1e20; font-weight: 700;
             cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: transform 0.2s;
         }
         .new-chat-btn:active { transform: scale(0.96); }
 
-        .history-list {
-            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;
-            padding-right: 5px;
-        }
+        .history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
         .history-item {
-            padding: 10px 12px; border-radius: 8px; cursor: pointer;
-            color: var(--text-muted); font-size: 13px;
-            display: flex; flex-direction: column; gap: 4px;
-            transition: background 0.2s; border: 1px solid transparent;
+            padding: 12px; border-radius: 10px; cursor: pointer; color: var(--text-muted); font-size: 13px;
+            display: flex; flex-direction: column; gap: 4px; transition: 0.2s;
         }
         .history-item:hover { background: rgba(255,255,255,0.05); }
-        .history-item.active { background: rgba(255, 154, 158, 0.1); border-color: rgba(255, 154, 158, 0.3); color: var(--accent-color); }
+        .history-item.active { background: rgba(255, 154, 158, 0.1); color: var(--accent-color); font-weight: 600; }
         
-        .hist-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .hist-time { font-size: 10px; opacity: 0.6; }
+        .main-view { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; min-width: 0; }
 
-        /* MAIN AREA */
-        .main-view { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; min-width: 0; /* Fix flex overflow */ }
-
-        /* MOBILE HEADER */
         .mobile-header {
             display: none; padding: 15px; align-items: center; justify-content: space-between;
             border-bottom: var(--glass-border); background: rgba(9, 9, 11, 0.9); backdrop-filter: blur(10px);
         }
 
-        /* --- 3. CHAT STREAM --- */
+        /* --- CHAT AREA --- */
         #chat-stream { flex: 1; overflow-y: auto; padding: 20px 0; scroll-behavior: smooth; }
         .msg-wrapper { width: 100%; max-width: 850px; margin: 0 auto; padding: 0 15px; }
 
-        .msg-group { display: flex; gap: 15px; margin-bottom: 30px; animation: fadeIn 0.3s ease; }
+        .msg-group { display: flex; gap: 12px; margin-bottom: 25px; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .msg-group.user { justify-content: flex-end; }
+        
+        /* BUBBLE USER */
         .user .bubble { 
             background: #27272a; color: #fff; padding: 10px 16px; 
             border-radius: 18px; border-bottom-right-radius: 4px; max-width: 85%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* BOT CONTENT (PENTING BUAT KODINGAN) */
+        .bot .content { 
+            flex: 1; color: #e1e1e3; line-height: 1.6; font-size: 15px; 
+            min-width: 0; /* MENCEGAH FLEX ITEM OFFSIDE */
+            overflow-wrap: break-word;
         }
 
         .avatar { 
-            width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center; font-size: 14px;
-            background: #1f1f22; border: 1px solid #333;
+            width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 16px;
+            background: rgba(255, 154, 158, 0.1); border: 1px solid rgba(255, 154, 158, 0.2); color: var(--accent-color);
         }
 
-        /* --- 4. CODE BLOCKS (FIX OFFSIDE & COLOR) --- */
-        /* Container Pre agar tidak offside di mobile */
+        /* --- CODE BLOCKS (PATEN & ANTI OFFSIDE) --- */
         pre { 
-            background: #1e1e1e !important; 
-            border-radius: 8px; 
-            margin: 10px 0; 
-            position: relative; 
+            background: #18181b !important; 
+            border-radius: 12px; 
+            margin: 12px 0; 
             border: 1px solid #333;
-            max-width: 100%; /* Wajib */
-            width: 100%;     /* Wajib */
-            overflow-x: auto; /* Scroll horizontal jika kodingan panjang */
+            width: 100%; 
+            max-width: 100%; /* KUNCI ANTI OFFSIDE */
+            overflow-x: auto; /* SCROLL HORIZONTAL */
+            position: relative;
         }
-
-        /* Footer Powered By */
-        .code-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 6px 12px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05);
-            font-size: 10px; color: #666; letter-spacing: 0.5px;
-        }
-        .code-lang { color: var(--accent-color); font-weight: bold; text-transform: uppercase; }
 
         code { 
-            font-family: 'Consolas', 'Monaco', monospace !important; 
-            font-size: 13px !important;
-            text-shadow: none !important;
+            font-family: 'Consolas', monospace !important; 
+            font-size: 13px !important; 
+            white-space: pre; /* Biar format coding terjaga tapi scroll */
         }
 
-        /* --- 5. INPUT AREA --- */
-        .input-dock { 
-            padding: 15px; background: linear-gradient(to top, var(--bg-deep) 80%, transparent); 
-            display: flex; justify-content: center; width: 100%; z-index: 50;
+        .code-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 15px; background: rgba(0,0,0,0.4); border-top: 1px solid #333;
+            font-size: 11px; color: #777; font-weight: 600; letter-spacing: 0.5px;
         }
+
+        /* --- TYPING ANIMATION (GELOMBANG) --- */
+        .typing-dots { display: flex; gap: 5px; padding: 8px 0; }
+        .typing-dots span {
+            width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* --- SUGGESTION CHIPS --- */
+        .suggestion-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;
+            margin-top: 30px; width: 100%; max-width: 600px;
+        }
+        .suggestion-card {
+            background: rgba(255,255,255,0.03); border: var(--glass-border);
+            padding: 15px; border-radius: 12px; cursor: pointer; text-align: left;
+            font-size: 13px; color: #ccc; transition: 0.2s; display: flex; align-items: center; gap: 10px;
+        }
+        .suggestion-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); border-color: var(--accent-color); }
+
+        /* --- INPUT AREA --- */
+        .input-dock { padding: 15px; background: linear-gradient(to top, var(--bg-deep) 85%, transparent); display: flex; justify-content: center; z-index: 50; }
         .bar-wrapper {
-            width: 100%; max-width: 800px; background: #18181b; border: var(--glass-border);
-            border-radius: 24px; padding: 8px; display: flex; gap: 8px; align-items: flex-end;
+            width: 100%; max-width: 800px; background: #121214; border: var(--glass-border);
+            border-radius: 20px; padding: 8px 12px; display: flex; gap: 10px; align-items: flex-end;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
         }
-        textarea { 
-            flex: 1; background: transparent; border: none; color: white; 
-            font-size: 15px; resize: none; max-height: 120px; padding: 12px 5px; 
-        }
+        textarea { flex: 1; background: transparent; border: none; color: white; font-size: 15px; resize: none; max-height: 120px; padding: 12px 0; }
         
-        /* --- 6. AUTH SCREEN (Clean) --- */
+        /* PREVIEW IMAGE INPUT */
+        #preview-container { display: none; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 12px; margin-bottom: 10px; position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; backdrop-filter: blur(10px); border: 1px solid #333; z-index: 60;}
+
+        /* --- AUTH SCREEN --- */
         #auth-layer { position: fixed; inset: 0; z-index: 999; background: #000; display: flex; justify-content: center; align-items: center; }
         .auth-card { width: 85%; max-width: 320px; text-align: center; }
-        .auth-input { 
-            width: 100%; background: #111; border: 1px solid #333; padding: 15px; 
-            border-radius: 12px; color: white; margin: 20px 0; font-size: 16px; outline: none; text-align: center;
-            transition: border 0.3s;
-        }
+        .auth-input { width: 100%; background: #111; border: 1px solid #333; padding: 15px; border-radius: 12px; color: white; margin: 20px 0; font-size: 16px; outline: none; text-align: center; transition: border 0.3s; }
         .auth-input:focus { border-color: var(--accent-color); }
 
-        /* Mobile Responsive */
         @media (max-width: 768px) {
             .sidebar { position: fixed; left: -100%; height: 100%; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
             .sidebar.active { left: 0; }
             .mobile-header { display: flex; }
-            .msg-wrapper { padding: 0 15px; }
         }
-
-        /* Overlay Mobile */
         #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; pointer-events: none; transition: 0.3s; }
         #overlay.show { opacity: 1; pointer-events: auto; }
     </style>
@@ -163,13 +168,9 @@
     <div id="auth-layer">
         <div class="auth-card">
             <h1 style="background: var(--primary-gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:5px;">Flora AI</h1>
-            <p style="color:#666; font-size:12px;">Ultimate Assistant</p>
-            
-            <input type="text" id="username" class="auth-input" placeholder="Masukkan Nama Kamu" autocomplete="off">
-            
-            <button onclick="handleLogin()" style="width:100%; padding:14px; border-radius:12px; border:none; background:white; color:black; font-weight:bold; cursor:pointer;">
-                Lanjutkan <i class="fa-solid fa-arrow-right"></i>
-            </button>
+            <p style="color:#666; font-size:12px;">Assistant Masa Depan</p>
+            <input type="text" id="username" class="auth-input" placeholder="Siapa nama kamu?" autocomplete="off">
+            <button onclick="handleLogin()" style="width:100%; padding:14px; border-radius:12px; border:none; background:white; color:black; font-weight:bold; cursor:pointer;">Mulai Chat</button>
         </div>
     </div>
 
@@ -179,7 +180,7 @@
         
         <div class="sidebar" id="sidebar">
             <div style="font-weight:700; font-size:18px; color:white; display:flex; align-items:center; gap:10px;">
-                <i class="fa-solid fa-robot" style="color:var(--accent-color)"></i> Flora AI
+                <i class="fa-solid fa-seedling" style="color:var(--accent-color)"></i> Flora AI
             </div>
 
             <button class="new-chat-btn" onclick="startNewChat()">
@@ -187,35 +188,42 @@
             </button>
 
             <div style="font-size:11px; color:#666; font-weight:bold; margin-top:10px;">RIWAYAT CHAT</div>
-            <div class="history-list" id="history-list">
-                </div>
+            <div class="history-list" id="history-list"></div>
         </div>
 
         <div class="main-view">
             <div class="mobile-header">
                 <button onclick="toggleSidebar()" style="background:none; border:none; color:white; font-size:20px;"><i class="fa-solid fa-bars"></i></button>
                 <span style="font-weight:700;">Flora AI</span>
-                <div style="width:20px;"></div> </div>
+                <div style="width:20px;"></div>
+            </div>
 
             <div id="chat-stream">
                 <div class="msg-wrapper" id="msg-container">
-                    <div id="welcome-screen" style="text-align:center; padding-top:50px;">
-                        <h2 style="font-size:28px;">Halo, <span id="u-name" style="color:var(--accent-color)">User</span>! 👋</h2>
-                        <p style="color:#666;">Ada yang bisa Flora bantu hari ini?</p>
                     </div>
+            </div>
+
+            <div id="preview-container">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img id="input-thumb" style="width:50px; height:50px; border-radius:8px; object-fit:cover;">
+                    <div style="flex:1;">
+                        <div style="font-size:12px; color:white; font-weight:bold;">Gambar Terlampir</div>
+                        <div style="font-size:10px; color:#aaa;">Siap dikirim ke Flora</div>
+                    </div>
+                    <button onclick="clearFile()" style="background:none; border:none; color:#ff5f56; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
                 </div>
             </div>
 
             <div class="input-dock">
                 <div class="bar-wrapper">
-                    <button onclick="document.getElementById('file-input').click()" style="background:none; border:none; color:#888; font-size:18px; padding:0 10px; cursor:pointer;">
+                    <button onclick="document.getElementById('file-input').click()" style="background:none; border:none; color:#888; font-size:18px; padding:0 5px; cursor:pointer;">
                         <i class="fa-solid fa-image"></i>
                     </button>
                     <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFile(this)">
                     
                     <textarea id="user-input" rows="1" placeholder="Ketik pesan..." oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
                     
-                    <button onclick="sendMessage()" style="width:40px; height:40px; border-radius:10px; border:none; background:white; color:black; cursor:pointer;">
+                    <button onclick="sendMessage()" style="width:40px; height:40px; border-radius:12px; border:none; background:white; color:black; cursor:pointer;">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </div>
@@ -229,7 +237,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
 
     <script>
-        // --- DATA UTAMA ---
         let currentSessionId = null;
         let allSessions = JSON.parse(localStorage.getItem('flora_sessions') || "{}");
         let currentImg64 = null;
@@ -237,101 +244,92 @@
         // --- AUTH ---
         function handleLogin() {
             const name = document.getElementById('username').value.trim();
-            if(!name) { alert("Nama tidak boleh kosong!"); return; }
-            
+            if(!name) { alert("Nama wajib diisi!"); return; }
             localStorage.setItem('flora_username', name);
             initApp(name);
         }
 
         function initApp(name) {
-            document.getElementById('u-name').innerText = name;
+            document.getElementById('u-name') ? document.getElementById('u-name').innerText = name : null;
             document.getElementById('auth-layer').style.display = 'none';
             document.getElementById('app-interface').style.opacity = 1;
-            
             renderSidebar();
-            // Load sesi terakhir jika ada, atau buat baru
-            const sessionKeys = Object.keys(allSessions);
-            if(sessionKeys.length > 0) {
-                loadSession(sessionKeys[sessionKeys.length - 1]); // Load yang paling baru
-            } else {
-                startNewChat();
-            }
+            
+            const keys = Object.keys(allSessions);
+            if(keys.length > 0) loadSession(keys[keys.length - 1]);
+            else startNewChat();
         }
 
         window.onload = () => {
-            const savedName = localStorage.getItem('flora_username');
-            if(savedName) initApp(savedName);
+            const name = localStorage.getItem('flora_username');
+            if(name) initApp(name);
         };
 
-        // --- HISTORY SYSTEM (INTI PERBAIKAN) ---
+        // --- CORE CHAT LOGIC ---
         function startNewChat() {
-            currentSessionId = Date.now().toString(); // ID unik pakai waktu
-            allSessions[currentSessionId] = {
-                title: "Chat Baru",
-                timestamp: Date.now(),
-                messages: []
-            };
+            currentSessionId = Date.now().toString();
+            allSessions[currentSessionId] = { title: "Chat Baru", timestamp: Date.now(), messages: [] };
             saveSessions();
             renderSidebar();
-            
-            // Reset UI
-            document.getElementById('msg-container').innerHTML = `
-                <div id="welcome-screen" style="text-align:center; padding-top:50px;">
-                    <h2 style="font-size:28px;">Halo, <span style="color:var(--accent-color)">${localStorage.getItem('flora_username')}</span>! 👋</h2>
-                    <p style="color:#666;">Mulai percakapan baru...</p>
-                </div>
-            `;
-            if(window.innerWidth <= 768) toggleSidebar(); // Tutup sidebar di HP
+            renderWelcome();
+            if(window.innerWidth <= 768) toggleSidebar(false);
         }
 
-        function saveSessions() {
-            localStorage.setItem('flora_sessions', JSON.stringify(allSessions));
+        function renderWelcome() {
+            const name = localStorage.getItem('flora_username') || "User";
+            document.getElementById('msg-container').innerHTML = `
+                <div id="welcome-screen" style="text-align:center; padding-top:40px; animation:fadeIn 0.5s;">
+                    <h2 style="font-size:28px; margin-bottom:10px;">Halo, <span style="color:var(--accent-color)">${name}</span>! 🌸</h2>
+                    <p style="color:#666; margin-bottom:30px;">Apa yang ingin kamu diskusikan?</p>
+                    
+                    <div style="display:flex; justify-content:center;">
+                        <div class="suggestion-grid">
+                            <div class="suggestion-card" onclick="setInput('Buatkan caption Instagram estetik')">
+                                <i class="fa-brands fa-instagram" style="color:#E1306C"></i> Caption IG
+                            </div>
+                            <div class="suggestion-card" onclick="setInput('Jelaskan kodingan Python dasar')">
+                                <i class="fa-brands fa-python" style="color:#FFBD2E"></i> Belajar Python
+                            </div>
+                            <div class="suggestion-card" onclick="setInput('Analisis gambar ini')">
+                                <i class="fa-solid fa-eye" style="color:#4AA9FF"></i> Cek Gambar
+                            </div>
+                            <div class="suggestion-card" onclick="setInput('Rekomendasi film action 2025')">
+                                <i class="fa-solid fa-film" style="color:#ff5f56"></i> Film Bagus
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
+
+        function saveSessions() { localStorage.setItem('flora_sessions', JSON.stringify(allSessions)); }
 
         function renderSidebar() {
             const list = document.getElementById('history-list');
             list.innerHTML = "";
-            
-            // Urutkan dari yang terbaru (descending)
-            const sortedIds = Object.keys(allSessions).sort((a,b) => b - a);
-
-            sortedIds.forEach(id => {
-                const session = allSessions[id];
-                const date = new Date(session.timestamp);
+            Object.keys(allSessions).sort((a,b)=>b-a).forEach(id => {
+                const s = allSessions[id];
+                const d = new Date(s.timestamp);
+                const time = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 
-                // Logika Waktu: Hari ini (Jam), Kemarin (Tanggal)
-                const isToday = new Date().toDateString() === date.toDateString();
-                const timeStr = isToday ? 
-                    date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
-                    date.toLocaleDateString([], {day: 'numeric', month: 'short'});
-
-                const div = document.createElement('div');
+                let div = document.createElement('div');
                 div.className = `history-item ${id === currentSessionId ? 'active' : ''}`;
+                div.innerHTML = `<div class="hist-title">${s.title}</div><div class="hist-time" style="font-size:10px; opacity:0.6">${time}</div>`;
                 div.onclick = () => loadSession(id);
-                div.innerHTML = `
-                    <div class="hist-title">${session.title}</div>
-                    <div class="hist-time">${timeStr}</div>
-                `;
                 list.appendChild(div);
             });
         }
 
         function loadSession(id) {
             currentSessionId = id;
-            const session = allSessions[id];
-            const container = document.getElementById('msg-container');
-            container.innerHTML = ""; // Bersihkan layar
-
-            if(session.messages.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding-top:50px; color:#666;">Chat Kosong</div>`;
-            } else {
-                session.messages.forEach(msg => {
-                    addBubble(msg.content, msg.role, null, false, false); // false = jangan save lagi (cuma render)
-                });
-            }
+            const msgs = allSessions[id].messages;
+            document.getElementById('msg-container').innerHTML = "";
             
-            renderSidebar(); // Update highlight active
-            if(window.innerWidth <= 768) toggleSidebar();
+            if(msgs.length === 0) renderWelcome();
+            else msgs.forEach(m => addBubble(m.content, m.role, m.image, false, false));
+            
+            renderSidebar();
+            if(window.innerWidth <= 768) toggleSidebar(false);
         }
 
         // --- MESSAGING ---
@@ -340,28 +338,34 @@
             const txt = input.value.trim();
             if (!txt && !currentImg64) return;
 
-            // 1. Update Judul Chat jika ini pesan pertama
-            if (allSessions[currentSessionId].messages.length === 0) {
-                allSessions[currentSessionId].title = txt.substring(0, 20) + "...";
+            document.getElementById('welcome-screen')?.remove();
+
+            // Simpan gambar sementara sebelum dihapus
+            const imgToSend = currentImg64;
+
+            // 1. Render User Bubble
+            addBubble(txt, 'user', imgToSend, false, true);
+
+            // Update Judul Chat
+            if(allSessions[currentSessionId].messages.length === 0) {
+                allSessions[currentSessionId].title = txt.substring(0, 20) || "Gambar...";
                 renderSidebar();
             }
 
-            // 2. Tampilkan & Simpan User Msg
-            addBubble(txt, 'user', currentImg64, false, true); // true = save to memory
-            
-            const payload = {
-                history: allSessions[currentSessionId].messages.slice(-10), // Context window
-                message: txt,
-                image: currentImg64
-            };
+            // Reset Input
+            input.value = "";
+            clearFile();
 
-            const imgTemp = currentImg64;
-            input.value = ""; 
-            currentImg64 = null;
-            
-            const loadingId = addBubble("...", 'bot', null, true, false);
+            // 2. Render Loading (Gelombang)
+            const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
+                const payload = {
+                    history: allSessions[currentSessionId].messages.slice(-10),
+                    message: txt,
+                    image: imgToSend
+                };
+
                 const res = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -370,77 +374,102 @@
                 const data = await res.json();
                 
                 document.getElementById(loadingId).remove();
-                addBubble(data.reply, 'bot', null, false, true); // true = save to memory
+                addBubble(data.reply, 'bot', null, false, true);
 
             } catch (e) {
                 document.getElementById(loadingId).innerHTML = "Error: " + e.message;
             }
         }
 
-        // --- RENDER BUBBLE (DENGAN PRISM JS) ---
-        function addBubble(text, role, img, isLoading, saveToMem) {
+        function addBubble(text, role, img, isLoading, save) {
             const container = document.getElementById('msg-container');
             const div = document.createElement('div');
             div.className = `msg-group ${role}`;
-            div.id = 'msg-' + Date.now();
-
-            // Simpan ke memory sesi (jika bukan loading)
-            if (saveToMem && !isLoading) {
-                allSessions[currentSessionId].messages.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
-                saveSessions(); // Save localstorage
+            
+            // Simpan ke memory
+            if(save && !isLoading) {
+                // Simpan text dan gambar (jika ada) ke history
+                const msgData = { role: role==='user'?'user':'assistant', content: text };
+                if(img) msgData.image = img; 
+                allSessions[currentSessionId].messages.push(msgData);
+                saveSessions();
             }
 
-            if (role === 'user') {
+            if(role === 'user') {
                 div.innerHTML = `
                     <div class="bubble">
-                        ${img ? `<img src="${img}" style="max-width:200px; border-radius:10px; margin-bottom:5px;">` : ''}
-                        <div>${text}</div>
+                        ${img ? `<img src="${img}" style="width:100%; max-width:200px; border-radius:10px; margin-bottom:8px; display:block;">` : ''}
+                        ${text ? `<div>${text.replace(/\n/g, '<br>')}</div>` : ''}
                     </div>
                 `;
             } else {
                 if(isLoading) {
-                    div.innerHTML = `<div class="avatar">🤖</div><div style="color:#666; padding:10px;">Sedang mengetik...</div>`;
+                    div.innerHTML = `
+                        <div class="avatar"><i class="fa-solid fa-seedling"></i></div>
+                        <div class="typing-dots"><span></span><span></span><span></span></div>
+                    `;
                 } else {
-                    // FORMAT KODINGAN BIAR BERWARNA & ADA FOOTER
+                    // FORMAT KODINGAN
                     let formatted = text
                         .replace(/\n/g, '<br>')
                         .replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
-                            const language = lang || 'javascript';
+                            const l = lang || 'code';
                             return `
-                                <pre><code class="language-${language}">${code}</code></pre>
+                                <pre><code class="language-${l}">${code}</code></pre>
                                 <div class="code-footer">
-                                    <span class="code-lang">${language}</span>
-                                    <span><i class="fa-solid fa-bolt" style="color:#FF9A9E"></i> Powered by FLORA AI</span>
+                                    <span style="color:var(--accent-color); text-transform:uppercase;">${l}</span>
+                                    <span><i class="fa-solid fa-bolt" style="color:var(--accent-color)"></i> Powered by Flora AI</span>
                                 </div>
                             `;
                         });
 
                     div.innerHTML = `
-                        <div class="avatar">🤖</div>
-                        <div style="flex:1; color:#e1e1e3; line-height:1.6;">${formatted}</div>
+                        <div class="avatar"><i class="fa-solid fa-seedling"></i></div>
+                        <div class="content">${formatted}</div>
                     `;
                 }
             }
 
             container.appendChild(div);
-            // Re-highlight code blocks
-            Prism.highlightAll(); 
-            
+            Prism.highlightAll();
             document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight, behavior: 'smooth' });
-            return div.id;
+            return div.id || ('temp-'+Date.now());
         }
 
         // --- UTILS ---
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('overlay').classList.toggle('show');
+        function toggleSidebar(forceState) {
+            const el = document.getElementById('sidebar');
+            const over = document.getElementById('overlay');
+            if(typeof forceState === 'boolean') {
+                forceState ? el.classList.add('active') : el.classList.remove('active');
+                forceState ? over.classList.add('show') : over.classList.remove('show');
+            } else {
+                el.classList.toggle('active');
+                over.classList.toggle('show');
+            }
         }
+
+        function setInput(txt) {
+            document.getElementById('user-input').value = txt;
+            sendMessage();
+        }
+
         function handleFile(input) {
             if(input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = (e) => currentImg64 = e.target.result;
+                reader.onload = (e) => {
+                    currentImg64 = e.target.result;
+                    document.getElementById('input-thumb').src = currentImg64;
+                    document.getElementById('preview-container').style.display = 'block';
+                };
                 reader.readAsDataURL(input.files[0]);
             }
+        }
+
+        function clearFile() {
+            currentImg64 = null;
+            document.getElementById('file-input').value = "";
+            document.getElementById('preview-container').style.display = 'none';
         }
     </script>
 </body>
