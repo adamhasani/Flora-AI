@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
+// --- SETUP API KEYS ---
 const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
 const groqKey = getCleanKey(process.env.GROQ_API_KEY);
 const geminiKey = getCleanKey(process.env.GEMINI_API_KEY || process.env.API_KEY);
@@ -11,19 +12,13 @@ const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 
 const promptFlora = "Nama kamu Flora AI. Jawab santai, singkat, dan jelas dalam Bahasa Indonesia. Gunakan HTML <b> untuk tebal.";
 
-// --- 1. GROQ VISION ---
+// --- 1. GROQ VISION (Tetap Llama karena masih relevan) ---
 async function runGroq(history, message, imageBase64) {
-    // Cek Key dulu
-    if (!groqKey || groqKey.length < 10) throw new Error("API Key Groq Tidak Terdeteksi di Vercel!");
-
-    // Siapkan pesan
-    let messages = [{ role: "system", content: promptFlora }];
+    if (!groqKey) throw new Error("Key Groq Kosong");
     
-    // Convert history
-    history.forEach(m => {
-        messages.push({ role: m.role === 'model' ? 'assistant' : 'user', content: m.content.replace(/<[^>]*>/g, '') });
-    });
-
+    // Format pesan
+    let messages = [{ role: "system", content: promptFlora }];
+    history.forEach(m => messages.push({ role: m.role==='model'?'assistant':'user', content: m.content.replace(/<[^>]*>/g,'') }));
     messages.push({
         role: "user",
         content: [
@@ -33,26 +28,44 @@ async function runGroq(history, message, imageBase64) {
     });
 
     const res = await groq.chat.completions.create({
-        messages, 
-        model: "llama-3.2-11b-vision-preview", 
-        temperature: 0.5, 
-        max_tokens: 512
+        messages, model: "llama-3.2-11b-vision-preview", max_tokens: 512
     });
-    return res.choices[0]?.message?.content || "Tidak ada respon.";
+    return res.choices[0]?.message?.content;
 }
 
-// --- 2. GEMINI VISION ---
+// --- 2. GEMINI VISION (VERSI 3.0 FLASH) ---
 async function runGemini(history, message, imageBase64) {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptFlora });
-    
-    // Format gambar untuk Gemini
+    // Format gambar
     const base64Data = imageBase64.split(",")[1];
     const mimeType = imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"));
-    
     const imagePart = { inlineData: { data: base64Data, mimeType: mimeType } };
-    
-    const result = await model.generateContent([message || "Jelaskan gambar ini", imagePart]);
-    return result.response.text();
+    const userMsg = message || "Jelaskan gambar ini";
+
+    try {
+        // PERCOBAAN 1: GEMINI 3.0 FLASH (Sesuai request User)
+        console.log("Mencoba Gemini 3.0 Flash...");
+        const model3 = genAI.getGenerativeModel({ model: "gemini-3.0-flash", systemInstruction: promptFlora });
+        const result3 = await model3.generateContent([userMsg, imagePart]);
+        return result3.response.text();
+    } 
+    catch (e3) {
+        console.log("Gemini 3.0 Gagal/Belum Rilis Publik, coba Gemini 2.0 Flash...", e3.message);
+        
+        // PERCOBAAN 2: GEMINI 2.0 FLASH (Standar 2026)
+        try {
+            const model2 = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: promptFlora });
+            const result2 = await model2.generateContent([userMsg, imagePart]);
+            return result2.response.text();
+        } 
+        catch (e2) {
+            console.log("Gemini 2.0 Gagal, terpaksa pakai model legacy 1.5...", e2.message);
+            
+            // PERCOBAAN 3: GEMINI 1.5 (Jaga-jaga kalau server Google lagi aneh)
+            const modelLegacy = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }); 
+            const resultLegacy = await modelLegacy.generateContent([promptFlora + "\n" + userMsg, imagePart]);
+            return resultLegacy.response.text();
+        }
+    }
 }
 
 // --- HANDLER UTAMA ---
@@ -64,37 +77,35 @@ module.exports = async (req, res) => {
 
     const { history = [], message, image } = req.body;
 
-    // KHUSUS DEBUGGING VISION
+    // --- VISION ---
     if (image) {
-        let errorLog = "";
-        
-        // 1. Coba GROQ
         try {
-            console.log("Mencoba Groq Vision...");
-            const result = await runGroq(history, message, image);
-            return res.json({ reply: `<b>[Flora Vision (Llama)]</b><br>${result}` });
+            // Prioritas 1: Groq (Tetap paling ngebut)
+            const resGroq = await runGroq(history, message, image);
+            return res.json({ reply: `<b>[Flora Vision (Llama)]</b><br>${resGroq}` });
         } catch (e1) {
-            console.error("Groq Gagal:", e1.message);
-            errorLog += `Groq Error: ${e1.message} | `;
+            // Prioritas 2: Gemini 3.0 / 2.0
+            try {
+                const resGemini = await runGemini(history, message, image);
+                return res.json({ reply: `<b>[Flora Vision (Gemini 3.0)]</b><br>${resGemini}` });
+            } catch (e2) {
+                return res.json({ reply: `<b>[GAGAL]</b><br>Vision Error: ${e2.message}` });
+            }
         }
-
-        // 2. Coba GEMINI
-        try {
-            console.log("Mencoba Gemini Vision...");
-            const result = await runGemini(history, message, image);
-            return res.json({ reply: `<b>[Flora Vision (Gemini)]</b><br>${result}` });
-        } catch (e2) {
-            console.error("Gemini Gagal:", e2.message);
-            errorLog += `Gemini Error: ${e2.message}`;
-        }
-
-        // Kalau sampai sini, berarti DUA-DUANYA GAGAL
-        return res.json({ 
-            reply: `<b>[GAGAL TOTAL]</b><br>Dua-duanya error, Bos.<br><br><b>Detail Error:</b><br>${errorLog}` 
-        });
     }
 
-    // ... (Logika Chat Teks Biasa ada di sini, tapi saya fokuskan Vision dulu biar fix) ...
-    // Untuk teks biasa, kembalikan response simple biar gak error
-    return res.json({ reply: "Mode teks aman. Coba upload gambar lagi untuk cek error Vision." });
+    // --- TEXT (Pakai Llama 3.3 biar aman) ---
+    try {
+        const groqText = new Groq({ apiKey: groqKey });
+        let msgs = [{ role: "system", content: promptFlora }];
+        history.forEach(m => msgs.push({ role: m.role==='model'?'assistant':'user', content: m.content.replace(/<[^>]*>/g,'') }));
+        msgs.push({ role: "user", content: message });
+        
+        const resText = await groqText.chat.completions.create({
+            messages: msgs, model: "llama-3.3-70b-versatile"
+        });
+        return res.json({ reply: `<b>[Flora AI]</b><br>${resText.choices[0]?.message?.content}` });
+    } catch (e) {
+        return res.status(500).json({ reply: `Error: ${e.message}` });
+    }
 };
