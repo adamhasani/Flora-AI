@@ -54,7 +54,7 @@
             padding-right: 5px;
         }
         
-        /* --- [NEW] DATE HEADER STYLE --- */
+        /* DATE HEADER STYLE */
         .history-date-header {
             font-size: 10px; font-weight: 700; color: #666; 
             margin: 15px 0 5px 0; text-transform: uppercase; letter-spacing: 1px;
@@ -136,7 +136,7 @@
         
         .bar-container { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 8px; }
 
-        /* --- [UPDATED] Image Preview Box --- */
+        /* Image Preview Box */
         #img-preview-box {
             display: none; width: 100%; background: #18181b; 
             padding: 10px; border-radius: 12px; border: 1px solid #333;
@@ -149,7 +149,7 @@
 
         .preview-controls { flex: 1; display: flex; gap: 8px; }
         
-        /* NEW: Mode Buttons */
+        /* Mode Buttons */
         .mode-btn {
             background: #27272a; border: 1px solid #333; color: #888;
             padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
@@ -174,6 +174,13 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         }
 
+        /* Utility Buttons in Bar */
+        .util-btn {
+            background: none; border: none; color: #888; font-size: 16px; 
+            padding: 0 8px; cursor: pointer; transition: 0.2s;
+        }
+        .util-btn:hover { color: var(--accent-color); transform: scale(1.1); }
+
         textarea { 
             flex: 1; background: transparent; border: none; color: white; 
             font-size: 15px; resize: none; max-height: 120px; padding: 12px 5px; 
@@ -192,7 +199,7 @@
         .chip h4 { margin: 0 0 5px 0; font-size: 13px; color: #fff; }
         .chip p { margin: 0; font-size: 11px; color: #888; }
 
-        /* --- 7. TYPING ANIMATION (GELOMBANG) --- */
+        /* --- 7. TYPING ANIMATION --- */
         .typing-dots { display: flex; gap: 4px; padding: 5px 0; }
         .typing-dots span {
             width: 6px; height: 6px; background: var(--accent-color); border-radius: 50%;
@@ -256,8 +263,7 @@
             </div>
 
             <div id="chat-stream">
-                <div class="msg-wrapper" id="msg-container">
-                    </div>
+                <div class="msg-wrapper" id="msg-container"></div>
             </div>
 
             <div class="input-dock">
@@ -279,10 +285,14 @@
                     </div>
 
                     <div class="bar-wrapper">
-                        <button onclick="document.getElementById('file-input').click()" style="background:none; border:none; color:#888; font-size:18px; padding:0 10px; cursor:pointer;">
+                        <button class="util-btn" onclick="document.getElementById('file-input').click()">
                             <i class="fa-solid fa-image"></i>
                         </button>
                         <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFile(this)">
+                        
+                        <button class="util-btn" onclick="activateDrawMode()" title="Buat Gambar">
+                            <i class="fa-solid fa-palette"></i>
+                        </button>
                         
                         <textarea id="user-input" rows="1" placeholder="Tanya sesuatu pada Flora..." oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
                         
@@ -305,7 +315,7 @@
         let currentSessionId = null;
         let allSessions = JSON.parse(localStorage.getItem('flora_sessions') || "{}");
         let currentImg64 = null;
-        let imgMode = 'vision'; // 'vision' atau 'edit'
+        let imgMode = 'vision'; 
 
         // --- LOGIN & INIT ---
         function handleLogin() {
@@ -333,7 +343,7 @@
             if(savedName) initApp(savedName);
         };
 
-        // --- SESSION MANAGEMENT (UPDATED WITH DATE GROUPS) ---
+        // --- SESSION MANAGEMENT ---
         function startNewChat() {
             currentSessionId = Date.now().toString();
             allSessions[currentSessionId] = {
@@ -352,21 +362,21 @@
                     <p style="color:#666; margin-top:5px;">Apa yang bisa Flora bantu hari ini?</p>
                     
                     <div class="starter-chips">
-                        <div class="chip" onclick="useStarter('Buatkan kode HTML sederhana')">
-                            <h4>💻 Koding</h4>
-                            <p>Buatkan kode HTML sederhana</p>
+                        <div class="chip" onclick="useStarter('Gambarkan kucing cyberpunk neon')">
+                            <h4>🎨 Imajina</h4>
+                            <p>Buat gambar kucing cyberpunk</p>
                         </div>
                         <div class="chip" onclick="useStarter('Ceritakan fakta unik tentang bunga')">
                             <h4>🌺 Pengetahuan</h4>
                             <p>Fakta unik tentang bunga</p>
                         </div>
+                        <div class="chip" onclick="useStarter('Buatkan kode HTML sederhana')">
+                            <h4>💻 Koding</h4>
+                            <p>Buatkan kode HTML sederhana</p>
+                        </div>
                         <div class="chip" onclick="useStarter('Ide caption untuk foto senja')">
                             <h4>✨ Kreatif</h4>
                             <p>Ide caption foto senja</p>
-                        </div>
-                        <div class="chip" onclick="useStarter('Apa itu Artificial Intelligence?')">
-                            <h4>🤖 Belajar AI</h4>
-                            <p>Jelaskan apa itu AI</p>
                         </div>
                     </div>
                 </div>
@@ -383,7 +393,7 @@
             localStorage.setItem('flora_sessions', JSON.stringify(allSessions));
         }
 
-        // --- [NEW] DATE HELPER ---
+        // --- DATE HELPER ---
         function getDateCategory(timestamp) {
             const date = new Date(timestamp);
             const today = new Date();
@@ -392,26 +402,19 @@
 
             if (date.toDateString() === today.toDateString()) return "HARI INI";
             if (date.toDateString() === yesterday.toDateString()) return "KEMARIN";
-            
-            // Format: DD MMM YYYY (28 Jan 2026)
             return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
-        // --- [UPDATED] RENDER SIDEBAR WITH HEADERS ---
         function renderSidebar() {
             const list = document.getElementById('history-list');
             list.innerHTML = "";
-            
-            // Sort Descending
             const sortedIds = Object.keys(allSessions).sort((a,b) => b - a);
             
             let lastHeader = "";
-
             sortedIds.forEach(id => {
                 const session = allSessions[id];
                 const header = getDateCategory(session.timestamp);
 
-                // Jika tanggal berubah, buat header baru
                 if (header !== lastHeader) {
                     const headerDiv = document.createElement('div');
                     headerDiv.className = 'history-date-header';
@@ -448,55 +451,110 @@
 
         // --- [UPDATED] INPUT CONTROLLER ---
         function processInput() {
-            // Cek apakah ada gambar dan mode edit aktif
+            const input = document.getElementById('user-input');
+            const txt = input.value.trim();
+
+            if (!txt && !currentImg64) return;
+
+            // 1. CEK: Apakah Mode Edit Gambar?
             if (currentImg64 && imgMode === 'edit') {
                 sendImageToEditor();
-            } else {
-                sendMessage(); // Logic lama (Analisis/Chat Biasa)
+                return;
+            }
+
+            // 2. CEK: Apakah Perintah Gambar (Text-to-Image)?
+            // Regex mendeteksi: "gambarkan...", "buatkan gambar...", "/img..."
+            const drawRegex = /^(gambarkan|buatkan gambar|buat gambar|\/img|\/draw)\s+(.+)/i;
+            const match = txt.match(drawRegex);
+
+            if (match) {
+                const prompt = match[2]; // Ambil teks promptnya saja
+                sendDrawRequest(prompt);
+                return;
+            }
+
+            // 3. Kalau bukan keduanya, kirim Chat Biasa / Vision
+            sendMessage();
+        }
+
+        // [NEW] SHORTCUT BUTTON "BUAT GAMBAR"
+        function activateDrawMode() {
+            const input = document.getElementById('user-input');
+            input.value = "Gambarkan ";
+            input.focus();
+        }
+
+        // --- [NEW] DRAW REQUEST (api/draw.js) ---
+        async function sendDrawRequest(prompt) {
+            const input = document.getElementById('user-input');
+            
+            const welcome = document.getElementById('welcome-screen');
+            if(welcome) welcome.remove();
+
+            // Tampilkan User Bubble
+            addBubble(`🎨 Gambarkan: ${prompt}`, 'user', null, false, true);
+            input.value = ""; // Clear input
+
+            // Loading Bubble
+            const loadingId = addBubble("", 'bot', null, true, false);
+
+            try {
+                const res = await fetch('/api/draw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                if (!res.ok) throw new Error("Gagal request gambar.");
+                const data = await res.json();
+
+                if (!data.success) throw new Error(data.error || "Gagal membuat gambar.");
+
+                document.getElementById(loadingId).remove();
+                
+                // Tampilkan Gambar
+                // Pakai Proxy biar aman dari CORS
+                const finalUrl = `https://images.weserv.nl/?url=${encodeURIComponent(data.url)}`;
+                
+                addBubble(`Nih gambarnya: <b>${prompt}</b> ✨`, 'bot', finalUrl, false, true);
+
+            } catch (e) {
+                document.getElementById(loadingId).innerHTML = `
+                    <div style="color:#ff6b6b; padding:10px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Gagal Melukis: ${e.message}
+                    </div>`;
             }
         }
 
-        // --- [NEW] EDIT IMAGE LOGIC (api/edit.js) ---
+
+        // --- EDIT IMAGE LOGIC (api/edit.js) ---
         async function sendImageToEditor() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
-            if(!txt) { alert("Tolong tulis instruksi editnya (Contoh: 'Jadi anime', 'Jadi cyberpunk')"); return; }
+            if(!txt) { alert("Tulis instruksi editnya!"); return; }
 
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
 
             const imgToSend = currentImg64;
-            
-            // 1. Tampilkan Bubble User
             addBubble(`🎨 Edit: ${txt}`, 'user', imgToSend, false, true);
-            
-            // Reset UI
             input.value = ""; 
             clearImage();
             
-            // 2. Loading Bubble
             const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
-                // STEP 1: REQUEST START JOB
                 const resStart = await fetch('/api/edit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        step: 'start', 
-                        image: imgToSend, 
-                        prompt: txt 
-                    })
+                    body: JSON.stringify({ step: 'start', image: imgToSend, prompt: txt })
                 });
                 
                 const dataStart = await resStart.json();
                 if(!dataStart.success) throw new Error(dataStart.error || "Gagal memulai job.");
 
                 const jobId = dataStart.jobId;
-
-                // STEP 2: POLLING STATUS
                 let attempts = 0;
-                const maxAttempts = 20; // 1 menit (20 x 3 detik)
                 
                 const pollInterval = setInterval(async () => {
                     attempts++;
@@ -511,38 +569,29 @@
                         if (dataCheck.status === 'done') {
                             clearInterval(pollInterval);
                             document.getElementById(loadingId).remove();
-                            
-                            // Tampilkan Hasil
-                            const resultText = `✨ Selesai! Ini hasil edit gaya <b>${txt}</b>:`;
-                            // Gunakan proxy images.weserv.nl agar gambar bisa didownload/dicors
                             const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(dataCheck.url)}`;
-                            
-                            addBubble(resultText, 'bot', proxyUrl, false, true);
+                            addBubble(`✨ Selesai! Hasil edit: <b>${txt}</b>`, 'bot', proxyUrl, false, true);
                         } 
                         else if (dataCheck.status === 'failed') {
                             clearInterval(pollInterval);
-                            throw new Error(dataCheck.error || "Gagal generate.");
+                            throw new Error("Gambar ditolak (NSFW/Error).");
                         }
-                        else if (attempts >= maxAttempts) {
+                        else if (attempts >= 20) {
                             clearInterval(pollInterval);
-                            throw new Error("Waktu habis (Timeout).");
+                            throw new Error("Waktu habis.");
                         }
-                        // Kalau 'pending', lanjut loop...
                     } catch (errLoop) {
                         clearInterval(pollInterval);
                         document.getElementById(loadingId).innerHTML = `<div style="color:red">Error: ${errLoop.message}</div>`;
                     }
-                }, 3000); // Cek setiap 3 detik
+                }, 3000);
 
             } catch (e) {
-                document.getElementById(loadingId).innerHTML = `
-                    <div style="color:#ff6b6b; padding:10px;">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Edit Gagal: ${e.message}
-                    </div>`;
+                document.getElementById(loadingId).innerHTML = `<div style="color:#ff6b6b">Error: ${e.message}</div>`;
             }
         }
 
-        // --- STANDARD CHAT / VISION (api/index.js) ---
+        // --- CHAT / VISION (api/index.js) ---
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
@@ -552,55 +601,44 @@
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
 
-            // Update Title Chat
             if (allSessions[currentSessionId].messages.length === 0) {
                 allSessions[currentSessionId].title = txt ? txt.substring(0, 20) + "..." : "Gambar...";
                 renderSidebar();
             }
 
             const imgToSend = currentImg64;
-            
-            // Render User Bubble
             addBubble(txt, 'user', imgToSend, false, true);
             
-            // Payload
             const payload = {
                 history: allSessions[currentSessionId].messages.slice(-10),
                 message: txt,
                 image: imgToSend
             };
 
-            // Reset UI
             input.value = ""; 
             clearImage(); 
 
-            // Loading
             const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
-                // FETCH REAL KE BACKEND (api/index.js)
                 const res = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                if (!res.ok) throw new Error("Gagal terhubung ke Flora AI");
-
+                if (!res.ok) throw new Error("Gagal terhubung.");
                 const data = await res.json();
                 
                 document.getElementById(loadingId).remove();
                 addBubble(data.reply, 'bot', null, false, true);
 
             } catch (e) {
-                document.getElementById(loadingId).innerHTML = `
-                    <div style="color:#ff6b6b; padding:10px;">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Error: ${e.message}
-                    </div>`;
+                document.getElementById(loadingId).innerHTML = `<div style="color:#ff6b6b">Error: ${e.message}</div>`;
             }
         }
 
-        // --- RENDER BUBBLE & CODE ---
+        // --- RENDER BUBBLE ---
         function addBubble(text, role, img, isLoading, saveToMem) {
             const container = document.getElementById('msg-container');
             const div = document.createElement('div');
@@ -628,15 +666,12 @@
                     div.innerHTML = `
                         <div class="avatar"><i class="fa-solid fa-spa"></i></div>
                         <div class="bubble" style="background:transparent; padding:0;">
-                            <div class="typing-dots">
-                                <span></span><span></span><span></span>
-                            </div>
+                            <div class="typing-dots"><span></span><span></span><span></span></div>
                         </div>`;
                 } else {
-                    // Logic untuk render gambar hasil edit (kalau img ada di bot)
                     let imgHtml = '';
                     if (img) {
-                        imgHtml = `<div style="margin-bottom:10px;"><img src="${img}" style="width:100%; max-width:300px; border-radius:10px; border:1px solid #444;"></div>`;
+                        imgHtml = `<div style="margin-bottom:10px;"><a href="${img}" target="_blank" download="flora-image.jpg"><img src="${img}" style="width:100%; max-width:300px; border-radius:10px; border:1px solid #444;"></a></div>`;
                     }
 
                     let formatted = text
@@ -646,19 +681,13 @@
                             const cleanCode = code.replace(/<br>/g, '\n');
                             return `
                                 <pre><code class="language-${language}">${cleanCode}</code></pre>
-                                <div class="code-footer">
-                                    <span class="code-lang">${language}</span>
-                                    <span>Flora AI</span>
-                                </div>
+                                <div class="code-footer"><span class="code-lang">${language}</span><span>Flora AI</span></div>
                             `;
                         });
 
                     div.innerHTML = `
                         <div class="avatar"><i class="fa-solid fa-spa"></i></div>
-                        <div class="bot-content">
-                            ${imgHtml}
-                            ${formatted}
-                        </div>
+                        <div class="bot-content">${imgHtml}${formatted}</div>
                     `;
                 }
             }
@@ -669,31 +698,19 @@
             return div.id;
         }
 
-        // --- IMAGE UTILS (DENGAN KOMPRESI & MODE SWITCH) ---
         function setImgMode(mode) {
             imgMode = mode;
-            // Update UI Tombol
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`mode-${mode}`).classList.add('active');
-
-            // Ubah Placeholder Input biar user paham
             const input = document.getElementById('user-input');
-            if (mode === 'edit') {
-                input.placeholder = "Tulis gaya editnya (misal: anime, cyberpunk)...";
-            } else {
-                input.placeholder = "Tanya sesuatu tentang gambar ini...";
-            }
+            if (mode === 'edit') input.placeholder = "Tulis gaya editnya (misal: anime, cyberpunk)...";
+            else input.placeholder = "Tanya sesuatu tentang gambar ini...";
         }
 
         function handleFile(input) {
             const file = input.files[0];
             if (!file) return;
-
-            // Batasi hanya file gambar
-            if (!file.type.startsWith('image/')) {
-                alert("Harap pilih file gambar!");
-                return;
-            }
+            if (!file.type.startsWith('image/')) { alert("Harap pilih file gambar!"); return; }
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -718,8 +735,6 @@
                     ctx.drawImage(img, 0, 0, width, height);
                     
                     currentImg64 = canvas.toDataURL('image/jpeg', 0.7);
-                    
-                    // Reset ke mode default (Vision)
                     setImgMode('vision');
                     document.getElementById('preview-img-element').src = currentImg64;
                     document.getElementById('img-preview-box').style.display = 'flex';
