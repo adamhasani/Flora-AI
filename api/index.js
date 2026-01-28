@@ -1,79 +1,88 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Groq = require("groq-sdk");
 
 // --- SETUP API KEYS ---
-// Groq & Gemini tetap dipakai untuk backup atau chat teks biasa
 const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
-const groqKey = getCleanKey(process.env.GROQ_API_KEY);
-const geminiKey = getCleanKey(process.env.GEMINI_API_KEY || process.env.API_KEY);
+const geminiKey = getCleanKey(process.env.GEMINI_API_KEY);
+const hfKey = getCleanKey(process.env.HF_API_KEY); // Tambah ini di Vercel!
 
-const groq = new Groq({ apiKey: groqKey || "dummy" });
 const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
+const promptFlora = "Kamu Flora AI. Santai, singkat, jelas. Pakai HTML <b>.";
 
-const promptFlora = "Nama kamu Flora AI. Jawab santai, singkat, dan jelas dalam Bahasa Indonesia. Gunakan HTML <b> untuk tebal.";
-
-// --- 1. POLLINATIONS VISION (PRIORITAS UTAMA - GRATIS & NO LIMIT) ---
-async function runPollinationsVision(message, imageBase64) {
-    // Pollinations menerima format OpenAI-style
-    const response = await fetch("https://text.pollinations.ai/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            messages: [
-                { role: "system", content: promptFlora },
-                {
-                    role: "user",
-                    content: [
-                        { type: "text", text: message || "Jelaskan gambar ini" },
-                        { 
-                            type: "image_url", 
-                            image_url: { 
-                                url: imageBase64 // Pollinations support Base64 langsung
-                            } 
-                        }
-                    ]
-                }
-            ],
-            model: "openai", // Magic string biar Pollinations pilih model vision terbaik (biasanya GPT-4o)
-            jsonMode: false,
-            seed: Math.floor(Math.random() * 1000) // Biar respon variatif
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error(`Pollinations Error: ${response.statusText}`);
+// --- 1. GEMINI 2.0 FLASH (UTAMA) ---
+async function runGemini(message, imageBase64, history) {
+    if (!geminiKey) throw new Error("No Gemini Key");
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp", systemInstruction: promptFlora });
+    
+    if (imageBase64) {
+        const base64Data = imageBase64.split(",")[1];
+        const mimeType = imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"));
+        const result = await model.generateContent([message || "Jelaskan", { inlineData: { data: base64Data, mimeType } }]);
+        return result.response.text();
+    } else {
+        const chat = model.startChat({ 
+            history: history.map(m => ({ role: m.role==='model'?'model':'user', parts: [{ text: m.content.replace(/<[^>]*>/g,'') }] })) 
+        });
+        const result = await chat.sendMessage(message);
+        return result.response.text();
     }
-
-    // Pollinations mengembalikan teks mentah (raw string), bukan JSON
-    const text = await response.text(); 
-    return text;
 }
 
-// --- 2. GROQ VISION (BACKUP) ---
-async function runGroqVision(message, imageBase64) {
-    if (!groqKey) throw new Error("Key Groq Kosong");
-    const completion = await groq.chat.completions.create({
-        model: "llama-3.2-90b-vision-preview",
+// --- 2. HUGGING FACE (QWEN 2.5 VL) - ALTERNATIF CADAS ---
+async function runHuggingFace(message, imageBase64) {
+    if (!hfKey) throw new Error("No HF Key");
+
+    // Qwen 2.5 VL - 72B (Model Vision Open Source Terbaik saat ini)
+    const MODEL_ID = "Qwen/Qwen2.5-VL-72B-Instruct"; 
+    
+    const payload = {
+        model: MODEL_ID,
         messages: [
             { role: "system", content: promptFlora },
-            {
-                role: "user",
+            { 
+                role: "user", 
                 content: [
                     { type: "text", text: message || "Jelaskan gambar ini" },
                     { type: "image_url", image_url: { url: imageBase64 } }
                 ]
             }
         ],
-        max_tokens: 512,
+        max_tokens: 500
+    };
+
+    const response = await fetch(`https://api-inference.huggingface.co/models/${MODEL_ID}/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${hfKey}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
     });
-    return completion.choices[0].message.content;
+
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`HF Error: ${err}`); // Biasanya kalau model lagi loading (Cold Boot)
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
 }
 
-// --- HANDLER UTAMA ---
+// --- 3. POLLINATIONS (CADANGAN DARURAT) ---
+async function runPollinations(message, imageBase64) {
+    const response = await fetch("https://text.pollinations.ai/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            messages: [{ role: "system", content: promptFlora }, { role: "user", content: imageBase64 ? [{type:"text", text:message}, {type:"image_url", image_url:{url:imageBase64}}] : message }],
+            model: "openai",
+            jsonMode: false
+        })
+    });
+    return await response.text();
+}
+
+// --- CONTROLLER ---
 module.exports = async (req, res) => {
-    // CORS Standard
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -81,62 +90,35 @@ module.exports = async (req, res) => {
 
     const { history = [], message, image } = req.body;
 
-    // --- LOGIKA VISION (GAMBAR) ---
-    if (image) {
-        // COBA 1: POLLINATIONS (Gratis, No Key)
-        try {
-            console.log("Mencoba Pollinations Vision...");
-            const reply = await runPollinationsVision(message, image);
-            return res.json({ reply: `<b>[Flora Vision (Pollinations)]</b><br>${reply}` });
-        } catch (e1) {
-            console.log("Pollinations Gagal:", e1.message);
-
-            // COBA 2: GROQ VISION (Backup Cepat)
-            try {
-                console.log("Switch ke Groq Vision...");
-                const reply = await runGroqVision(message, image);
-                return res.json({ reply: `<b>[Flora Vision (Groq)]</b><br>${reply}` });
-            } catch (e2) {
-                console.log("Groq Gagal:", e2.message);
-                
-                // COBA 3: GEMINI (Backup Terakhir)
-                try {
-                    const base64Data = image.split(",")[1];
-                    const mimeType = image.substring(image.indexOf(":") + 1, image.indexOf(";"));
-                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptFlora });
-                    const result = await model.generateContent([message || "Jelaskan gambar ini", { inlineData: { data: base64Data, mimeType } }]);
-                    return res.json({ reply: `<b>[Flora Vision (Gemini)]</b><br>${result.response.text()}` });
-                } catch (e3) {
-                    return res.json({ 
-                        reply: `<b>[VISION GAGAL]</b><br>Maaf, Pollinations & Backup sibuk.<br><small>${e1.message}</small>` 
-                    });
-                }
-            }
-        }
-    }
-
-    // --- LOGIKA TEKS BIASA (Chat Biasa) ---
     try {
-        // Prioritas Chat Teks: Groq Llama 3.3 (Super Cepat & Cerdas)
-        if (!groqKey) throw new Error("Key Groq Kosong");
-        const resText = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: promptFlora },
-                ...history.map(m => ({ role: m.role==='model'?'assistant':'user', content: m.content.replace(/<[^>]*>/g,'') })),
-                { role: "user", content: message }
-            ],
-            model: "llama-3.3-70b-versatile"
-        });
-        return res.json({ reply: `<b>[Flora AI]</b><br>${resText.choices[0]?.message?.content}` });
-    } catch (e) {
-        // Fallback Teks ke Gemini
+        // SKENARIO:
+        // 1. Coba Hugging Face (Qwen) dulu buat pamer Vision Open Source
+        // 2. Kalau HF loading/error, lari ke Gemini 2.0
+        // 3. Kalau Gemini mati, lari ke Pollinations
+        
+        // Catatan: HF Serverless kadang "Cold Boot" (lama loading awal), jadi kita jadikan opsi kedua atau pertama tergantung selera.
+        // Di sini aku set Gemini tetap Utama karena paling ngebut, HF jadi opsi kedua.
+        
+        console.log("Mencoba Gemini 2.0...");
+        const reply = await runGemini(message, image, history);
+        return res.json({ reply: `<b>[Flora 2.0]</b><br>${reply}` });
+
+    } catch (e1) {
+        console.log("Gemini Skip:", e1.message);
+        
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-pro", systemInstruction: promptFlora });
-            const chat = model.startChat({ history: [] }); // Simpel tanpa history dulu untuk fallback
-            const result = await chat.sendMessage(message);
-            return res.json({ reply: `<b>[Flora AI (Gemini)]</b><br>${result.response.text()}` });
-        } catch (errGemini) {
-            return res.json({ reply: `Error: ${e.message}` });
+            console.log("Mencoba Hugging Face (Qwen 2.5 VL)...");
+            const reply = await runHuggingFace(message, image);
+            return res.json({ reply: `<b>[Flora Qwen]</b><br>${reply}` });
+        } catch (e2) {
+            console.log("HF Skip:", e2.message);
+            
+            try {
+                const reply = await runPollinations(message, image);
+                return res.json({ reply: `<b>[Flora Backup]</b><br>${reply}` });
+            } catch (e3) {
+                return res.json({ reply: "Semua server sibuk." });
+            }
         }
     }
 };
