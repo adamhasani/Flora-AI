@@ -1,104 +1,78 @@
 // Nama File: api/draw.js
-const crypto = require('crypto');
 
-// --- KONFIGURASI MODEL DREAMFACE ---
-const MODELS = {
-    "1": { // Seedream 4.5 (Paling Bagus)
-        name: "Seedream 4.5",
-        param: { model: "see-dream-45", template_id: "WEB-SEE_DREAM_45", releation_id: "ri05016", play_types: ["SEE_DREAM_45", "TEXT_TO_IMAGE"], output: { count: 1, width: 2560, height: 1920 } }
-    }
+// CONFIG DARI KODE KAMU
+const CONFIG = {
+    FLUX_API: 'https://flux2.cloud/api/web/generate-basic',
+    BYPASS_API: 'https://api.nekolabs.web.id/tools/bypass/cf-turnstile',
+    SITE_URL: 'https://flux2.cloud',
+    SITE_KEY: '0x4AAAAAACBE7FYcn9PdfENx',
+    TIMEOUT: 60000, // 60 Detik
+    MAX_RETRIES: 3
 };
 
-const BASE = 'https://tools.dreamfaceapp.com/dw-server';
 const HEADERS = {
-    'Content-Type': 'application/json',
     'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36',
-    'origin': 'https://tools.dreamfaceapp.com',
-    'referer': 'https://tools.dreamfaceapp.com/'
+    'Content-Type': 'application/json',
+    'origin': 'https://flux2.cloud',
+    'referer': 'https://flux2.cloud/'
 };
 
-// Helper Random String
-const rnd = (n) => crypto.randomBytes(n).toString('hex');
+// --- HELPER 1: BYPASS TURNSTILE (Sesuai kode kamu) ---
+async function bypassTurnstile(retry = 0) {
+    console.log(`🔄 Bypass Turnstile (Percobaan ${retry + 1})...`);
+    
+    try {
+        const url = `${CONFIG.BYPASS_API}?url=${encodeURIComponent(CONFIG.SITE_URL)}&siteKey=${CONFIG.SITE_KEY}`;
+        const res = await fetch(url, { 
+            headers: { 'User-Agent': HEADERS['User-Agent'] },
+            // Vercel kadang butuh signal abort untuk timeout manual, tapi fetch default oke
+        });
 
-// Helper Fetch Wrapper
-async function post(url, body, token, clientId) {
-    const headers = { ...HEADERS };
-    if (token) headers['token'] = token;
-    if (clientId) headers['client-id'] = clientId;
+        if (!res.ok) throw new Error(`Bypass HTTP Error: ${res.status}`);
+        
+        const data = await res.json();
+        if (!data.success || !data.result) {
+            if (retry < CONFIG.MAX_RETRIES - 1) {
+                await new Promise(r => setTimeout(r, 2000)); // Tunggu 2 detik
+                return bypassTurnstile(retry + 1);
+            }
+            throw new Error('Bypass Failed: Token not found');
+        }
+        return data.result;
 
-    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-    const j = await res.json();
-    if (j.status_code !== 'THS12140000000') throw new Error(j.status_msg || 'API DreamFace Error');
-    return j.data;
+    } catch (e) {
+        if (retry < CONFIG.MAX_RETRIES - 1) {
+            await new Promise(r => setTimeout(r, 2000));
+            return bypassTurnstile(retry + 1);
+        }
+        throw e;
+    }
 }
 
-// --- LOGIC 1: MULAI JOB (Login & Submit Task) ---
-async function startJob(prompt) {
-    const modelConfig = MODELS["1"]; // Default Seedream 4.5
+// --- HELPER 2: GENERATE IMAGE ---
+async function generateImage(prompt, token, width, height) {
+    console.log("🎨 Mengirim request ke Flux2...");
+    const res = await fetch(CONFIG.FLUX_API, {
+        method: 'POST',
+        headers: HEADERS,
+        body: JSON.stringify({ 
+            prompt: prompt, 
+            turnstile_token: token, 
+            width: width, 
+            height: height 
+        })
+    });
 
-    // Buat Identitas Palsu
-    const email = `df_${rnd(5)}@illubd.com`;
-    const userId = rnd(16);
-    const clientId = rnd(16);
-
-    // 1. Login
-    const login = await post(`${BASE}/user/login`, {
-        password: 'dancow000', user_id: userId, third_id: email, third_platform: 'EMAIL',
-        register_source: 'seo', platform_type: 'MOBILE', tenant_name: 'dream_face', platformType: 'MOBILE', tenantName: 'dream_face'
-    }, null, clientId);
-
-    // 2. Save Login
-    await post(`${BASE}/user/save_user_login`, {
-        device_system: 'PC-Mobile', user_id: userId, account_id: login.account_id, app_version: '4.7.1',
-        time_zone: 7, platform_type: 'MOBILE', tenant_name: 'dream_face', platformType: 'MOBILE', tenantName: 'dream_face'
-    }, login.token, clientId);
-
-    // 3. Claim Free Credits (Penting biar gratis)
-    await post(`${BASE}/rights/get_free_rights`, {
-        user_id: userId, account_id: login.account_id, platform_type: 'MOBILE', tenant_name: 'dream_face', platformType: 'MOBILE', tenantName: 'dream_face'
-    }, login.token, clientId);
-
-    // 4. Submit Task Gambar
-    const { param } = modelConfig;
-    await post(`${BASE}/task/v2/submit`, {
-        ext_info: { sing_title: prompt.slice(0, 50), model: param.model },
-        media: { texts: [{ text: prompt }], images: [], audios: [], videos: [] },
-        output: param.output,
-        template: { releation_id: param.releation_id, template_id: param.template_id, play_types: param.play_types },
-        user: { user_id: userId, account_id: login.account_id, app_version: '4.7.1' },
-        work_type: 'AI_IMAGE', create_work_session: true, platform_type: 'MOBILE', tenant_name: 'dream_face', platformType: 'MOBILE', tenantName: 'dream_face'
-    }, login.token, clientId);
-
-    // Kembalikan Data Sesi ke Frontend
-    return { userId, accountId: login.account_id, token: login.token, clientId };
-}
-
-// --- LOGIC 2: CEK STATUS (Polling) ---
-async function checkStatus(jobData) {
-    const { userId, accountId, token, clientId } = jobData;
-
-    const ws = await post(`${BASE}/work_session/list`, {
-        user_id: userId, account_id: accountId, page: 1, size: 5, session_type: 'AI_IMAGE',
-        platform_type: 'MOBILE', tenant_name: 'dream_face', platformType: 'MOBILE', tenantName: 'dream_face'
-    }, token, clientId);
-
-    const s = ws.list?.[0];
-
-    // Cek apakah sudah ada URL gambar
-    if (s?.session_status === 200 && s?.work_details?.[0]?.image_urls?.length) {
-        return { status: 'done', url: s.work_details[0].image_urls[0] };
-    }
-    // Cek apakah gagal (NSFW dll)
-    if (s?.session_status < 0 && s?.session_status !== -1) {
-        return { status: 'failed', error: "Gambar ditolak server (Mungkin NSFW)." };
-    }
-    // Masih proses
-    return { status: 'pending' };
+    if (!res.ok) throw new Error(`Flux API Error: ${res.status}`);
+    const data = await res.json();
+    
+    if (!data.image_url) throw new Error('Gagal: Flux tidak mengembalikan URL gambar.');
+    return data.image_url; // Ini biasanya format base64 (data:image/jpeg;base64,...)
 }
 
 // --- HANDLER UTAMA VERCEL ---
 module.exports = async (req, res) => {
-    // Header CORS
+    // 1. Setup Header CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -106,24 +80,37 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        const { step, prompt, jobData } = req.body;
+        const { prompt } = req.body;
 
-        // MODE 1: START (Mulai Job)
-        if (step === 'start') {
-            if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
-            const data = await startJob(prompt);
-            return res.json({ success: true, jobData: data });
+        if (!prompt) {
+            return res.status(400).json({ success: false, error: "Prompt kosong!" });
         }
+
+        // Default Ukuran (Bisa diatur 256-1024)
+        // Kita set 512 atau 1024. 512 lebih cepat, 1024 lebih bagus.
+        const width = 1024;
+        const height = 1024;
+
+        // 1. Dapatkan Token Bypass
+        const token = await bypassTurnstile();
         
-        // MODE 2: CHECK (Cek Status)
-        else if (step === 'check') {
-            if (!jobData) return res.status(400).json({ error: "Data job hilang!" });
-            const status = await checkStatus(jobData);
-            return res.json(status);
-        }
+        // 2. Generate Gambar
+        const imageUrl = await generateImage(prompt, token, width, height);
 
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ success: false, error: e.message });
+        // 3. Kirim Result
+        // Flux2 mengembalikan Base64 Data URI, jadi kita kirim langsung ke frontend
+        // Frontend kita sudah support base64 karena tag <img> bisa membacanya.
+        return res.status(200).json({ 
+            success: true, 
+            url: imageUrl, 
+            details: `Flux2 Cloud | ${width}x${height}`
+        });
+
+    } catch (error) {
+        console.error("Draw Error:", error.message);
+        return res.status(500).json({ 
+            success: false, 
+            error: `Gagal membuat gambar: ${error.message}. (Mungkin API Bypass sedang sibuk)` 
+        });
     }
 };
