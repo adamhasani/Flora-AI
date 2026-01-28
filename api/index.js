@@ -2,7 +2,6 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Groq = require("groq-sdk");
 
 // --- SETUP API KEYS ---
-// Pastikan kamu punya GROQ_API_KEY, GEMINI_API_KEY, dan MISTRAL_API_KEY di Vercel
 const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
 
 const groqKey = getCleanKey(process.env.GROQ_API_KEY);
@@ -14,28 +13,25 @@ const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 
 // --- PROMPT FLORA ---
 const promptFlora = `
-    Nama kamu Flora AI. Kamu asisten cerdas, asik, dan sangat membantu.
-    Gaya bicara: Santai, informatif, dan menggunakan Bahasa Indonesia yang luwes.
-    PENTING: Gunakan HTML <b>tebal</b>, <i>miring</i>, dan <br> untuk baris baru.
-    JANGAN gunakan markdown (seperti ** atau ##).
+    Nama kamu Flora AI. Kamu asisten cerdas yang asik.
+    Gaya bicara: Santai, informatif, dan membantu.
+    PENTING: Gunakan HTML <b>tebal</b> dan <br> untuk baris baru.
 `;
 
-// Helper: Bersihkan respon
 const cleanResponse = (text) => text ? text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, "<br>").trim() : "";
-
 const getCleanHistory = (history) => history.map(msg => ({
     role: (msg.role === 'model' || msg.role === 'assistant') ? 'assistant' : 'user',
     content: msg.content.replace(/<[^>]*>/g, '').trim()
 }));
 
-// ==========================================
-// 1. ENGINE: GROQ (Llama 3.3 & Vision)
-// ==========================================
+// --- 1. GROQ (VISION & TEKS - PRIORITAS UTAMA) ---
 async function runGroq(history, message, imageBase64) {
+    if (!groqKey || groqKey === "dummy") throw new Error("API Key Groq Belum Dipasang!");
+
     let messages = [{ role: "system", content: promptFlora }, ...getCleanHistory(history)];
     
     if (imageBase64) {
-        // Mode Vision (Llama 3.2)
+        // Mode Vision (Llama 3.2 - Gratis & Cepat)
         messages.push({
             role: "user",
             content: [
@@ -48,7 +44,7 @@ async function runGroq(history, message, imageBase64) {
         });
         return cleanResponse(res.choices[0]?.message?.content);
     } else {
-        // Mode Teks (Llama 3.3 - Super Cepat)
+        // Mode Teks (Llama 3.3)
         messages.push({ role: "user", content: message });
         const res = await groq.chat.completions.create({
             messages, model: "llama-3.3-70b-versatile", temperature: 0.7, max_tokens: 2048
@@ -57,39 +53,7 @@ async function runGroq(history, message, imageBase64) {
     }
 }
 
-// ==========================================
-// 2. ENGINE: MISTRAL OFFICIAL (Nemo)
-// ==========================================
-async function runMistral(history, message) {
-    if (!mistralKey || mistralKey === "dummy") throw new Error("API Key Mistral belum dipasang!");
-
-    const messages = [
-        { role: "system", content: promptFlora },
-        ...getCleanHistory(history),
-        { role: "user", content: message }
-    ];
-
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${mistralKey}` },
-        body: JSON.stringify({
-            model: "open-mistral-nemo", // Model gratis & pintar dari Mistral
-            messages: messages,
-            temperature: 0.7
-        })
-    });
-
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(`Mistral API Error: ${err.message || response.statusText}`);
-    }
-    const data = await response.json();
-    return cleanResponse(data.choices[0].message.content);
-}
-
-// ==========================================
-// 3. ENGINE: GEMINI (Backup & Vision)
-// ==========================================
+// --- 2. GEMINI (BACKUP STABIL) ---
 function fileToGenerativePart(base64Image) {
     const data = base64Image.split(",")[1];
     const mimeType = base64Image.substring(base64Image.indexOf(":") + 1, base64Image.indexOf(";"));
@@ -97,7 +61,9 @@ function fileToGenerativePart(base64Image) {
 }
 
 async function runGemini(history, message, imageBase64) {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: promptFlora });
+    // Model ini AMAN dan BELUM KADALUARSA. 
+    // Syarat: Library @google/generative-ai harus versi TERBARU.
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: promptFlora });
     
     if (imageBase64) {
         const imagePart = fileToGenerativePart(imageBase64);
@@ -115,9 +81,21 @@ async function runGemini(history, message, imageBase64) {
     }
 }
 
-// ==========================================
-// MAIN HANDLER (ROUTER)
-// ==========================================
+// --- 3. MISTRAL OFFICIAL ---
+async function runMistral(history, message) {
+    if (!mistralKey || mistralKey === "dummy") throw new Error("API Key Mistral Kosong!");
+    const messages = [{ role: "system", content: promptFlora }, ...getCleanHistory(history), { role: "user", content: message }];
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${mistralKey}` },
+        body: JSON.stringify({ model: "open-mistral-nemo", messages, temperature: 0.7 })
+    });
+    if (!response.ok) throw new Error("Mistral Error");
+    const data = await response.json();
+    return cleanResponse(data.choices[0].message.content);
+}
+
+// --- HANDLER UTAMA ---
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -126,55 +104,43 @@ module.exports = async (req, res) => {
 
     try {
         const { history = [], message, image, model } = req.body;
-        let result = "";
-        let label = "Flora AI";
+        let result = "", label = "";
 
-        // --- 1. JIKA ADA GAMBAR (VISION MODE) ---
+        // === JALUR VISION (GAMBAR) ===
         if (image) {
-            // Mistral Official tidak bisa lihat gambar, jadi kita pakai Groq Vision atau Gemini
             try {
-                console.log("Vision Mode: Menggunakan Groq Llama Vision...");
+                // COBA GROQ DULU (GRATIS & CEPAT)
+                console.log("Vision: Mencoba Groq...");
                 result = await runGroq(history, message, image);
                 label = "Flora Vision (Llama)";
-            } catch (e) {
-                console.log("Groq Vision Limit, switch ke Gemini...", e.message);
-                result = await runGemini(history, message, image);
-                label = "Flora Vision (Gemini)";
+            } catch (groqErr) {
+                console.error("Groq Gagal:", groqErr.message);
+                // BARU LEMPAR KE GEMINI 1.5 FLASH
+                try {
+                    console.log("Vision: Switch ke Gemini 1.5...");
+                    result = await runGemini(history, message, image);
+                    label = "Flora Vision (Gemini)";
+                } catch (geminiErr) {
+                    throw new Error("Semua Vision AI sibuk. Coba 1 menit lagi.");
+                }
             }
         } 
-        
-        // --- 2. JIKA TEKS BIASA (CHAT MODE) ---
+        // === JALUR CHAT TEKS ===
         else {
-            // Cek pilihan user di Frontend
             if (model === 'mistral') {
                 try {
-                    console.log("Mode: Mistral Official");
                     result = await runMistral(history, message);
-                    label = "Flora (Mistral Nemo)";
-                } catch (e) {
-                    console.error("Mistral Gagal, fallback ke Groq...", e.message);
+                    label = "Flora (Mistral Official)";
+                } catch(e) {
                     result = await runGroq(history, message);
-                    label = "Flora (Llama 3.3 - Backup)";
+                    label = "Flora (Llama Backup)";
                 }
-            } 
-            else if (model === 'gemini') {
+            } else {
+                // Default: Groq Llama 3.3
                 try {
-                    console.log("Mode: Gemini");
-                    result = await runGemini(history, message);
-                    label = "Flora (Gemini)";
-                } catch (e) {
-                    result = await runGroq(history, message);
-                    label = "Flora (Llama 3.3 - Backup)";
-                }
-            } 
-            else {
-                // Default: GROQ (Llama 3.3) karena paling stabil & gratis
-                try {
-                    console.log("Mode: Default (Groq)");
                     result = await runGroq(history, message);
                     label = "Flora (Llama 3.3)";
-                } catch (e) {
-                    console.log("Groq Limit, fallback ke Gemini...");
+                } catch(e) {
                     result = await runGemini(history, message);
                     label = "Flora (Gemini Backup)";
                 }
@@ -184,7 +150,7 @@ module.exports = async (req, res) => {
         return res.json({ reply: `<b>[${label}]</b><br>${result}` });
 
     } catch (err) {
-        console.error("Server Fatal Error:", err);
+        console.error("Server Error:", err);
         return res.status(500).json({ reply: `Error Sistem: ${err.message}` });
     }
 };
