@@ -1,216 +1,113 @@
-<script>
-    // ============================================
-    // 🧠 OTAK ROUTER CERDAS (FRONTEND)
-    // ============================================
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 
-    // Daftar kata kunci yang memicu mode EDIT GAMBAR
-    const editKeywords = [
-        "ubah", "ganti", "jadi", "buat", "edit",
-        "hapus", "tambahkan", "warnai", 
-        "gaya", "style", "anime", "kartun", "realistik", "3d",
-        "latar belakang", "background", "bgnya"
-    ];
+// --- SETUP API KEYS ---
+const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
+const groqKey = getCleanKey(process.env.GROQ_API_KEY);
+const geminiKey = getCleanKey(process.env.GEMINI_API_KEY || process.env.API_KEY);
+const mistralKey = getCleanKey(process.env.MISTRAL_API_KEY); // WAJIB ADA!
 
-    // Fungsi untuk mendeteksi niat pengguna
-    function detectIntent(text) {
-        if (!text) return 'vision'; // Kalau cuma kirim gambar tanpa teks, anggap Vision
-        
-        const lowerText = text.toLowerCase();
-        
-        // Cek apakah ada SATU SAJA kata kunci edit di dalam teks
-        const isEditRequest = editKeywords.some(keyword => lowerText.includes(keyword));
+const groq = new Groq({ apiKey: groqKey || "dummy" });
+const genAI = new GoogleGenerativeAI(geminiKey || "dummy");
 
-        if (isEditRequest) {
-            return 'edit'; // Niatnya ngedit
-        } else {
-            return 'vision'; // Niatnya nanya/analisis
-        }
-    }
+const promptFlora = "Nama kamu Flora AI. Jawab santai, singkat, dan jelas dalam Bahasa Indonesia. Gunakan HTML <b> untuk tebal.";
 
-    // ============================================
-    // VARIABEL GLOBAL & SETUP Awal
-    // ============================================
-    let chatHistory = [];
-    let attachmentBase64 = null;
-    // Default endpoint adalah chat biasa/vision
-    let currentApiEndpoint = '/api/index'; 
+// --- 1. MISTRAL VISION (PIXTRAL) - UTAMA ---
+async function runMistralVision(message, imageBase64) {
+    if (!mistralKey) throw new Error("MISTRAL_API_KEY belum dipasang di Vercel!");
 
-    const messageInput = document.getElementById('message-input');
-    const chatBox = document.getElementById('chat-box');
-    const typingIndicator = document.getElementById('typing-indicator');
-    const attachmentPreview = document.getElementById('attachment-preview');
-    const previewImg = document.getElementById('preview-img');
+    // Mistral API butuh format 'data:image/jpeg;base64,...'
+    // Jadi imageBase64 dari frontend sudah aman (biasanya sudah ada header data:...)
 
-    messageInput.addEventListener('keypress', (e) => { 
-        if(e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); 
-            sendMessage(); 
-        } 
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${mistralKey}`
+        },
+        body: JSON.stringify({
+            model: "pixtral-12b-2409", // <--- INI MODEL VISION MISTRAL
+            messages: [
+                { role: "system", content: promptFlora },
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: message || "Jelaskan gambar ini" },
+                        { type: "image_url", image_url: url = imageBase64 } 
+                    ]
+                }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000
+        })
     });
 
-    function autoResize(textarea) {
-        textarea.style.height = 'auto';
-        textarea.style.height = (textarea.scrollHeight > 200 ? 200 : textarea.scrollHeight) + 'px';
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(`Mistral Error: ${err.message || response.statusText}`);
     }
 
-    // --- FUNGSI LAMPIRAN GAMBAR ---
-    function triggerFileInput() {
-        document.getElementById('file-input').click();
-    }
+    const data = await response.json();
+    return data.choices[0].message.content;
+}
 
-    function handleFileUpload(input) {
-        const file = input.files[0];
-        if (!file) return;
-        
-        // Validasi tipe file (hanya gambar)
-        if (!file.type.startsWith('image/')) {
-            alert("Hanya bisa mengirim file gambar (JPG, PNG, GIF).");
-            input.value = ''; // Reset input
-            return;
-        }
+// --- 2. GEMINI VISION (BACKUP) ---
+async function runGeminiVision(message, imageBase64) {
+    // Kita pakai Gemini 2.0 Flash (Backup kalau Pixtral gagal)
+    const base64Data = imageBase64.split(",")[1];
+    const mimeType = imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"));
+    const imagePart = { inlineData: { data: base64Data, mimeType: mimeType } };
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            attachmentBase64 = e.target.result;
-            previewImg.src = attachmentBase64;
-            attachmentPreview.style.display = 'flex';
-            // Beri tahu user bahwa kita siap menerima perintah
-            messageInput.placeholder = "Contoh: 'Jelaskan ini' atau 'Ubah jadi anime'...";
-        };
-        reader.readAsDataURL(file);
-    }
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: promptFlora });
+    const result = await model.generateContent([message || "Jelaskan gambar ini", imagePart]);
+    return result.response.text();
+}
 
-    function clearAttachment() {
-        attachmentBase64 = null;
-        document.getElementById('file-input').value = '';
-        attachmentPreview.style.display = 'none';
-        messageInput.placeholder = "Ketik pesan di sini...";
-    }
+// --- HANDLER UTAMA ---
+module.exports = async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
-    // --- FUNGSI CHAT UTAMA ---
-    function addMessage(content, sender, isImage = false) {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `message ${sender === 'user' ? 'user-message' : 'bot-message'}`;
-        
-        if (isImage) {
-            // Kalau responnya gambar hasil editan
-            msgDiv.innerHTML = `<img src="${content}" class="rounded-lg max-w-full h-auto border-2 border-purple-500" alt="Generated Image">`;
-        } else {
-            // Kalau teks biasa
-            msgDiv.innerHTML = content;
-        }
-        
-        chatBox.appendChild(msgDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
+    const { history = [], message, image } = req.body;
 
-    async function sendMessage() {
-        const message = messageInput.value.trim();
-        // Tidak boleh kirim kalau kosong DAN tidak ada gambar
-        if (!message && !attachmentBase64) return;
-
-        // 1. Tampilkan pesan user di chat
-        let displayMessage = message;
-        if (attachmentBase64 && message) {
-             displayMessage = `<img src="${attachmentBase64}" class="h-20 w-auto rounded mb-2 border border-gray-600"><br>${message}`;
-        } else if (attachmentBase64 && !message) {
-             displayMessage = `<img src="${attachmentBase64}" class="h-20 w-auto rounded border border-gray-600">`;
-        }
-        addMessage(displayMessage, 'user');
-
-        messageInput.value = '';
-        autoResize(messageInput);
-        
-        // Simpan gambar sementara sebelum dihapus clearAttachment
-        const currentImage = attachmentBase64; 
-        
-        // ==========================================
-        // 🤖 LOGIKA ROUTING (INTENT DETECTION)
-        // ==========================================
-        let loadingText = "Sedang mengetik...";
-        currentApiEndpoint = '/api/index'; // Default Chat/Vision
-
-        // HANYA CEK ROUTING JIKA ADA GAMBAR YANG DILAMPIRKAN
-        if (currentImage) {
-            const intent = detectIntent(message);
-            
-            if (intent === 'edit') {
-                console.log(`[ROUTER] Niat terdeteksi: EDIT GAMBAR -> Arahkan ke /api/edit`);
-                currentApiEndpoint = '/api/edit'; // Arahkan ke endpoint edit
-                loadingText = "🎨 Sedang memproses gambar...";
-            } else {
-                console.log(`[ROUTER] Niat terdeteksi: VISION/ANALISIS -> Arahkan ke /api/index`);
-                currentApiEndpoint = '/api/index'; // Tetap di endpoint utama
-                loadingText = "👁️ Sedang melihat gambar...";
-            }
-        }
-        // ==========================================
-
-        // Tampilkan loading yang sesuai
-        document.getElementById('typing-text').innerText = loadingText;
-        typingIndicator.style.display = 'flex';
-        chatBox.scrollTop = chatBox.scrollHeight;
-
-        // Hapus preview setelah pesan terkirim
-        clearAttachment();
-
+    // --- VISION (GAMBAR) ---
+    if (image) {
+        // Coba MISTRAL (PIXTRAL) Dulu
         try {
-            // Siapkan payload data
-            const payload = {
-                message: message,
-                history: chatHistory // Kirim history chat
-            };
-            // Jika ada gambar, masukkan ke payload
-            if (currentImage) {
-                payload.image = currentImage;
-            }
-
-            // KIRIM KE ENDPOINT YANG SUDAH DITENTUKAN ROUTER
-            const response = await fetch(currentApiEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
+            console.log("Mencoba Mistral Pixtral...");
+            const reply = await runMistralVision(message, image);
+            return res.json({ reply: `<b>[Flora Vision (Pixtral)]</b><br>${reply}` });
+        } catch (e1) {
+            console.log("Mistral Gagal:", e1.message);
             
-            typingIndicator.style.display = 'none';
-
-            if (!response.ok) throw new Error(data.error || "Gagal menghubungi server.");
-
-            // Cek apakah responnya gambar (untuk endpoint /api/edit) atau teks
-            if (data.image_url) {
-                // Jika server membalas dengan URL gambar (hasil edit)
-                addMessage(data.image_url, 'bot', true); // true artinya ini pesan gambar
-                chatHistory.push({ role: 'user', content: message || "[Mengirim Gambar untuk Edit]" });
-                chatHistory.push({ role: 'model', content: `[Membuat Gambar: ${data.image_url}]` });
-            } else {
-                 // Jika server membalas dengan teks (chat/vision biasa)
-                addMessage(data.reply, 'bot');
-                // Update history chat normal
-                if (message) chatHistory.push({ role: 'user', content: message });
-                chatHistory.push({ role: 'model', content: data.reply });
+            // Backup ke GEMINI
+            try {
+                console.log("Switch ke Gemini 2.0...");
+                const reply = await runGeminiVision(message, image);
+                return res.json({ reply: `<b>[Flora Vision (Gemini 2.0)]</b><br>${reply}` });
+            } catch (e2) {
+                return res.json({ 
+                    reply: `<b>[GAGAL TOTAL]</b><br>Mistral & Gemini menyerah.<br><small>Mistral: ${e1.message}<br>Gemini: ${e2.message}</small>` 
+                });
             }
-
-        } catch (error) {
-            typingIndicator.style.display = 'none';
-            addMessage(`⚠️ Error: ${error.message}`, 'bot');
-            console.error(error);
         }
     }
 
-    // Fitur Mobile: Toggle Sidebar
-    const sidebar = document.getElementById('sidebar');
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-    const closeSidebarBtn = document.getElementById('close-sidebar');
-
-    mobileMenuBtn.addEventListener('click', () => {
-        sidebar.classList.remove('-translate-x-full');
-    });
-
-    closeSidebarBtn.addEventListener('click', () => {
-        sidebar.classList.remove('translate-x-full');
-        // Sedikit hack biar animasinya jalan di mobile
-        setTimeout(() => { sidebar.classList.add('-translate-x-full'); }, 50);
-    });
-</script>
+    // --- TEKS (GROQ LLAMA 3.3) ---
+    try {
+        if (!groqKey) throw new Error("Key Groq Kosong");
+        const resText = await groq.chat.completions.create({
+            messages: [
+                { role: "system", content: promptFlora },
+                ...history.map(m => ({ role: m.role==='model'?'assistant':'user', content: m.content.replace(/<[^>]*>/g,'') })),
+                { role: "user", content: message }
+            ],
+            model: "llama-3.3-70b-versatile"
+        });
+        return res.json({ reply: `<b>[Flora AI]</b><br>${resText.choices[0]?.message?.content}` });
+    } catch (e) {
+        return res.json({ reply: `Error Text: ${e.message}` });
+    }
+};
