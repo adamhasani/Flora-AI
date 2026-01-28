@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
         // - model: flux (Realistis)
         // - seed: angka acak (biar unik)
         // - nologo: biar bersih gak ada watermark
-        const imageUrl = `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&seed=${seed}&model=flux&nologo=true`;
+        const imageUrl = `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&seed=${seed}&model=turbo&nologo=true`;
 
         // 3. Kirim URL ke Frontend
         // Note: Pollinations itu instan, jadi kita cukup kirim URL-nya, 
