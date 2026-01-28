@@ -56,54 +56,48 @@ async function searchWeb(rawQuery) {
 }
 
 // ==========================================
-// 4. GEMINI (DI-SKIP UTK TESTING GROQ)
+// 4. LOGIC MISTRAL (STANDALONE)
 // ==========================================
-async function runGemini(message, imageBase64, searchContext, history) {
-    // ... Code Gemini Disimpan (Tidak Dipakai di Mode Test) ...
-    return { text: "Gemini Disabled", label: "Gemini" };
-}
-
-// ==========================================
-// 5. BACKUP: GROQ & MISTRAL (DIPERBAIKI)
-// ==========================================
-async function runBackup(provider, message, imageBase64, searchContext, history) {
-    const isGroq = provider === 'groq';
-    const key = isGroq ? groqKey : mistralKey;
-    const url = isGroq ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.mistral.ai/v1/chat/completions";
+async function runMistral(message, imageBase64, searchContext, history) {
+    if (!mistralKey) throw new Error("MISTRAL_API_KEY tidak ditemukan!");
     
-    const textModel = isGroq ? "llama-3.3-70b-versatile" : "mistral-small-latest";
-    const visionModel = isGroq ? "llama-3.2-90b-vision-preview" : "pixtral-12b-2409";
-    const label = isGroq ? "Flora (Llama 3.3)" : "Flora (Mistral)";
-
-    if (!key) throw new Error(`${provider} Key Missing`);
+    const url = "https://api.mistral.ai/v1/chat/completions";
     
-    console.log(`🔄 Testing: ${provider.toUpperCase()} (${textModel})...`);
+    // Model Config
+    // Pixtral = Vision Model punya Mistral
+    // Mistral Small = Model chat cepat
+    const model = imageBase64 ? "pixtral-12b-2409" : "mistral-small-latest";
+    const label = "Flora (Mistral)";
 
-    // --- FIX PENTING: BERSIHKAN HISTORY ---
-    // Groq nolak kalau object history ada properti 'image', 'parts', dll.
-    // Kita map ulang biar cuma sisa 'role' dan 'content'.
+    console.log(`🔄 Testing MISTRAL (${model})...`);
+
+    // --- CLEANING HISTORY ---
+    // Wajib dibersihkan biar ga error 400 (Bad Request)
     const cleanHistory = history.map(msg => ({
         role: msg.role,
-        content: msg.content // Pastikan content string
+        content: msg.content
     }));
 
     let fullMessages = [];
 
-    // Mode Vision (Gambar)
     if (imageBase64) {
+        // Mode Vision Mistral (Pixtral)
         const contentBody = [{ type: "text", text: message || "Jelaskan gambar ini" }];
-        contentBody.push({ type: "image_url", image_url: { url: imageBase64 } });
+        contentBody.push({ type: "image_url", imageUrl: imageBase64 }); // Note: Mistral kadang pakai 'imageUrl', OpenAI 'image_url' (cek dokumentasi terbaru, usually image_url is standard now but let's stick to standard)
+        // Standard OpenAI format yang didukung Mistral:
+        // content: [ {type: "text", text: "..."}, {type: "image_url", image_url: {url: "..."}} ]
+        
+        const standardContent = [
+            { type: "text", text: message || "Jelaskan gambar ini" },
+            { type: "image_url", image_url: { url: imageBase64 } }
+        ];
 
         fullMessages = [
             { role: "system", content: promptFlora(searchContext) },
-            // Di Vision mode, history seringkali bikin error di Llama 3.2 Vision Preview,
-            // Jadi untuk keamanan saat kirim gambar, history kita skip dulu atau limit.
-            // ...cleanHistory, 
-            { role: "user", content: contentBody }
+            { role: "user", content: standardContent }
         ];
-    } 
-    // Mode Text Biasa
-    else {
+    } else {
+        // Mode Text Biasa
         fullMessages = [
             { role: "system", content: promptFlora(searchContext) },
             ...cleanHistory, 
@@ -112,22 +106,25 @@ async function runBackup(provider, message, imageBase64, searchContext, history)
     }
 
     const res = await fetch(url, {
-        method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json", 
+            "Authorization": `Bearer ${mistralKey}` 
+        },
         body: JSON.stringify({ 
-            model: imageBase64 ? visionModel : textModel, 
-            messages: fullMessages 
+            model: model, 
+            messages: fullMessages,
+            temperature: 0.7 
         })
     });
 
     if (!res.ok) {
         const errData = await res.text();
-        // Parsing error message biar enak dibaca
         let errMsg = errData;
         try {
             const jsonErr = JSON.parse(errData);
             errMsg = jsonErr.error?.message || errData;
         } catch(e) {}
-        
         throw new Error(errMsg);
     }
     
@@ -141,7 +138,7 @@ async function runBackup(provider, message, imageBase64, searchContext, history)
 }
 
 // ==========================================
-// 6. HANDLER UTAMA (MODE: FORCE GROQ)
+// 5. HANDLER UTAMA (MODE: FORCE MISTRAL)
 // ==========================================
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -160,19 +157,20 @@ module.exports = async (req, res) => {
             searchContext = await Promise.race([searchPromise, timeoutPromise]);
         }
 
-        // --- STEP 2: FORCE GROQ ---
+        // --- STEP 2: FORCE MISTRAL ---
         try {
-            console.log("⚠️ MODE TEST: Memaksa pakai GROQ...");
+            console.log("⚠️ MODE TEST: Memaksa pakai MISTRAL...");
             
-            const result = await runBackup('groq', message, image, searchContext, history);
+            // Langsung panggil Mistral
+            const result = await runMistral(message, image, searchContext, history);
             
             return res.json({ 
                 reply: `<b>[${result.label}]</b><br>${result.text}` 
             });
 
-        } catch (groqError) {
-            console.error("❌ Groq Error:", groqError.message);
-            return res.json({ reply: `Error Groq: ${groqError.message}` });
+        } catch (mistralError) {
+            console.error("❌ Mistral Error:", mistralError.message);
+            return res.json({ reply: `Error Mistral: ${mistralError.message}` });
         }
 
     } catch (err) {
