@@ -3,24 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flora AI - Next Gen</title>
+    <title>Flora AI - Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 
     <style>
-        /* --- 1. CORE VARIABLES & RESET --- */
+        /* --- 1. CORE VARIABLES --- */
         :root {
-            --bg-deep: #050505;
-            --bg-panel: rgba(20, 20, 23, 0.7);
-            --bg-message-user: #2d2d30;
+            --bg-deep: #09090b;
+            --bg-panel: #121214;
             --primary-gradient: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
             --glass-border: 1px solid rgba(255, 255, 255, 0.08);
-            --glass-shine: 1px solid rgba(255, 255, 255, 0.15);
+            --accent-color: #FF9A9E;
             --text-main: #ffffff;
             --text-muted: #a1a1aa;
-            --accent-color: #FF9A9E;
-            --ease-elastic: cubic-bezier(0.68, -0.55, 0.27, 1.55);
-            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
@@ -34,630 +32,415 @@
             overflow: hidden; display: flex;
         }
 
-        /* --- 2. AMBIENT BACKGROUND --- */
-        .ambient-glow {
-            position: fixed; width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(255, 154, 158, 0.15), transparent 70%);
-            top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: -1; pointer-events: none;
-            animation: pulseGlow 8s infinite alternate;
-        }
-        @keyframes pulseGlow { 0% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.2); } }
+        /* --- 2. LAYOUT --- */
+        #app-interface { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s; }
 
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
-        /* --- 3. LAYOUT --- */
-        #app-interface { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.6s var(--ease-smooth); }
-        
-        /* SIDEBAR */
+        /* SIDEBAR (HISTORY) */
         .sidebar {
-            width: 280px; background: var(--bg-panel); 
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border-right: var(--glass-border);
-            display: flex; flex-direction: column; padding: 24px; gap: 20px; flex-shrink: 0;
-            transition: transform 0.4s var(--ease-smooth);
-            z-index: 100;
+            width: 280px; background: var(--bg-panel); border-right: var(--glass-border);
+            display: flex; flex-direction: column; padding: 20px; gap: 15px; flex-shrink: 0;
+            z-index: 100; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .brand {
-            font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;
-            background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        .new-chat-btn {
+            width: 100%; padding: 12px; background: var(--primary-gradient);
+            border: none; border-radius: 8px; color: #4a1e20; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.2s;
         }
+        .new-chat-btn:active { transform: scale(0.96); }
 
-        .main-view { 
-            flex: 1; display: flex; flex-direction: column; 
-            position: relative; width: 100%; overflow: hidden; 
+        .history-list {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;
+            padding-right: 5px;
         }
+        .history-item {
+            padding: 10px 12px; border-radius: 8px; cursor: pointer;
+            color: var(--text-muted); font-size: 13px;
+            display: flex; flex-direction: column; gap: 4px;
+            transition: background 0.2s; border: 1px solid transparent;
+        }
+        .history-item:hover { background: rgba(255,255,255,0.05); }
+        .history-item.active { background: rgba(255, 154, 158, 0.1); border-color: rgba(255, 154, 158, 0.3); color: var(--accent-color); }
+        
+        .hist-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hist-time { font-size: 10px; opacity: 0.6; }
+
+        /* MAIN AREA */
+        .main-view { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; min-width: 0; /* Fix flex overflow */ }
 
         /* MOBILE HEADER */
         .mobile-header {
-            display: none; padding: 15px 20px; align-items: center; justify-content: space-between;
-            border-bottom: var(--glass-border); background: rgba(5, 5, 5, 0.8); backdrop-filter: blur(15px);
-            z-index: 50; flex-shrink: 0;
+            display: none; padding: 15px; align-items: center; justify-content: space-between;
+            border-bottom: var(--glass-border); background: rgba(9, 9, 11, 0.9); backdrop-filter: blur(10px);
         }
 
-        /* --- 4. CHAT AREA --- */
-        #chat-stream { 
-            flex: 1; overflow-y: auto; padding: 20px 0; 
-            display: flex; flex-direction: column; width: 100%; scroll-behavior: smooth;
-        }
+        /* --- 3. CHAT STREAM --- */
+        #chat-stream { flex: 1; overflow-y: auto; padding: 20px 0; scroll-behavior: smooth; }
+        .msg-wrapper { width: 100%; max-width: 850px; margin: 0 auto; padding: 0 15px; }
 
-        .msg-wrapper {
-            width: 100%; max-width: 850px; margin: 0 auto; padding: 0 20px;
-            display: flex; flex-direction: column;
-        }
-
-        /* WELCOME SCREEN */
-        #welcome-screen {
-            flex: 1; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center;
-            text-align: center; padding: 20px; min-height: 60vh;
-        }
-        .greet-title { 
-            font-size: 42px; font-weight: 800; margin-bottom: 12px; letter-spacing: -1px;
-            background: linear-gradient(to bottom, #fff 40%, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .greet-desc { color: var(--text-muted); font-size: 16px; margin-bottom: 30px; max-width: 400px; line-height: 1.5; }
-
-        .suggestion-grid {
-            display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: 600px;
-        }
-        .suggestion-card {
-            background: rgba(255,255,255,0.03); border: var(--glass-border);
-            padding: 12px 20px; border-radius: 12px; cursor: pointer;
-            font-size: 13px; color: #ccc; display: flex; align-items: center; gap: 8px;
-            transition: all 0.3s var(--ease-smooth);
-        }
-        .suggestion-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
-
-        /* --- 5. MESSAGES --- */
-        .msg-group { 
-            display: flex; gap: 16px; margin-bottom: 30px; width: 100%; 
-            opacity: 0; transform: translateY(20px); animation: slideUp 0.4s var(--ease-smooth) forwards;
-        }
-        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
-
+        .msg-group { display: flex; gap: 15px; margin-bottom: 30px; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .msg-group.user { justify-content: flex-end; }
-        
         .user .bubble { 
-            background: var(--bg-message-user); color: #fff; 
-            padding: 12px 18px; border-radius: 18px; border-bottom-right-radius: 4px;
-            font-size: 15px; line-height: 1.6; max-width: 85%; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: #27272a; color: #fff; padding: 10px 16px; 
+            border-radius: 18px; border-bottom-right-radius: 4px; max-width: 85%;
         }
 
-        .bot .content { flex: 1; color: #e1e1e3; font-size: 16px; line-height: 1.7; padding-top: 4px; }
-        
         .avatar { 
-            width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; 
+            width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center; font-size: 14px;
+            background: #1f1f22; border: 1px solid #333;
         }
-        .avatar.ai { background: linear-gradient(135deg, #2b2b30, #1a1a1c); border: var(--glass-border); color: var(--accent-color); }
-        .avatar.u { display: none; } /* User avatar hidden for clean look */
 
-        /* IMAGES */
-        .chat-img-container { position: relative; display: inline-block; overflow: hidden; border-radius: 12px; border: var(--glass-border); margin-top: 8px; }
-        .chat-img { max-width: 300px; width: 100%; display: block; transition: transform 0.3s; }
-        .chat-img:hover { transform: scale(1.02); }
-
-        /* --- 6. CODE BLOCKS (Mac Style) --- */
+        /* --- 4. CODE BLOCKS (FIX OFFSIDE & COLOR) --- */
+        /* Container Pre agar tidak offside di mobile */
         pre { 
-            background: #161618; border-radius: 12px; border: var(--glass-border);
-            margin: 15px 0; overflow: hidden; position: relative; 
+            background: #1e1e1e !important; 
+            border-radius: 8px; 
+            margin: 10px 0; 
+            position: relative; 
+            border: 1px solid #333;
+            max-width: 100%; /* Wajib */
+            width: 100%;     /* Wajib */
+            overflow-x: auto; /* Scroll horizontal jika kodingan panjang */
         }
-        .code-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 8px 12px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .window-dots { display: flex; gap: 6px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; }
-        .dot.red { background: #ff5f56; } .dot.yellow { background: #ffbd2e; } .dot.green { background: #27c93f; }
-        
-        code { display: block; padding: 15px; font-family: 'Consolas', monospace; font-size: 14px; color: #a5d6ff; overflow-x: auto; }
-        
-        .copy-btn { 
-            background: transparent; border: none; color: #888; font-size: 12px; cursor: pointer; 
-            transition: color 0.2s; display: flex; align-items: center; gap: 5px;
-        }
-        .copy-btn:hover { color: #fff; }
 
-        /* --- 7. INPUT DOCK --- */
+        /* Footer Powered By */
+        .code-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 12px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 10px; color: #666; letter-spacing: 0.5px;
+        }
+        .code-lang { color: var(--accent-color); font-weight: bold; text-transform: uppercase; }
+
+        code { 
+            font-family: 'Consolas', 'Monaco', monospace !important; 
+            font-size: 13px !important;
+            text-shadow: none !important;
+        }
+
+        /* --- 5. INPUT AREA --- */
         .input-dock { 
-            padding: 20px; 
-            background: linear-gradient(to top, var(--bg-deep) 60%, transparent); 
-            display: flex; flex-direction: column; align-items: center; 
-            width: 100%; z-index: 50; flex-shrink: 0;
+            padding: 15px; background: linear-gradient(to top, var(--bg-deep) 80%, transparent); 
+            display: flex; justify-content: center; width: 100%; z-index: 50;
         }
-
         .bar-wrapper {
-            width: 100%; max-width: 800px; position: relative;
-            background: rgba(30, 30, 35, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: var(--glass-shine); border-radius: 24px;
-            padding: 10px; display: flex; flex-direction: column; gap: 10px;
-            transition: border-color 0.3s, box-shadow 0.3s;
+            width: 100%; max-width: 800px; background: #18181b; border: var(--glass-border);
+            border-radius: 24px; padding: 8px; display: flex; gap: 8px; align-items: flex-end;
         }
-        .bar-wrapper:focus-within { border-color: rgba(255, 154, 158, 0.4); box-shadow: 0 0 20px rgba(255, 154, 158, 0.1); }
-
-        #preview-area { display: none; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 16px; margin-bottom: 5px; }
-        .preview-card { display: flex; align-items: center; gap: 12px; }
-        .preview-thumb { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; border: var(--glass-border); }
-        .preview-info { flex: 1; }
-        .tag { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .tag.vision { background: rgba(74, 169, 255, 0.2); color: #4AA9FF; }
-        .tag.edit { background: rgba(255, 154, 158, 0.2); color: #FF9A9E; }
-
-        .input-row { display: flex; align-items: flex-end; gap: 8px; width: 100%; }
-        
         textarea { 
-            flex: 1; background: transparent; border: none; color: white; font-size: 16px; 
-            resize: none; max-height: 120px; padding: 12px 5px; line-height: 1.5;
+            flex: 1; background: transparent; border: none; color: white; 
+            font-size: 15px; resize: none; max-height: 120px; padding: 12px 5px; 
         }
-        textarea::placeholder { color: #666; }
-
-        .action-btn { 
-            width: 38px; height: 38px; border-radius: 12px; border: none; background: transparent; 
-            color: #888; cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            font-size: 18px; transition: all 0.2s var(--ease-smooth); 
-        }
-        .action-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-        .action-btn.send { background: #fff; color: #000; border-radius: 50%; width: 42px; height: 42px;}
-        .action-btn.send:hover { transform: scale(1.05); background: var(--accent-color); color: #fff; }
-        .action-btn.active { color: var(--accent-color); background: rgba(255, 154, 158, 0.1); }
-        .pulse { animation: pulseRed 1.5s infinite; }
-        @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(255, 94, 98, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 94, 98, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 94, 98, 0); } }
-
-        .style-bar { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; scrollbar-width: none; }
-        .style-pill { 
-            padding: 6px 14px; background: rgba(255,255,255,0.05); border-radius: 20px; 
-            font-size: 12px; cursor: pointer; color: #aaa; white-space: nowrap; border: 1px solid transparent;
-            transition: all 0.3s;
-        }
-        .style-pill:hover { background: rgba(255,255,255,0.1); color: #fff; }
-        .style-pill.active { background: rgba(255, 154, 158, 0.15); border-color: var(--accent-color); color: var(--accent-color); font-weight: 600; }
-
-        /* --- 8. TYPING INDICATOR --- */
-        .typing-dots { display: flex; gap: 4px; padding: 10px 0; }
-        .typing-dots span { width: 6px; height: 6px; background: #666; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
-        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-
-        /* --- 9. MOBILE MENU OVERLAY --- */
-        #mobile-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
-            z-index: 90; opacity: 0; pointer-events: none; transition: opacity 0.3s;
-        }
-        #mobile-overlay.show { opacity: 1; pointer-events: auto; }
         
-        @media (max-width: 768px) {
-            .sidebar { position: fixed; left: -280px; height: 100%; }
-            .sidebar.open { transform: translateX(280px); }
-            .mobile-header { display: flex; }
-            .greet-title { font-size: 32px; }
-            .msg-wrapper { padding: 0 15px; }
-            .bar-wrapper { border-radius: 20px; }
+        /* --- 6. AUTH SCREEN (Clean) --- */
+        #auth-layer { position: fixed; inset: 0; z-index: 999; background: #000; display: flex; justify-content: center; align-items: center; }
+        .auth-card { width: 85%; max-width: 320px; text-align: center; }
+        .auth-input { 
+            width: 100%; background: #111; border: 1px solid #333; padding: 15px; 
+            border-radius: 12px; color: white; margin: 20px 0; font-size: 16px; outline: none; text-align: center;
+            transition: border 0.3s;
         }
+        .auth-input:focus { border-color: var(--accent-color); }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: -100%; height: 100%; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
+            .sidebar.active { left: 0; }
+            .mobile-header { display: flex; }
+            .msg-wrapper { padding: 0 15px; }
+        }
+
+        /* Overlay Mobile */
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; pointer-events: none; transition: 0.3s; }
+        #overlay.show { opacity: 1; pointer-events: auto; }
     </style>
 </head>
 <body>
 
-    <div class="ambient-glow"></div>
-
     <div id="auth-layer">
-        <div class="glass-card">
-            <h1 style="margin:0 0 20px 0; font-size: 28px; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🌸 Flora AI</h1>
-            <p style="color:#888; font-size:14px; margin-bottom:20px;">Experience the next generation of AI.</p>
-            <input type="text" id="username" class="custom-input" placeholder="Siapa nama kamu?" autocomplete="off">
-            <button class="btn-glow" onclick="handleLogin()">Masuk</button>
+        <div class="auth-card">
+            <h1 style="background: var(--primary-gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:5px;">Flora AI</h1>
+            <p style="color:#666; font-size:12px;">Ultimate Assistant</p>
+            
+            <input type="text" id="username" class="auth-input" placeholder="Masukkan Nama Kamu" autocomplete="off">
+            
+            <button onclick="handleLogin()" style="width:100%; padding:14px; border-radius:12px; border:none; background:white; color:black; font-weight:bold; cursor:pointer;">
+                Lanjutkan <i class="fa-solid fa-arrow-right"></i>
+            </button>
         </div>
     </div>
 
-    <div id="mobile-overlay" onclick="toggleSidebar()"></div>
+    <div id="overlay" onclick="toggleSidebar()"></div>
 
     <div id="app-interface">
         
         <div class="sidebar" id="sidebar">
-            <div class="brand">
-                <i class="fa-solid fa-seedling"></i> Flora AI
-            </div>
-            
-            <div style="margin-top:20px;">
-                <label style="font-size:11px; color:#666; font-weight:700; letter-spacing:1px;">AI MODEL</label>
-                <div style="position:relative; margin-top:8px;">
-                    <select id="model-select" onchange="syncModel(this.value)" style="width:100%; padding:12px; background:rgba(0,0,0,0.3); border:var(--glass-border); border-radius:10px; color:white; appearance:none; cursor:pointer;">
-                        <option value="gemini">⚡ Gemini 2.0 Flash</option>
-                        <option value="gemini-pro">🌟 Gemini 3.0 Preview</option>
-                    </select>
-                    <i class="fa-solid fa-chevron-down" style="position:absolute; right:12px; top:14px; font-size:12px; color:#888; pointer-events:none;"></i>
-                </div>
+            <div style="font-weight:700; font-size:18px; color:white; display:flex; align-items:center; gap:10px;">
+                <i class="fa-solid fa-robot" style="color:var(--accent-color)"></i> Flora AI
             </div>
 
-            <div style="margin-top:auto; display:flex; flex-direction:column; gap:10px;">
-                <button onclick="clearChat()" style="width:100%; padding:12px; background:rgba(255, 94, 98, 0.1); color:#FF5E62; border:1px solid rgba(255, 94, 98, 0.2); border-radius:10px; cursor:pointer; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px; transition:0.2s;">
-                    <i class="fa-solid fa-trash-can"></i> Bersihkan Chat
-                </button>
-            </div>
+            <button class="new-chat-btn" onclick="startNewChat()">
+                <i class="fa-solid fa-plus"></i> Chat Baru
+            </button>
+
+            <div style="font-size:11px; color:#666; font-weight:bold; margin-top:10px;">RIWAYAT CHAT</div>
+            <div class="history-list" id="history-list">
+                </div>
         </div>
 
         <div class="main-view">
             <div class="mobile-header">
                 <button onclick="toggleSidebar()" style="background:none; border:none; color:white; font-size:20px;"><i class="fa-solid fa-bars"></i></button>
-                <span style="font-weight:700; letter-spacing:0.5px;">Flora AI</span>
-                <button onclick="clearChat()" style="background:none; border:none; color:#FF5E62;"><i class="fa-solid fa-trash-can"></i></button>
-            </div>
+                <span style="font-weight:700;">Flora AI</span>
+                <div style="width:20px;"></div> </div>
 
             <div id="chat-stream">
                 <div class="msg-wrapper" id="msg-container">
-                    
-                    <div id="welcome-screen">
-                        <div class="greet-title">Halo, <span id="u-name">Explorer</span>.</div>
-                        <div class="greet-desc">Saya Flora, asisten AI canggih kamu. Saya bisa melihat gambar, menulis kode, dan berdiskusi.</div>
-                        
-                        <div class="suggestion-grid">
-                            <div class="suggestion-card" onclick="setInput('Analisis gambar ini')">
-                                <i class="fa-solid fa-eye" style="color:#4AA9FF"></i> Apa isi gambar ini?
-                            </div>
-                            <div class="suggestion-card" onclick="setInput('Buatkan caption estetik untuk Instagram')">
-                                <i class="fa-brands fa-instagram" style="color:#E1306C"></i> Caption IG
-                            </div>
-                            <div class="suggestion-card" onclick="setInput('Jelaskan teori relativitas singkat')">
-                                <i class="fa-solid fa-atom" style="color:#FFBD2E"></i> Jelaskan Sains
-                            </div>
-                            <div class="suggestion-card" onclick="setInput('Buatkan kode Python kalkulator')">
-                                <i class="fa-brands fa-python" style="color:#306998"></i> Koding
-                            </div>
-                        </div>
+                    <div id="welcome-screen" style="text-align:center; padding-top:50px;">
+                        <h2 style="font-size:28px;">Halo, <span id="u-name" style="color:var(--accent-color)">User</span>! 👋</h2>
+                        <p style="color:#666;">Ada yang bisa Flora bantu hari ini?</p>
                     </div>
-
-                    </div>
+                </div>
             </div>
 
             <div class="input-dock">
                 <div class="bar-wrapper">
+                    <button onclick="document.getElementById('file-input').click()" style="background:none; border:none; color:#888; font-size:18px; padding:0 10px; cursor:pointer;">
+                        <i class="fa-solid fa-image"></i>
+                    </button>
+                    <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFile(this)">
                     
-                    <div id="preview-area">
-                        <div class="preview-card">
-                            <img id="img-thumb" class="preview-thumb">
-                            <div class="preview-info">
-                                <div id="preview-label" class="tag vision">Vision Mode</div>
-                                <div style="font-size:11px; color:#888; margin-top:2px;">Gambar terlampir</div>
-                            </div>
-                            <button onclick="clearImage()" style="background:none; border:none; color:#aaa; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
-                        </div>
-                        
-                        <div class="style-bar" id="style-bar" style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
-                            <div class="style-pill active" onclick="setMode(this, '')">👁️ Tanya Gambar</div>
-                            <div class="style-pill" onclick="setMode(this, 'Anime')">Anime</div>
-                            <div class="style-pill" onclick="setMode(this, 'Realistic')">Realistic</div>
-                            <div class="style-pill" onclick="setMode(this, 'Cyberpunk')">Cyberpunk</div>
-                            <div class="style-pill" onclick="setMode(this, '3D Render')">3D Render</div>
-                        </div>
-                    </div>
-
-                    <div class="input-row">
-                        <button class="action-btn" onclick="document.getElementById('file-input').click()" title="Upload Image">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
-                        <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFile(this)">
-                        
-                        <textarea id="user-input" rows="1" placeholder="Ketik pesan untuk Flora..." oninput="autoResize(this)" onkeydown="checkEnter(event)"></textarea>
-                        
-                        <button id="mic-btn" class="action-btn" onclick="toggleVoice()">
-                            <i class="fa-solid fa-microphone"></i>
-                        </button>
-                        
-                        <button class="action-btn send" onclick="sendMessage()">
-                            <i class="fa-solid fa-arrow-up"></i>
-                        </button>
-                    </div>
+                    <textarea id="user-input" rows="1" placeholder="Ketik pesan..." oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
+                    
+                    <button onclick="sendMessage()" style="width:40px; height:40px; border-radius:10px; border:none; background:white; color:black; cursor:pointer;">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
                 </div>
-                <div style="font-size:10px; color:#444; margin-top:10px;">Flora AI 2026 • Powered by Gemini & Vercel</div>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- STATE ---
-        let currentImg64 = null;
-        let selectedStyle = ""; // Kosong = Vision Mode
-        let chatHistory = [];
-        let recognition = null;
-        let isSidebarOpen = false;
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
 
-        // --- AUTH & INIT ---
+    <script>
+        // --- DATA UTAMA ---
+        let currentSessionId = null;
+        let allSessions = JSON.parse(localStorage.getItem('flora_sessions') || "{}");
+        let currentImg64 = null;
+
+        // --- AUTH ---
         function handleLogin() {
-            const name = document.getElementById('username').value.trim() || "User";
+            const name = document.getElementById('username').value.trim();
+            if(!name) { alert("Nama tidak boleh kosong!"); return; }
+            
             localStorage.setItem('flora_username', name);
             initApp(name);
         }
 
         function initApp(name) {
             document.getElementById('u-name').innerText = name;
-            const auth = document.getElementById('auth-layer');
-            const app = document.getElementById('app-interface');
+            document.getElementById('auth-layer').style.display = 'none';
+            document.getElementById('app-interface').style.opacity = 1;
             
-            auth.style.transition = "opacity 0.5s";
-            auth.style.opacity = 0;
-            
-            setTimeout(() => {
-                auth.style.display = 'none';
-                app.style.display = 'flex';
-                setTimeout(() => app.style.opacity = 1, 50);
-                loadChat();
-            }, 500);
+            renderSidebar();
+            // Load sesi terakhir jika ada, atau buat baru
+            const sessionKeys = Object.keys(allSessions);
+            if(sessionKeys.length > 0) {
+                loadSession(sessionKeys[sessionKeys.length - 1]); // Load yang paling baru
+            } else {
+                startNewChat();
+            }
         }
 
         window.onload = () => {
             const savedName = localStorage.getItem('flora_username');
-            if(savedName) { 
-                document.getElementById('username').value = savedName;
-                initApp(savedName);
-            }
+            if(savedName) initApp(savedName);
         };
 
-        // --- UI INTERACTION ---
-        function autoResize(el) {
-            el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-        }
-
-        function checkEnter(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('mobile-overlay');
-            isSidebarOpen = !isSidebarOpen;
-            
-            if (isSidebarOpen) {
-                sidebar.classList.add('open');
-                overlay.classList.add('show');
-            } else {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('show');
-            }
-        }
-
-        function setInput(txt) {
-            const input = document.getElementById('user-input');
-            input.value = txt;
-            input.focus();
-            autoResize(input);
-        }
-
-        // --- IMAGE HANDLING ---
-        function handleFile(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    currentImg64 = e.target.result;
-                    document.getElementById('img-thumb').src = currentImg64;
-                    document.getElementById('preview-area').style.display = 'block';
-                    
-                    // Reset to Vision Mode default
-                    setMode(document.querySelector('.style-pill'), '');
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        function clearImage() {
-            currentImg64 = null;
-            selectedStyle = "";
-            document.getElementById('file-input').value = "";
-            document.getElementById('preview-area').style.display = 'none';
-        }
-
-        function setMode(el, style) {
-            document.querySelectorAll('.style-pill').forEach(p => p.classList.remove('active'));
-            el.classList.add('active');
-            selectedStyle = style;
-            
-            const label = document.getElementById('preview-label');
-            if(style === "") {
-                label.innerText = "Vision Mode";
-                label.className = "tag vision";
-            } else {
-                label.innerText = "Edit: " + style;
-                label.className = "tag edit";
-            }
-        }
-
-        // --- VOICE ---
-        function toggleVoice() {
-            if (!('webkitSpeechRecognition' in window)) { alert("Browser tidak mendukung suara."); return; }
-            const btn = document.getElementById('mic-btn');
-            
-            if (recognition) { 
-                recognition.stop(); 
-                recognition = null; 
-                btn.classList.remove('active', 'pulse'); 
-                return; 
-            }
-            
-            recognition = new webkitSpeechRecognition();
-            recognition.lang = 'id-ID';
-            recognition.interimResults = false;
-            
-            recognition.onstart = () => btn.classList.add('active', 'pulse');
-            recognition.onend = () => { recognition = null; btn.classList.remove('active', 'pulse'); };
-            recognition.onresult = (e) => {
-                const txt = e.results[0][0].transcript;
-                const input = document.getElementById('user-input');
-                input.value += (input.value ? " " : "") + txt;
-                autoResize(input);
+        // --- HISTORY SYSTEM (INTI PERBAIKAN) ---
+        function startNewChat() {
+            currentSessionId = Date.now().toString(); // ID unik pakai waktu
+            allSessions[currentSessionId] = {
+                title: "Chat Baru",
+                timestamp: Date.now(),
+                messages: []
             };
-            recognition.start();
+            saveSessions();
+            renderSidebar();
+            
+            // Reset UI
+            document.getElementById('msg-container').innerHTML = `
+                <div id="welcome-screen" style="text-align:center; padding-top:50px;">
+                    <h2 style="font-size:28px;">Halo, <span style="color:var(--accent-color)">${localStorage.getItem('flora_username')}</span>! 👋</h2>
+                    <p style="color:#666;">Mulai percakapan baru...</p>
+                </div>
+            `;
+            if(window.innerWidth <= 768) toggleSidebar(); // Tutup sidebar di HP
         }
 
-        // --- CHAT LOGIC ---
+        function saveSessions() {
+            localStorage.setItem('flora_sessions', JSON.stringify(allSessions));
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = "";
+            
+            // Urutkan dari yang terbaru (descending)
+            const sortedIds = Object.keys(allSessions).sort((a,b) => b - a);
+
+            sortedIds.forEach(id => {
+                const session = allSessions[id];
+                const date = new Date(session.timestamp);
+                
+                // Logika Waktu: Hari ini (Jam), Kemarin (Tanggal)
+                const isToday = new Date().toDateString() === date.toDateString();
+                const timeStr = isToday ? 
+                    date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
+                    date.toLocaleDateString([], {day: 'numeric', month: 'short'});
+
+                const div = document.createElement('div');
+                div.className = `history-item ${id === currentSessionId ? 'active' : ''}`;
+                div.onclick = () => loadSession(id);
+                div.innerHTML = `
+                    <div class="hist-title">${session.title}</div>
+                    <div class="hist-time">${timeStr}</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function loadSession(id) {
+            currentSessionId = id;
+            const session = allSessions[id];
+            const container = document.getElementById('msg-container');
+            container.innerHTML = ""; // Bersihkan layar
+
+            if(session.messages.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding-top:50px; color:#666;">Chat Kosong</div>`;
+            } else {
+                session.messages.forEach(msg => {
+                    addBubble(msg.content, msg.role, null, false, false); // false = jangan save lagi (cuma render)
+                });
+            }
+            
+            renderSidebar(); // Update highlight active
+            if(window.innerWidth <= 768) toggleSidebar();
+        }
+
+        // --- MESSAGING ---
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
-
             if (!txt && !currentImg64) return;
 
-            document.getElementById('welcome-screen').style.display = 'none';
+            // 1. Update Judul Chat jika ini pesan pertama
+            if (allSessions[currentSessionId].messages.length === 0) {
+                allSessions[currentSessionId].title = txt.substring(0, 20) + "...";
+                renderSidebar();
+            }
+
+            // 2. Tampilkan & Simpan User Msg
+            addBubble(txt, 'user', currentImg64, false, true); // true = save to memory
             
-            // 1. Render User Message
-            addBubble(txt, 'user', currentImg64);
-            
-            // 2. Prepare Data
-            chatHistory.push({ role: "user", content: txt });
             const payload = {
-                history: chatHistory.slice(-15), // Memory limit
+                history: allSessions[currentSessionId].messages.slice(-10), // Context window
                 message: txt,
                 image: currentImg64
             };
 
-            // 3. Clear Input UI
             const imgTemp = currentImg64;
-            clearImage();
-            input.value = "";
-            input.style.height = 'auto';
+            input.value = ""; 
+            currentImg64 = null;
+            
+            const loadingId = addBubble("...", 'bot', null, true, false);
 
-            // 4. Show Loading
-            const loadingId = addBubble(null, 'bot', null, true);
-
-            // 5. Logic Routing (Edit vs Chat)
             try {
-                let endpoint = '/api';
-                let bodyData = payload;
-
-                // Jika Edit Mode aktif (Ada gambar + Style dipilih)
-                if (imgTemp && selectedStyle) {
-                    endpoint = '/api/edit'; // Asumsi ada endpoint ini (opsional)
-                    // Logic edit biasanya beda, tapi kita samakan strukturnya utk demo
-                    // Kalau kamu belum punya api/edit, fallback ke api biasa dgn prompt khusus
-                    bodyData.message = `Edit gambar ini dengan gaya ${selectedStyle}. Instruksi: ${txt}`;
-                    endpoint = '/api'; 
-                }
-
-                const res = await fetch(endpoint, {
+                const res = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(bodyData)
+                    body: JSON.stringify(payload)
                 });
-
                 const data = await res.json();
                 
-                // Remove Loading -> Show Result
                 document.getElementById(loadingId).remove();
-                
-                // Clean HTML for Memory, Keep for Display
-                const cleanText = data.reply.replace(/<[^>]*>/g, '');
-                addBubble(data.reply, 'bot');
-                
-                chatHistory.push({ role: "assistant", content: cleanText });
-                saveChat();
+                addBubble(data.reply, 'bot', null, false, true); // true = save to memory
 
             } catch (e) {
-                document.getElementById(loadingId).innerHTML = `<span style="color:#ff5f56">Error: ${e.message}</span>`;
+                document.getElementById(loadingId).innerHTML = "Error: " + e.message;
             }
         }
 
-        // --- RENDER BUBBLES ---
-        function addBubble(html, role, img = null, isLoading = false) {
+        // --- RENDER BUBBLE (DENGAN PRISM JS) ---
+        function addBubble(text, role, img, isLoading, saveToMem) {
             const container = document.getElementById('msg-container');
             const div = document.createElement('div');
             div.className = `msg-group ${role}`;
             div.id = 'msg-' + Date.now();
 
-            let content = '';
+            // Simpan ke memory sesi (jika bukan loading)
+            if (saveToMem && !isLoading) {
+                allSessions[currentSessionId].messages.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
+                saveSessions(); // Save localstorage
+            }
 
             if (role === 'user') {
-                content = `
+                div.innerHTML = `
                     <div class="bubble">
-                        ${img ? `<div class="chat-img-container"><img src="${img}" class="chat-img"></div>` : ''}
-                        ${html ? `<div>${html.replace(/\n/g, '<br>')}</div>` : ''}
+                        ${img ? `<img src="${img}" style="max-width:200px; border-radius:10px; margin-bottom:5px;">` : ''}
+                        <div>${text}</div>
                     </div>
                 `;
             } else {
-                // BOT
-                if (isLoading) {
-                    content = `
-                        <div class="avatar ai"><i class="fa-solid fa-bolt"></i></div>
-                        <div class="content">
-                            <div class="typing-dots"><span></span><span></span><span></span></div>
-                        </div>
-                    `;
+                if(isLoading) {
+                    div.innerHTML = `<div class="avatar">🤖</div><div style="color:#666; padding:10px;">Sedang mengetik...</div>`;
                 } else {
-                    // Format Markdown-like
-                    let formatted = html
+                    // FORMAT KODINGAN BIAR BERWARNA & ADA FOOTER
+                    let formatted = text
                         .replace(/\n/g, '<br>')
-                        .replace(/\*\*(.*?)\*\*/g, '<b style="color:#fff">$1</b>')
                         .replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
+                            const language = lang || 'javascript';
                             return `
-                                <pre>
-                                    <div class="code-header">
-                                        <div class="window-dots"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div>
-                                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                                    </div>
-                                    <code>${code.trim()}</code>
-                                </pre>
+                                <pre><code class="language-${language}">${code}</code></pre>
+                                <div class="code-footer">
+                                    <span class="code-lang">${language}</span>
+                                    <span><i class="fa-solid fa-bolt" style="color:#FF9A9E"></i> Powered by FLORA AI</span>
+                                </div>
                             `;
                         });
 
-                    content = `
-                        <div class="avatar ai"><i class="fa-solid fa-bolt"></i></div>
-                        <div class="content">${formatted}</div>
+                    div.innerHTML = `
+                        <div class="avatar">🤖</div>
+                        <div style="flex:1; color:#e1e1e3; line-height:1.6;">${formatted}</div>
                     `;
                 }
             }
 
-            div.innerHTML = content;
             container.appendChild(div);
+            // Re-highlight code blocks
+            Prism.highlightAll(); 
             
-            // Scroll smooth
-            const stream = document.getElementById('chat-stream');
-            stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
-
+            document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight, behavior: 'smooth' });
             return div.id;
         }
 
         // --- UTILS ---
-        function copyCode(btn) {
-            const code = btn.parentElement.nextElementSibling.innerText;
-            navigator.clipboard.writeText(code);
-            const originalText = btn.innerText;
-            btn.innerText = "Copied!";
-            btn.style.color = "#4AA9FF";
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.style.color = "";
-            }, 2000);
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('show');
         }
-
-        function saveChat() {
-            localStorage.setItem('flora_history', JSON.stringify(chatHistory));
-            localStorage.setItem('flora_html', document.getElementById('msg-container').innerHTML);
-        }
-        function loadChat() {
-            const savedHist = localStorage.getItem('flora_history');
-            const savedHTML = localStorage.getItem('flora_html');
-            if (savedHist && savedHTML) {
-                chatHistory = JSON.parse(savedHist);
-                document.getElementById('msg-container').innerHTML = savedHTML;
-                document.getElementById('welcome-screen').style.display = 'none';
-                
-                // Scroll to bottom immediately
-                const stream = document.getElementById('chat-stream');
-                stream.scrollTop = stream.scrollHeight;
+        function handleFile(input) {
+            if(input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => currentImg64 = e.target.result;
+                reader.readAsDataURL(input.files[0]);
             }
-        }
-        function clearChat() {
-            chatHistory = [];
-            localStorage.removeItem('flora_history');
-            localStorage.removeItem('flora_html');
-            location.reload();
         }
     </script>
 </body>
