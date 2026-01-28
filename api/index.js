@@ -1,199 +1,545 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flora AI - Ultimate</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 
-// --- SETUP API KEYS ---
-const getCleanKey = (key) => key ? key.replace(/\\n/g, "").trim() : "";
+    <style>
+        /* --- 1. CORE VARIABLES --- */
+        :root {
+            --bg-deep: #09090b;
+            --bg-panel: #121214;
+            --primary-gradient: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+            --accent-color: #FF9A9E;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+        }
 
-// Ambil banyak key Gemini buat rotasi
-const geminiKeys = (process.env.GEMINI_KEYS || process.env.GEMINI_API_KEY || "").split(",").map(k => k.trim()).filter(k=>k);
-const mistralKey = getCleanKey(process.env.MISTRAL_API_KEY);
-const groqKey = getCleanKey(process.env.GROQ_API_KEY);
-const tavilyKey = getCleanKey(process.env.TAVILY_API_KEY);
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-main);
+            width: 100%; height: 100dvh;
+            overflow: hidden; display: flex;
+        }
 
-// --- HELPER 1: BERSIHKAN QUERY SEARCH ---
-function extractKeywords(text) {
-    const stopWords = ["halo", "hai", "flora", "tolong", "cariin", "info", "tentang", "apa", "yang", "di", "ke", "dari", "buat", "saya", "aku", "bisa", "ga", "jelaskan", "sebutkan"];
-    let keywords = text.toLowerCase().split(/\s+/)
-        .filter(word => !stopWords.includes(word) && word.length > 2)
-        .join(" ");
-    return keywords.length > 2 ? keywords : text;
-}
+        /* --- 2. LAYOUT --- */
+        #app-interface { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s; }
 
-// --- HELPER 2: DETEKSI KEBUTUHAN SEARCH ---
-function needsSearch(text) {
-    const triggers = ["siapa", "kapan", "dimana", "berapa", "harga", "terbaru", "berita", "cuaca", "skor", "pemenang", "jadwal", "rilis", "2025", "2026", "iphone", "samsung", "presiden", "gta"];
-    return triggers.some(t => text.toLowerCase().includes(t));
-}
+        /* SIDEBAR */
+        .sidebar {
+            width: 280px; background: var(--bg-panel); border-right: var(--glass-border);
+            display: flex; flex-direction: column; padding: 20px; gap: 15px; flex-shrink: 0;
+            z-index: 100; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-// --- PROMPT FLORA ---
-const promptFlora = (context) => `
-Kamu adalah Flora AI (Versi 3.0). 
-Gaya bicara: Santai, cerdas, to-the-point, bahasa Indonesia gaul.
-Gunakan HTML <b> untuk poin penting.
-Ingat konteks percakapan sebelumnya.
-${context ? `[DATA WEB REAL-TIME]:\n${context}\n\nJawab pakai data ini!` : ""}
-`;
+        .new-chat-btn {
+            width: 100%; padding: 12px; background: var(--primary-gradient);
+            border: none; border-radius: 8px; color: #4a1e20; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: transform 0.2s;
+        }
+        .new-chat-btn:active { transform: scale(0.96); }
 
-// --- 1. SEARCH WEB (TAVILY) ---
-async function searchWeb(rawQuery) {
-    if (!tavilyKey) return "";
-    const cleanQuery = extractKeywords(rawQuery);
-    console.log(`🔎 Searching 2026: "${cleanQuery}"`);
+        .history-list {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;
+            padding-right: 5px;
+        }
+        .history-item {
+            padding: 10px 12px; border-radius: 8px; cursor: pointer;
+            color: var(--text-muted); font-size: 13px;
+            display: flex; flex-direction: column; gap: 4px;
+            transition: background 0.2s; border: 1px solid transparent;
+        }
+        .history-item:hover { background: rgba(255,255,255,0.05); }
+        .history-item.active { background: rgba(255, 154, 158, 0.1); border-color: rgba(255, 154, 158, 0.3); color: var(--accent-color); }
+        
+        .hist-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hist-time { font-size: 10px; opacity: 0.6; }
 
-    try {
-        const res = await fetch("https://api.tavily.com/search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ api_key: tavilyKey, query: cleanQuery, max_results: 1, include_answer: true })
-        });
-        const data = await res.json();
-        return data.answer || (data.results && data.results[0] ? data.results[0].content : "");
-    } catch (e) { return ""; }
-}
+        /* MAIN AREA */
+        .main-view { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; min-width: 0; }
+        .mobile-header {
+            display: none; padding: 15px; align-items: center; justify-content: space-between;
+            border-bottom: var(--glass-border); background: rgba(9, 9, 11, 0.9); backdrop-filter: blur(10px);
+        }
 
-// --- 2. GEMINI (MODEL HUNTER: 3.0 -> 2.0) ---
-async function runGemini(message, imageBase64, searchContext, history) {
-    if (geminiKeys.length === 0) throw new Error("No Gemini Keys");
+        /* --- 3. CHAT STREAM --- */
+        #chat-stream { flex: 1; overflow-y: auto; padding: 20px 0; scroll-behavior: smooth; }
+        .msg-wrapper { width: 100%; max-width: 850px; margin: 0 auto; padding: 0 15px; }
 
-    // PRIORITAS MASA DEPAN:
-    // 1. Gemini 3.0 Flash Preview (Target Utama)
-    // 2. Gemini 2.0 Flash Experimental (Backup High-Tech)
-    // Kita hapus 1.5 karena sudah usang.
-    const MODEL_PRIORITY = ["gemini-3-flash-preview", "gemini-2.0-flash-exp"];
-    
-    // Konversi History Frontend -> Gemini
-    const chatHistory = history.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }] 
-    }));
+        .msg-group { display: flex; gap: 15px; margin-bottom: 30px; animation: fadeIn 0.3s ease; width: 100%; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .msg-group.user { justify-content: flex-end; }
+        
+        /* BUBBLE STYLING */
+        .user .bubble { 
+            background: #27272a; color: #fff; padding: 10px 16px; 
+            border-radius: 18px; border-bottom-right-radius: 4px; max-width: 85%;
+            word-wrap: break-word;
+        }
 
-    // LOOP MODEL (Cari yang paling canggih yang bisa jalan)
-    for (const modelName of MODEL_PRIORITY) {
-        // LOOP KEY (Rotasi Anti-Limit)
-        for (const key of geminiKeys) {
-            try {
-                const genAI = new GoogleGenerativeAI(key);
-                const model = genAI.getGenerativeModel({ 
-                    model: modelName, 
-                    systemInstruction: promptFlora(searchContext) 
+        .avatar { 
+            width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 16px;
+            background: rgba(255, 154, 158, 0.1); border: 1px solid rgba(255, 154, 158, 0.3);
+            color: var(--accent-color);
+        }
+
+        /* --- 4. FIX OFFSIDE CODE BLOCKS --- */
+        /* Container response bot */
+        .bot-content {
+            flex: 1; color: #e1e1e3; line-height: 1.6; 
+            min-width: 0; /* PENTING: Mencegah flex item melebar melebihi parent */
+            overflow-x: hidden; /* PENTING */
+        }
+
+        pre { 
+            background: #1e1e1e !important; 
+            border-radius: 8px; margin: 10px 0; border: 1px solid #333;
+            /* LOGIKA ANTI OFFSIDE */
+            max-width: 100%; 
+            width: 100%;
+            overflow-x: auto; /* Scroll horizontal aktif jika konten panjang */
+            white-space: pre; /* Memaksa scroll, bukan wrap (opsional, bisa diganti pre-wrap) */
+        }
+
+        code { 
+            font-family: 'Consolas', 'Monaco', monospace !important; 
+            font-size: 13px !important; text-shadow: none !important;
+        }
+
+        .code-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 12px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 10px; color: #666; letter-spacing: 0.5px;
+        }
+        .code-lang { color: var(--accent-color); font-weight: bold; text-transform: uppercase; }
+
+        /* --- 5. INPUT AREA & PREVIEW --- */
+        .input-dock { 
+            padding: 15px; background: linear-gradient(to top, var(--bg-deep) 80%, transparent); 
+            display: flex; justify-content: center; width: 100%; z-index: 50; position: relative;
+        }
+        
+        /* Container Input */
+        .bar-container {
+            width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 8px;
+        }
+
+        /* Image Preview Box (Di atas input) */
+        #img-preview-box {
+            display: none; width: fit-content; background: #18181b; 
+            padding: 8px; border-radius: 12px; border: 1px solid #333;
+            align-items: flex-start; gap: 10px; animation: slideUp 0.2s;
+        }
+        @keyframes slideUp { from {transform: translateY(10px); opacity:0;} to {transform:translateY(0); opacity:1;} }
+
+        #preview-img-element {
+            height: 60px; width: auto; border-radius: 6px; border: 1px solid #444;
+        }
+
+        .remove-img-btn {
+            background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%;
+            width: 20px; height: 20px; font-size: 10px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Input Bar Wrapper */
+        .bar-wrapper {
+            background: #18181b; border: var(--glass-border);
+            border-radius: 24px; padding: 8px; display: flex; gap: 8px; align-items: flex-end;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        textarea { 
+            flex: 1; background: transparent; border: none; color: white; 
+            font-size: 15px; resize: none; max-height: 120px; padding: 12px 5px; 
+        }
+
+        /* --- 6. WELCOME & CHIPS --- */
+        .starter-chips {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px; margin-top: 30px; max-width: 600px; margin-left: auto; margin-right: auto;
+        }
+        .chip {
+            background: #18181b; border: 1px solid #333; padding: 15px; border-radius: 12px;
+            text-align: left; cursor: pointer; transition: 0.2s;
+        }
+        .chip:hover { border-color: var(--accent-color); background: #202022; }
+        .chip h4 { margin: 0 0 5px 0; font-size: 13px; color: #fff; }
+        .chip p { margin: 0; font-size: 11px; color: #888; }
+
+        /* --- 7. TYPING ANIMATION --- */
+        .typing-dots { display: flex; gap: 4px; padding: 5px 0; }
+        .typing-dots span {
+            width: 6px; height: 6px; background: var(--accent-color); border-radius: 50%;
+            animation: wave 1.3s linear infinite;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: -1.1s; }
+        .typing-dots span:nth-child(3) { animation-delay: -0.9s; }
+        @keyframes wave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: -100%; height: 100%; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
+            .sidebar.active { left: 0; }
+            .mobile-header { display: flex; }
+            .msg-wrapper { padding: 0 15px; }
+        }
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; pointer-events: none; transition: 0.3s; }
+        #overlay.show { opacity: 1; pointer-events: auto; }
+
+        /* Auth */
+        #auth-layer { position: fixed; inset: 0; z-index: 999; background: #000; display: flex; justify-content: center; align-items: center; }
+        .auth-card { width: 85%; max-width: 320px; text-align: center; }
+        .auth-input { width: 100%; background: #111; border: 1px solid #333; padding: 15px; border-radius: 12px; color: white; margin: 20px 0; font-size: 16px; outline: none; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-layer">
+        <div class="auth-card">
+            <div style="font-size:40px; margin-bottom:10px;">🌸</div>
+            <h1 style="background: var(--primary-gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin:0;">Flora AI</h1>
+            <p style="color:#666; font-size:12px; margin-top:5px;">Your Creative Companion</p>
+            <input type="text" id="username" class="auth-input" placeholder="Siapa nama kamu?" autocomplete="off">
+            <button onclick="handleLogin()" style="width:100%; padding:14px; border-radius:12px; border:none; background:white; color:black; font-weight:bold; cursor:pointer;">
+                Masuk <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="overlay" onclick="toggleSidebar()"></div>
+
+    <div id="app-interface">
+        
+        <div class="sidebar" id="sidebar">
+            <div style="font-weight:700; font-size:18px; color:white; display:flex; align-items:center; gap:10px;">
+                <i class="fa-solid fa-spa" style="color:var(--accent-color)"></i> Flora AI
+            </div>
+
+            <button class="new-chat-btn" onclick="startNewChat()">
+                <i class="fa-solid fa-plus"></i> Chat Baru
+            </button>
+
+            <div style="font-size:11px; color:#666; font-weight:bold; margin-top:10px;">RIWAYAT</div>
+            <div class="history-list" id="history-list"></div>
+        </div>
+
+        <div class="main-view">
+            <div class="mobile-header">
+                <button onclick="toggleSidebar()" style="background:none; border:none; color:white; font-size:20px;"><i class="fa-solid fa-bars"></i></button>
+                <span style="font-weight:700; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-spa" style="color:var(--accent-color)"></i> Flora</span>
+                <div style="width:20px;"></div>
+            </div>
+
+            <div id="chat-stream">
+                <div class="msg-wrapper" id="msg-container">
+                    </div>
+            </div>
+
+            <div class="input-dock">
+                <div class="bar-container">
+                    <div id="img-preview-box">
+                        <img id="preview-img-element" src="" alt="Preview">
+                        <button class="remove-img-btn" onclick="clearImage()"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+
+                    <div class="bar-wrapper">
+                        <button onclick="document.getElementById('file-input').click()" style="background:none; border:none; color:#888; font-size:18px; padding:0 10px; cursor:pointer;">
+                            <i class="fa-solid fa-image"></i>
+                        </button>
+                        <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFile(this)">
+                        
+                        <textarea id="user-input" rows="1" placeholder="Tanya sesuatu pada Flora..." oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
+                        
+                        <button onclick="sendMessage()" style="width:40px; height:40px; border-radius:10px; border:none; background:white; color:black; cursor:pointer;">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-html.min.js"></script>
+
+    <script>
+        let currentSessionId = null;
+        let allSessions = JSON.parse(localStorage.getItem('flora_sessions') || "{}");
+        let currentImg64 = null;
+
+        // --- LOGIN & INIT ---
+        function handleLogin() {
+            const name = document.getElementById('username').value.trim();
+            if(!name) { alert("Nama wajib diisi!"); return; }
+            localStorage.setItem('flora_username', name);
+            initApp(name);
+        }
+
+        function initApp(name) {
+            document.getElementById('auth-layer').style.display = 'none';
+            document.getElementById('app-interface').style.opacity = 1;
+            renderSidebar();
+            
+            const sessionKeys = Object.keys(allSessions);
+            if(sessionKeys.length > 0) {
+                loadSession(sessionKeys[sessionKeys.length - 1]);
+            } else {
+                startNewChat();
+            }
+        }
+
+        window.onload = () => {
+            const savedName = localStorage.getItem('flora_username');
+            if(savedName) initApp(savedName);
+        };
+
+        // --- SESSION MANAGAMENT ---
+        function startNewChat() {
+            currentSessionId = Date.now().toString();
+            allSessions[currentSessionId] = {
+                title: "Percakapan Baru",
+                timestamp: Date.now(),
+                messages: []
+            };
+            saveSessions();
+            renderSidebar();
+            
+            // RESET TAMPILAN KE WELCOME SCREEN
+            const name = localStorage.getItem('flora_username');
+            document.getElementById('msg-container').innerHTML = `
+                <div id="welcome-screen" style="text-align:center; padding-top:40px; animation: fadeIn 0.5s;">
+                    <div style="font-size:50px; margin-bottom:10px;">🌸</div>
+                    <h2 style="font-size:26px; margin:0;">Halo, <span style="color:var(--accent-color)">${name}</span>!</h2>
+                    <p style="color:#666; margin-top:5px;">Apa yang bisa Flora bantu hari ini?</p>
+                    
+                    <div class="starter-chips">
+                        <div class="chip" onclick="useStarter('Buatkan kode HTML sederhana')">
+                            <h4>💻 Koding</h4>
+                            <p>Buatkan kode HTML sederhana</p>
+                        </div>
+                        <div class="chip" onclick="useStarter('Ceritakan fakta unik tentang bunga')">
+                            <h4>🌺 Pengetahuan</h4>
+                            <p>Fakta unik tentang bunga</p>
+                        </div>
+                        <div class="chip" onclick="useStarter('Ide caption untuk foto senja')">
+                            <h4>✨ Kreatif</h4>
+                            <p>Ide caption foto senja</p>
+                        </div>
+                        <div class="chip" onclick="useStarter('Apa itu Artificial Intelligence?')">
+                            <h4>🤖 Belajar AI</h4>
+                            <p>Jelaskan apa itu AI</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            if(window.innerWidth <= 768) toggleSidebar();
+        }
+
+        function useStarter(text) {
+            document.getElementById('user-input').value = text;
+            sendMessage();
+        }
+
+        function saveSessions() {
+            localStorage.setItem('flora_sessions', JSON.stringify(allSessions));
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = "";
+            const sortedIds = Object.keys(allSessions).sort((a,b) => b - a);
+
+            sortedIds.forEach(id => {
+                const session = allSessions[id];
+                const div = document.createElement('div');
+                div.className = `history-item ${id === currentSessionId ? 'active' : ''}`;
+                div.onclick = () => loadSession(id);
+                div.innerHTML = `<div class="hist-title">${session.title}</div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function loadSession(id) {
+            currentSessionId = id;
+            const session = allSessions[id];
+            const container = document.getElementById('msg-container');
+            container.innerHTML = ""; 
+
+            if(session.messages.length === 0) {
+                // Jika load sesi tapi isinya kosong (misal baru dibuat), tampilkan welcome screen
+                startNewChat(); 
+                return;
+            } else {
+                session.messages.forEach(msg => {
+                    addBubble(msg.content, msg.role, msg.image, false, false);
                 });
+            }
+            renderSidebar();
+            if(window.innerWidth <= 768) toggleSidebar();
+        }
 
-                // Set Label Output
-                let label = modelName.includes("gemini-3") ? "Flora 3.0" : "Flora 2.0";
+        // --- MESSAGING SYSTEM ---
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const txt = input.value.trim();
+            if (!txt && !currentImg64) return;
 
-                if (imageBase64) {
-                    // Vision Mode
-                    const base64Data = imageBase64.split(",")[1];
-                    const mimeType = imageBase64.substring(imageBase64.indexOf(":") + 1, imageBase64.indexOf(";"));
-                    const result = await model.generateContent([message || "Analisis gambar", { inlineData: { data: base64Data, mimeType } }]);
-                    return { text: result.response.text(), label: label };
+            // Hapus welcome screen jika ada
+            const welcome = document.getElementById('welcome-screen');
+            if(welcome) welcome.remove();
+
+            // Update Title Chat Pertama
+            if (allSessions[currentSessionId].messages.length === 0) {
+                allSessions[currentSessionId].title = txt.substring(0, 25) || "Gambar...";
+                renderSidebar();
+            }
+
+            // Simpan gambar sementara sebelum di clear
+            const imgToSend = currentImg64;
+
+            // Tampilkan pesan User
+            addBubble(txt, 'user', imgToSend, false, true);
+            
+            // Simpan ke memory object (dengan gambar jika ada)
+            const msgData = { role: 'user', content: txt };
+            if(imgToSend) msgData.image = imgToSend;
+            
+            // Reset Input
+            input.value = ""; 
+            clearImage(); // Clear preview
+
+            // Loading Animation
+            const loadingId = addBubble("", 'bot', null, true, false);
+
+            try {
+                // Mockup Response (Ganti dengan fetch API asli Anda)
+                // const res = await fetch('/api', ...);
+                
+                // SIMULASI DELAY (Hapus ini saat connect API)
+                await new Promise(r => setTimeout(r, 1500));
+                
+                // Hapus loading
+                document.getElementById(loadingId).remove();
+
+                // Simulasi jawaban
+                let reply = "";
+                if(txt.toLowerCase().includes("kode") || txt.toLowerCase().includes("html")) {
+                    reply = "Tentu! Ini contoh kode HTML sederhana:\n```html\n<!DOCTYPE html>\n<html>\n<body>\n  <h1>Halo Dunia!</h1>\n</body>\n</html>\n```\nSemoga membantu!";
                 } else {
-                    // Chat Mode (Dengan Memory)
-                    const chat = model.startChat({ history: chatHistory });
-                    const result = await chat.sendMessage(message);
-                    return { text: result.response.text(), label: label };
+                    reply = "Saya adalah Flora AI. Saya bisa membantu Anda membuat kode, menganalisis gambar, atau sekadar mengobrol. Silakan tanya apa saja!";
                 }
+
+                addBubble(reply, 'bot', null, false, true);
 
             } catch (e) {
-                // LOGIKA PENTING:
-                // Jika errornya "404 Not Found" atau "400 Invalid" (Model belum rilis/salah nama)
-                // -> BREAK loop Key, langsung loncat ke Model berikutnya (Downgrade ke 2.0)
-                if (e.message.includes("404") || e.message.includes("not found") || e.message.includes("400")) {
-                    console.log(`Model ${modelName} belum siap. Ganti model...`);
-                    break; 
-                }
-                
-                // Jika errornya Limit (429/503), coba Key berikutnya di model yang sama
-                continue; 
+                document.getElementById(loadingId).innerHTML = "Error: " + e.message;
             }
         }
-    }
-    throw new Error("Gemini 3.0 & 2.0 Gagal. Server Google lagi berat.");
-}
 
-// --- 3. BACKUP (GROQ/MISTRAL - SUPPORT MEMORY MANUAL) ---
-async function runBackup(provider, message, imageBase64, searchContext, history) {
-    const isGroq = provider === 'groq';
-    const key = isGroq ? groqKey : mistralKey;
-    const url = isGroq ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.mistral.ai/v1/chat/completions";
-    // Groq pakai Llama 3.3, Mistral pakai Small
-    const model = isGroq ? "llama-3.3-70b-versatile" : "mistral-small-latest";
+        // --- RENDER BUBBLE ---
+        function addBubble(text, role, img, isLoading, saveToMem) {
+            const container = document.getElementById('msg-container');
+            const div = document.createElement('div');
+            div.className = `msg-group ${role}`;
+            div.id = 'msg-' + Date.now();
 
-    if (!key) throw new Error(`${provider} Key Missing`);
+            if (saveToMem) {
+                allSessions[currentSessionId].messages.push({ 
+                    role: role === 'user' ? 'user' : 'assistant', 
+                    content: text,
+                    image: img // Simpan gambar di history
+                });
+                saveSessions();
+            }
 
-    // Inject History manual
-    let fullMessages = [
-        { role: "system", content: promptFlora(searchContext) },
-        ...history, 
-        { role: "user", content: imageBase64 ? "Jelaskan gambar ini" : message }
-    ];
+            if (role === 'user') {
+                div.innerHTML = `
+                    <div class="bubble">
+                        ${img ? `<img src="${img}" style="width:100%; max-width:150px; height:100px; object-fit:cover; border-radius:10px; margin-bottom:5px; display:block; border:1px solid #444;">` : ''}
+                        <div>${text.replace(/\n/g, '<br>')}</div>
+                    </div>
+                `;
+            } else {
+                if(isLoading) {
+                    // Animasi Bergelombang
+                    div.innerHTML = `
+                        <div class="avatar"><i class="fa-solid fa-spa"></i></div>
+                        <div class="bubble" style="background:transparent; padding:0;">
+                            <div class="typing-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>`;
+                } else {
+                    // Format Code Block
+                    let formatted = text
+                        .replace(/\n/g, '<br>')
+                        .replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
+                            const language = lang || 'javascript';
+                            // Kita pakai replace <br> kembali ke \n khusus dalam code block agar PrismJS bekerja
+                            const cleanCode = code.replace(/<br>/g, '\n');
+                            return `
+                                <pre><code class="language-${language}">${cleanCode}</code></pre>
+                                <div class="code-footer">
+                                    <span class="code-lang">${language}</span>
+                                    <span>Flora AI</span>
+                                </div>
+                            `;
+                        });
 
-    if (imageBase64) {
-        const visionModel = isGroq ? "llama-3.2-90b-vision-preview" : "pixtral-12b-2409";
-        const contentBody = [{type:"text", text:message}];
-        if(isGroq) contentBody.push({type:"image_url", image_url:{url:imageBase64}});
-        else contentBody.push({type:"image_url", imageUrl:imageBase64});
-
-        fullMessages = [
-            { role: "system", content: promptFlora(searchContext) },
-            { role: "user", content: contentBody }
-        ];
-        
-        const res = await fetch(url, {
-            method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-            body: JSON.stringify({ model: visionModel, messages: fullMessages })
-        });
-        const data = await res.json();
-        return data.choices[0].message.content;
-    }
-
-    const res = await fetch(url, {
-        method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-        body: JSON.stringify({ model: model, messages: fullMessages })
-    });
-    if (!res.ok) throw new Error(`${provider} Error`);
-    const data = await res.json();
-    return data.choices[0].message.content;
-}
-
-// --- HANDLER UTAMA ---
-module.exports = async (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') return res.status(200).end();
-
-    try {
-        const { history = [], message, image } = req.body;
-        
-        // 1. Search (Tavily) - Cuma kalau teks panjang & ada trigger kata kunci
-        let searchContext = "";
-        if (!image && message && message.length > 3 && needsSearch(message)) {
-            const searchPromise = searchWeb(message);
-            const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(""), 2000));
-            searchContext = await Promise.race([searchPromise, timeoutPromise]);
-        }
-
-        // 2. AI Chain (Gemini 3.0 -> 2.0 -> Groq -> Mistral)
-        try {
-            const { text, label } = await runGemini(message, image, searchContext, history);
-            return res.json({ reply: `<b>[${label}]</b><br>${text}` });
-        } catch (e1) {
-            console.log("Gemini Error:", e1.message);
-            try {
-                // Backup 1: Groq (Llama 3.3)
-                const text = await runBackup('groq', message, image, searchContext, history);
-                return res.json({ reply: `<b>[Flora Backup]</b><br>${text}` });
-            } catch (e2) {
-                try {
-                    // Backup 2: Mistral
-                    const text = await runBackup('mistral', message, image, searchContext, history);
-                    return res.json({ reply: `<b>[Flora Last]</b><br>${text}` });
-                } catch (e3) {
-                    return res.json({ reply: "Sistem sibuk. Coba lagi nanti." });
+                    div.innerHTML = `
+                        <div class="avatar"><i class="fa-solid fa-spa"></i></div>
+                        <div class="bot-content">${formatted}</div>
+                    `;
                 }
             }
+
+            container.appendChild(div);
+            Prism.highlightAll();
+            document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight, behavior: 'smooth' });
+            return div.id;
         }
-    } catch (err) {
-        return res.json({ reply: `Error: ${err.message}` });
-    }
-};
+
+        // --- IMAGE HANDLING ---
+        function handleFile(input) {
+            if(input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentImg64 = e.target.result;
+                    // Tampilkan Preview Box
+                    document.getElementById('preview-img-element').src = currentImg64;
+                    document.getElementById('img-preview-box').style.display = 'flex';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function clearImage() {
+            currentImg64 = null;
+            document.getElementById('file-input').value = "";
+            document.getElementById('img-preview-box').style.display = 'none';
+        }
+
+        // --- UTILS ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('show');
+        }
+    </script>
+</body>
+</html>
