@@ -1,161 +1,64 @@
-// Nama File: api/edit.js
-const FormData = require('form-data');
+// Nama File: api/draw.js
 
-const API_BASE = 'https://www.createimg.com?api=v1';
-
-// --- HELPER 1: BYPASS TURNSTILE ---
-async function bypassTurnstile() {
+// Fungsi simpel buat translate ke Inggris pakai Google Translate (Gratis/Public API)
+async function translateToEnglish(text) {
     try {
-        const url = 'https://api.nekolabs.web.id/tools/bypass/cf-turnstile?url=https://www.createimg.com/&siteKey=0x4AAAAAABggkaHPwa2n_WBx';
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
         const res = await fetch(url);
         const data = await res.json();
-        if (!data.success) throw new Error('Gagal bypass Cloudflare Turnstile');
-        return data.result;
+        // Ambil hasil terjemahan dari struktur JSON Google
+        return data[0][0][0];
     } catch (e) {
-        throw new Error("Server Bypass Nekolabs Down. Coba lagi nanti.");
+        // Kalau gagal translate, pakai teks asli aja
+        return text;
     }
 }
 
-// --- HELPER 2: LOGIC CREATEIMG ---
-const CreateImg = {
-    generateSecurity: () => Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join(''),
-
-    initialize: async (token, security) => {
-        const params = new URLSearchParams({ token, security, action: 'turnstile', module: 'edit' });
-        const res = await fetch(API_BASE, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
-            body: params
-        });
-        return await res.json();
-    },
-
-    upload: async (imageBuffer, token, security, server) => {
-        const form = new FormData();
-        form.append('token', token);
-        form.append('security', security);
-        form.append('action', 'upload');
-        form.append('server', server);
-        form.append('image', imageBuffer, 'image.jpg');
-
-        const res = await fetch(API_BASE, {
-            method: 'POST',
-            headers: { ...form.getHeaders(), 'User-Agent': 'Mozilla/5.0' },
-            body: form
-        });
-        return await res.json();
-    },
-
-    submitTask: async (prompt, filename, token, security, server) => {
-        const params = new URLSearchParams({
-            token, security, action: 'edit', server,
-            prompt, negative: '', seed: Math.floor(Math.random() * 1000000000), size: 1024,
-            'files[image]': filename
-        });
-
-        const res = await fetch(API_BASE, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
-            body: params
-        });
-        return await res.json();
-    },
-
-    checkQueue: async (id, queue, token, security, server) => {
-        const params = new URLSearchParams({ id, queue, module: 'edit', action: 'queue', server, token, security });
-        const res = await fetch(API_BASE, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
-            body: params
-        });
-        return await res.json();
-    },
-
-    getFinalUrl: async (id, token, security, server) => {
-        const histParams = new URLSearchParams({ id, action: 'history', server, module: 'edit', token, security });
-        const histRes = await fetch(API_BASE, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
-            body: histParams
-        });
-        const histData = await histRes.json();
-        if (!histData.status) throw new Error("Gagal mengambil history file.");
-
-        const outParams = new URLSearchParams({ id: histData.file, action: 'output', server, module: 'edit', token, security, page: 'home', lang: 'en' });
-        const outRes = await fetch(API_BASE, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'Mozilla/5.0' },
-            body: outParams
-        });
-        const outData = await outRes.json();
-        return outData.data;
-    }
-};
-
-// --- HANDLER VERCEL (DENGAN FIX BODY PARSER) ---
 module.exports = async (req, res) => {
+    // 1. Setup Header CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
+
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        // [FIX UTAMA] Pastikan body dibaca sebagai JSON
-        let body = req.body;
-        if (typeof body === 'string') {
-            try { body = JSON.parse(body); } catch(e) {}
-        }
+        const { prompt } = req.body;
+        if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
 
-        const { step, image, prompt, jobData } = body || {};
+        // 2. PROSES TRANSLATE (Indo -> Inggris)
+        // Ini kuncinya biar "Burung Hantu" jadi "Owl"
+        const englishPrompt = await translateToEnglish(prompt);
+        
+        // Tambahkan bumbu penyedap biar gambarnya HD
+        const finalPrompt = `${englishPrompt}, highly detailed, 8k, cinematic lighting, masterpiece`;
+        const safePrompt = encodeURIComponent(finalPrompt);
 
-        // Debugging di Vercel Logs (Cek tab Logs kalau error lagi)
-        // console.log("Request Step:", step, "Prompt:", prompt ? "Ada" : "Kosong");
-
-        // PINTU 1: START
-        if (step === 'start') {
-            if (!image) return res.status(400).json({ error: "Gambar belum diupload/dipilih!" });
-            if (!prompt) return res.status(400).json({ error: "Prompt kosong! Harap tulis instruksi." });
-
-            // 1. Setup Session
-            const token = await bypassTurnstile();
-            const security = CreateImg.generateSecurity();
-            const initData = await CreateImg.initialize(token, security);
-            if (!initData.status) throw new Error("Gagal inisialisasi server CreateImg.");
-            const server = initData.server;
-
-            // 2. Upload
-            const buffer = Buffer.from(image.split(',')[1], 'base64');
-            const uploadRes = await CreateImg.upload(buffer, token, security, server);
-            if (!uploadRes.status) throw new Error("Gagal upload gambar ke server.");
-
-            // 3. Submit
-            const taskRes = await CreateImg.submitTask(prompt, uploadRes.filename.image, token, security, server);
-            if (!taskRes.status) throw new Error("Gagal submit task edit.");
-
-            return res.json({
-                success: true,
-                jobData: { id: taskRes.id, queue: taskRes.queue, server, token, security }
-            });
-        }
-
-        // PINTU 2: CHECK
-        else if (step === 'check') {
-            if (!jobData) return res.status(400).json({ error: "Data Job hilang." });
-            const { id, queue, server, token, security } = jobData;
-
-            const queueRes = await CreateImg.checkQueue(id, queue, token, security, server);
+        // 3. Generate 4 Variasi Gambar (Carousel)
+        const images = [];
+        const count = 4;
+        
+        for (let i = 0; i < count; i++) {
+            const seed = Math.floor(Math.random() * 1000000000) + i;
             
-            if (queueRes.pending > 0) {
-                return res.json({ status: 'pending', pending: queueRes.pending });
-            }
+            // Variasi Model:
+            // Gambar 1 & 2: Flux (Paling Bagus tapi agak lama muncul)
+            // Gambar 3 & 4: Turbo (Cepat muncul)
+            const model = i < 2 ? 'flux' : 'turbo';
 
-            const finalUrl = await CreateImg.getFinalUrl(id, token, security, server);
-            return res.json({ status: 'done', url: finalUrl });
+            const url = `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&seed=${seed}&model=${model}&nologo=true`;
+            images.push(url);
         }
 
-    } catch (e) {
-        console.error("API Edit Error:", e.message);
-        return res.status(500).json({ success: false, error: e.message });
+        // 4. Kirim Hasil
+        return res.status(200).json({ 
+            success: true, 
+            images: images,
+            originalPrompt: prompt,
+            translatedPrompt: englishPrompt // Kita kirim balik info ini buat debug kalau mau
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
     }
 };
