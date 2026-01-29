@@ -1,6 +1,6 @@
 // Nama File: api/draw.js
 
-// Fungsi Translate (Indo -> Inggris)
+// 1. Fungsi Translate (Indo -> Inggris)
 async function translateToEnglish(text) {
     try {
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
@@ -12,21 +12,34 @@ async function translateToEnglish(text) {
     }
 }
 
-// Fungsi Request ke Hercai
-async function generateHercai(prompt) {
+// 2. Sumber A: Hercai (Prioritas Utama)
+async function tryHercai(prompt) {
     try {
-        // Hercai API v3 (Model paling bagus)
+        // Timeout manual 5 detik biar gak nunggu kelamaan
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
         const url = `https://hercai.onrender.com/v3/text2image?prompt=${encodeURIComponent(prompt)}`;
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+        
         const data = await res.json();
-        return data.url; // Mengembalikan URL gambar
+        if (!data.url) throw new Error("Hercai gagal");
+        return data.url;
     } catch (e) {
-        return null;
+        return null; // Gagal
     }
 }
 
+// 3. Sumber B: Pollinations Turbo (Cadangan Mati)
+function getPollinations(prompt, seed) {
+    const safePrompt = encodeURIComponent(prompt);
+    // Pakai model Turbo biar ngebut & jarang limit
+    return `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&seed=${seed}&model=turbo&nologo=true`;
+}
+
+// --- MAIN HANDLER ---
 module.exports = async (req, res) => {
-    // 1. Setup Header CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -37,33 +50,32 @@ module.exports = async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
 
-        // 2. Translate ke Inggris biar akurat
+        // 1. Translate dulu
         const englishPrompt = await translateToEnglish(prompt);
-        const cleanPrompt = `${englishPrompt}, highly detailed, 8k, masterpiece`;
+        const finalPrompt = `${englishPrompt}, masterpiece, best quality, ultra detailed`;
 
-        // 3. GENERATE GAMBAR (Hercai)
-        // Kita minta 2 gambar secara PARALEL (Bersamaan) biar cepat
-        // Kalau satu per satu nanti keburu timeout Vercel-nya.
-        
-        const promises = [
-            generateHercai(cleanPrompt),
-            generateHercai(cleanPrompt + ", cinematic shot") // Variasi dikit
-        ];
+        // 2. Siapkan 2 Slot Gambar (Paralel)
+        // Kita coba generate 2 gambar sekaligus
+        const tasks = [0, 1].map(async (i) => {
+            // COBA HERCAI DULU...
+            let imageUrl = await tryHercai(finalPrompt);
+            
+            // KALAU HERCAI GAGAL (NULL), PAKAI POLLINATIONS
+            if (!imageUrl) {
+                console.log(`Slot ${i}: Hercai sibuk, switch ke Pollinations.`);
+                const seed = Math.floor(Math.random() * 1000000) + i;
+                imageUrl = getPollinations(finalPrompt, seed);
+            }
+            
+            return imageUrl;
+        });
 
-        // Tunggu keduanya selesai
-        const results = await Promise.all(promises);
-        
-        // Filter kalau ada yang gagal (null)
-        const validImages = results.filter(url => url !== null);
+        // Tunggu semua selesai
+        const images = await Promise.all(tasks);
 
-        if (validImages.length === 0) {
-            throw new Error("Gagal generate gambar (Server Hercai sibuk).");
-        }
-
-        // 4. Kirim Hasil
         return res.status(200).json({ 
             success: true, 
-            images: validImages,
+            images: images,
             type: 'carousel'
         });
 
