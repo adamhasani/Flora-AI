@@ -1,15 +1,13 @@
 // Nama File: api/draw.js
 
-// Fungsi simpel buat translate ke Inggris pakai Google Translate (Gratis/Public API)
+// Fungsi Translate (Indo -> Inggris)
 async function translateToEnglish(text) {
     try {
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
         const res = await fetch(url);
         const data = await res.json();
-        // Ambil hasil terjemahan dari struktur JSON Google
         return data[0][0][0];
     } catch (e) {
-        // Kalau gagal translate, pakai teks asli aja
         return text;
     }
 }
@@ -26,27 +24,25 @@ module.exports = async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
 
-        // 2. PROSES TRANSLATE (Indo -> Inggris)
-        // Ini kuncinya biar "Burung Hantu" jadi "Owl"
+        // 2. Translate ke Inggris
         const englishPrompt = await translateToEnglish(prompt);
-        
-        // Tambahkan bumbu penyedap biar gambarnya HD
-        const finalPrompt = `${englishPrompt}, highly detailed, 8k, cinematic lighting, masterpiece`;
-        const safePrompt = encodeURIComponent(finalPrompt);
+        // Hapus kata-kata aneh, ambil intinya saja
+        const cleanPrompt = encodeURIComponent(englishPrompt); 
 
-        // 3. Generate 4 Variasi Gambar (Carousel)
+        // 3. Generate 2 Variasi Gambar Saja (Biar Gak Kena Limit)
         const images = [];
-        const count = 4;
+        const count = 2; // TURUNKAN JADI 2
         
         for (let i = 0; i < count; i++) {
-            const seed = Math.floor(Math.random() * 1000000000) + i;
+            const seed = Math.floor(Math.random() * 1000000) + i;
             
-            // Variasi Model:
-            // Gambar 1 & 2: Flux (Paling Bagus tapi agak lama muncul)
-            // Gambar 3 & 4: Turbo (Cepat muncul)
-            const model = i < 2 ? 'flux' : 'turbo';
+            // GANTI KE 'turbo' SEMUA BIAR AMAN DARI LIMIT
+            // Kalau flux sering kena blokir kalau anonim
+            const model = 'turbo'; 
 
-            const url = `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&seed=${seed}&model=${model}&nologo=true`;
+            // Kita tambahkan parameter acak di URL biar dianggap request baru
+            const url = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1024&height=1024&seed=${seed}&model=${model}&nologo=true&enhance=false`;
+            
             images.push(url);
         }
 
@@ -54,8 +50,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({ 
             success: true, 
             images: images,
-            originalPrompt: prompt,
-            translatedPrompt: englishPrompt // Kita kirim balik info ini buat debug kalau mau
+            type: 'carousel'
         });
 
     } catch (error) {
