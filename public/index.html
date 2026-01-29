@@ -34,6 +34,7 @@
         /* --- 2. LAYOUT --- */
         #app-interface { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s; }
 
+        /* SIDEBAR */
         .sidebar {
             width: 280px; background: var(--bg-panel); border-right: var(--glass-border);
             display: flex; flex-direction: column; padding: 20px; gap: 15px; flex-shrink: 0;
@@ -53,6 +54,7 @@
             padding-right: 5px;
         }
         
+        /* DATE HEADER STYLE */
         .history-date-header {
             font-size: 10px; font-weight: 700; color: #666; 
             margin: 15px 0 5px 0; text-transform: uppercase; letter-spacing: 1px;
@@ -66,8 +68,10 @@
         }
         .history-item:hover { background: rgba(255,255,255,0.05); }
         .history-item.active { background: rgba(255, 154, 158, 0.1); border-color: rgba(255, 154, 158, 0.3); color: var(--accent-color); }
+        
         .hist-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* MAIN AREA */
         .main-view { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; min-width: 0; }
         .mobile-header {
             display: none; padding: 15px; align-items: center; justify-content: space-between;
@@ -83,6 +87,7 @@
         
         .msg-group.user { justify-content: flex-end; }
         
+        /* BUBBLE STYLING */
         .user .bubble { 
             background: #27272a; color: #fff; padding: 10px 16px; 
             border-radius: 18px; border-bottom-right-radius: 4px; max-width: 85%;
@@ -96,10 +101,10 @@
             color: var(--accent-color);
         }
 
-        /* --- IMAGE GRID STYLE (Wajib untuk Carousel) --- */
+        /* --- [NEW] CAROUSEL GRID STYLE (HANYA INI YANG DITAMBAH) --- */
         .img-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); 
+            grid-template-columns: repeat(2, 1fr); /* 2 Kolom */
             gap: 8px;
             margin-bottom: 12px;
             width: 100%;
@@ -112,45 +117,115 @@
         }
         .img-grid img:hover { transform: scale(1.05); }
 
-        /* CODE BLOCKS */
-        .bot-content { flex: 1; color: #e1e1e3; line-height: 1.6; min-width: 0; overflow-x: hidden; }
-        pre { background: #1e1e1e !important; border-radius: 8px; margin: 10px 0; border: 1px solid #333; max-width: 100%; width: 100%; overflow-x: auto; white-space: pre; }
-        code { font-family: 'Consolas', 'Monaco', monospace !important; font-size: 13px !important; }
-        .code-footer { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05); font-size: 10px; color: #666; }
+        /* --- 4. FIX OFFSIDE CODE BLOCKS (PATEN) --- */
+        .bot-content {
+            flex: 1; color: #e1e1e3; line-height: 1.6; 
+            min-width: 0; 
+            overflow-x: hidden; 
+        }
+
+        pre { 
+            background: #1e1e1e !important; 
+            border-radius: 8px; margin: 10px 0; border: 1px solid #333;
+            max-width: 100%; width: 100%;
+            overflow-x: auto; 
+            white-space: pre; 
+        }
+
+        code { 
+            font-family: 'Consolas', 'Monaco', monospace !important; 
+            font-size: 13px !important; text-shadow: none !important;
+        }
+
+        .code-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 12px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 10px; color: #666; letter-spacing: 0.5px;
+        }
         .code-lang { color: var(--accent-color); font-weight: bold; text-transform: uppercase; }
 
-        /* INPUT AREA */
-        .input-dock { padding: 15px; background: linear-gradient(to top, var(--bg-deep) 80%, transparent); display: flex; justify-content: center; width: 100%; z-index: 50; position: relative; }
-        .bar-container { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 8px; }
+        /* --- 5. INPUT AREA & PREVIEW --- */
+        .input-dock { 
+            padding: 15px; background: linear-gradient(to top, var(--bg-deep) 80%, transparent); 
+            display: flex; justify-content: center; width: 100%; z-index: 50; position: relative;
+        }
         
-        #img-preview-box { display: none; width: 100%; background: #18181b; padding: 10px; border-radius: 12px; border: 1px solid #333; flex-direction: row; align-items: center; gap: 15px; animation: slideUp 0.2s; }
+        .bar-container { width: 100%; max-width: 800px; display: flex; flex-direction: column; gap: 8px; }
+
+        /* Image Preview Box */
+        #img-preview-box {
+            display: none; width: 100%; background: #18181b; 
+            padding: 10px; border-radius: 12px; border: 1px solid #333;
+            flex-direction: row; align-items: center; gap: 15px; 
+            animation: slideUp 0.2s;
+        }
         @keyframes slideUp { from {transform: translateY(10px); opacity:0;} to {transform:translateY(0); opacity:1;} }
+
         #preview-img-element { height: 60px; width: auto; border-radius: 6px; border: 1px solid #444; }
+
         .preview-controls { flex: 1; display: flex; gap: 8px; }
         
-        .mode-btn { background: #27272a; border: 1px solid #333; color: #888; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
+        /* Mode Buttons */
+        .mode-btn {
+            background: #27272a; border: 1px solid #333; color: #888;
+            padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
+            transition: 0.2s; display: flex; align-items: center; gap: 5px;
+        }
         .mode-btn:hover { background: #333; }
-        .mode-btn.active { background: rgba(255, 154, 158, 0.15); border-color: var(--accent-color); color: var(--accent-color); }
-        .remove-img-btn { background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .mode-btn.active {
+            background: rgba(255, 154, 158, 0.15); 
+            border-color: var(--accent-color); 
+            color: var(--accent-color);
+        }
 
-        .bar-wrapper { background: #18181b; border: var(--glass-border); border-radius: 24px; padding: 8px; display: flex; gap: 8px; align-items: flex-end; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-        .util-btn { background: none; border: none; color: #888; font-size: 16px; padding: 0 8px; cursor: pointer; transition: 0.2s; }
+        .remove-img-btn {
+            background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 50%;
+            width: 24px; height: 24px; font-size: 12px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .bar-wrapper {
+            background: #18181b; border: var(--glass-border);
+            border-radius: 24px; padding: 8px; display: flex; gap: 8px; align-items: flex-end;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        /* Utility Buttons in Bar */
+        .util-btn {
+            background: none; border: none; color: #888; font-size: 16px; 
+            padding: 0 8px; cursor: pointer; transition: 0.2s;
+        }
         .util-btn:hover { color: var(--accent-color); transform: scale(1.1); }
-        textarea { flex: 1; background: transparent; border: none; color: white; font-size: 15px; resize: none; max-height: 120px; padding: 12px 5px; }
 
-        /* WELCOME */
-        .starter-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 30px; max-width: 600px; margin-left: auto; margin-right: auto; }
-        .chip { background: #18181b; border: 1px solid #333; padding: 15px; border-radius: 12px; text-align: left; cursor: pointer; transition: 0.2s; }
+        textarea { 
+            flex: 1; background: transparent; border: none; color: white; 
+            font-size: 15px; resize: none; max-height: 120px; padding: 12px 5px; 
+        }
+
+        /* --- 6. WELCOME & CHIPS --- */
+        .starter-chips {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px; margin-top: 30px; max-width: 600px; margin-left: auto; margin-right: auto;
+        }
+        .chip {
+            background: #18181b; border: 1px solid #333; padding: 15px; border-radius: 12px;
+            text-align: left; cursor: pointer; transition: 0.2s;
+        }
         .chip:hover { border-color: var(--accent-color); background: #202022; }
         .chip h4 { margin: 0 0 5px 0; font-size: 13px; color: #fff; }
         .chip p { margin: 0; font-size: 11px; color: #888; }
 
+        /* --- 7. TYPING ANIMATION --- */
         .typing-dots { display: flex; gap: 4px; padding: 5px 0; }
-        .typing-dots span { width: 6px; height: 6px; background: var(--accent-color); border-radius: 50%; animation: wave 1.3s linear infinite; }
+        .typing-dots span {
+            width: 6px; height: 6px; background: var(--accent-color); border-radius: 50%;
+            animation: wave 1.3s linear infinite;
+        }
         .typing-dots span:nth-child(2) { animation-delay: -1.1s; }
         .typing-dots span:nth-child(3) { animation-delay: -0.9s; }
         @keyframes wave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
 
+        /* Mobile Responsive */
         @media (max-width: 768px) {
             .sidebar { position: fixed; left: -100%; height: 100%; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
             .sidebar.active { left: 0; }
@@ -160,6 +235,7 @@
         #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; opacity: 0; pointer-events: none; transition: 0.3s; }
         #overlay.show { opacity: 1; pointer-events: auto; }
 
+        /* Auth Screen */
         #auth-layer { position: fixed; inset: 0; z-index: 999; background: #000; display: flex; justify-content: center; align-items: center; }
         .auth-card { width: 85%; max-width: 320px; text-align: center; }
         .auth-input { width: 100%; background: #111; border: 1px solid #333; padding: 15px; border-radius: 12px; color: white; margin: 20px 0; font-size: 16px; outline: none; text-align: center; }
@@ -182,13 +258,16 @@
     <div id="overlay" onclick="toggleSidebar()"></div>
 
     <div id="app-interface">
+        
         <div class="sidebar" id="sidebar">
             <div style="font-weight:700; font-size:18px; color:white; display:flex; align-items:center; gap:10px;">
                 <i class="fa-solid fa-spa" style="color:var(--accent-color)"></i> Flora AI
             </div>
+
             <button class="new-chat-btn" onclick="startNewChat()">
                 <i class="fa-solid fa-plus"></i> Chat Baru
             </button>
+
             <div class="history-list" id="history-list"></div>
         </div>
 
@@ -205,20 +284,31 @@
 
             <div class="input-dock">
                 <div class="bar-container">
+                    
                     <div id="img-preview-box">
                         <img id="preview-img-element" src="" alt="Preview">
+                        
                         <div class="preview-controls">
-                            <button id="mode-vision" class="mode-btn active" onclick="setImgMode('vision')"><i class="fa-solid fa-eye"></i> Analisis</button>
-                            <button id="mode-edit" class="mode-btn" onclick="setImgMode('edit')"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit (AI)</button>
+                            <button id="mode-vision" class="mode-btn active" onclick="setImgMode('vision')">
+                                <i class="fa-solid fa-eye"></i> Analisis
+                            </button>
+                            <button id="mode-edit" class="mode-btn" onclick="setImgMode('edit')">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Edit (AI)
+                            </button>
                         </div>
+
                         <button class="remove-img-btn" onclick="clearImage()"><i class="fa-solid fa-xmark"></i></button>
                     </div>
 
                     <div class="bar-wrapper">
-                        <button class="util-btn" onclick="document.getElementById('file-input').click()"><i class="fa-solid fa-image"></i></button>
+                        <button class="util-btn" onclick="document.getElementById('file-input').click()">
+                            <i class="fa-solid fa-image"></i>
+                        </button>
                         <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFile(this)">
                         
-                        <button class="util-btn" onclick="activateDrawMode()" title="Buat Gambar"><i class="fa-solid fa-palette"></i></button>
+                        <button class="util-btn" onclick="activateDrawMode()" title="Buat Gambar">
+                            <i class="fa-solid fa-palette"></i>
+                        </button>
                         
                         <textarea id="user-input" rows="1" placeholder="Tanya sesuatu pada Flora..." oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
                         
@@ -319,6 +409,7 @@
             localStorage.setItem('flora_sessions', JSON.stringify(allSessions));
         }
 
+        // --- DATE HELPER ---
         function getDateCategory(timestamp) {
             const date = new Date(timestamp);
             const today = new Date();
@@ -374,67 +465,75 @@
             if(window.innerWidth <= 768) toggleSidebar();
         }
 
-        // --- SMART INPUT CONTROLLER ---
+        // --- INPUT CONTROLLER (UPDATED: Smart Draw) ---
         function processInput() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
 
             if (!txt && !currentImg64) return;
 
-            // 1. CEK: Apakah Mode Edit Aktif?
+            // 1. CEK: Apakah Mode Edit Gambar?
             if (imgMode === 'edit') {
                 if (currentImg64) {
-                    sendImageToEditor(); // Ada gambar -> Edit
+                    sendImageToEditor(); // ORI: Edit gambar yg diupload
                     return;
                 } else {
-                    sendDrawRequest(txt); // Gak ada gambar -> Draw (Carousel)
+                    sendDrawRequest(txt); // NEW: Lupa upload? Auto bikin gambar (Draw)
                     return;
                 }
             }
 
-            // 2. CEK: Perintah Manual
+            // 2. CEK: Apakah Perintah Gambar (Text-to-Image)?
             const drawRegex = /^(gambarkan|buatkan gambar|buat gambar|\/img|\/draw)\s+(.+)/i;
             const match = txt.match(drawRegex);
+
             if (match) {
-                sendDrawRequest(match[2]);
+                const prompt = match[2]; 
+                sendDrawRequest(prompt);
                 return;
             }
 
-            // 3. Chat Biasa
+            // 3. Kalau bukan keduanya, kirim Chat Biasa / Vision
             sendMessage();
         }
 
+        // BUTTON "BUAT GAMBAR"
         function activateDrawMode() {
             const input = document.getElementById('user-input');
             input.value = "Gambarkan ";
             input.focus();
         }
 
-        // --- DRAW REQUEST (HERCAI/CAROUSEL SUPPORT) ---
+        // --- [NEW] DRAW REQUEST (CAROUSEL SUPPORT - DIRECT FETCH) ---
         async function sendDrawRequest(prompt) {
             const input = document.getElementById('user-input');
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
 
+            // 1. UI Awal
             addBubble(`🎨 Gambarkan: ${prompt}`, 'user', null, false, true);
             input.value = "";
             const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
+                // Request ke Backend (Hercai/Agatz/Pollinations logic ada di server)
                 const res = await fetch('/api/draw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt }) 
+                    body: JSON.stringify({ prompt: prompt })
                 });
 
                 const data = await res.json();
                 if (!res.ok || !data.success) throw new Error(data.error || "Gagal membuat gambar.");
 
                 document.getElementById(loadingId).remove();
-                
-                // [PENTING] Cek apakah response berupa Array Images
-                if (data.images && data.images.length > 0) {
-                    addBubble(`Nih variasi untuk: <b>${prompt}</b> ✨`, 'bot', data.images, false, true);
+
+                // Handle Carousel (Array) or Single Image
+                // Logic ini support data.images (array) atau data.url (string)
+                const images = data.images || (data.url ? [data.url] : []);
+
+                if (images.length > 0) {
+                    addBubble(`Nih hasilnya untuk: <b>${prompt}</b> ✨`, 'bot', images, false, true);
                 } else {
                     throw new Error("Tidak ada gambar yang dihasilkan.");
                 }
@@ -447,11 +546,13 @@
             }
         }
 
-        // --- EDIT IMAGE (CREATEIMG POLLING) ---
+
+        // --- EDIT IMAGE LOGIC (ORI - POLLING) ---
+        // Tidak diubah logikanya sesuai permintaan
         async function sendImageToEditor() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
-            if(!txt) { alert("Tulis instruksi editnya! (Contoh: jadi anime)"); return; }
+            if(!txt) { alert("Tulis instruksi editnya!"); return; }
 
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
@@ -473,10 +574,8 @@
                 const dataStart = await resStart.json();
                 if(!dataStart.success) throw new Error(dataStart.error || "Gagal memulai job.");
 
-                const jobData = dataStart.jobData;
-
+                const jobId = dataStart.jobId;
                 let attempts = 0;
-                const maxAttempts = 40; 
                 
                 const pollInterval = setInterval(async () => {
                     attempts++;
@@ -484,19 +583,21 @@
                         const resCheck = await fetch('/api/edit', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ step: 'check', jobData: jobData })
+                            body: JSON.stringify({ step: 'check', jobId: jobId })
                         });
                         const dataCheck = await resCheck.json();
 
                         if (dataCheck.status === 'done') {
                             clearInterval(pollInterval);
                             document.getElementById(loadingId).remove();
-                            // Proxy Weserv biar aman
-                            const finalUrl = `https://images.weserv.nl/?url=${encodeURIComponent(dataCheck.url)}`;
+                            const finalUrl = dataCheck.url;
                             addBubble(`✨ Selesai! Hasil edit: <b>${txt}</b>`, 'bot', finalUrl, false, true);
                         } 
-                        else if (dataCheck.status === 'pending') { /* Wait */ }
-                        else if (attempts >= maxAttempts) {
+                        else if (dataCheck.status === 'failed') {
+                            clearInterval(pollInterval);
+                            throw new Error("Gambar ditolak (NSFW/Error).");
+                        }
+                        else if (attempts >= 20) {
                             clearInterval(pollInterval);
                             throw new Error("Waktu habis.");
                         }
@@ -504,21 +605,20 @@
                         clearInterval(pollInterval);
                         document.getElementById(loadingId).innerHTML = `<div style="color:red">Error: ${errLoop.message}</div>`;
                     }
-                }, 3000); 
+                }, 3000);
 
             } catch (e) {
-                document.getElementById(loadingId).innerHTML = `
-                    <div style="color:#ff6b6b; padding:10px;">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Error: ${e.message}
-                    </div>`;
+                document.getElementById(loadingId).innerHTML = `<div style="color:#ff6b6b">Error: ${e.message}</div>`;
             }
         }
 
-        // --- CHAT / VISION ---
+        // --- CHAT / VISION (ORI) ---
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
+            
             if (!txt && !currentImg64) return;
+
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
 
@@ -529,13 +629,16 @@
 
             const imgToSend = currentImg64;
             addBubble(txt, 'user', imgToSend, false, true);
+            
             const payload = {
                 history: allSessions[currentSessionId].messages.slice(-10),
                 message: txt,
                 image: imgToSend
             };
+
             input.value = ""; 
             clearImage(); 
+
             const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
@@ -544,16 +647,19 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+
                 if (!res.ok) throw new Error("Gagal terhubung.");
                 const data = await res.json();
+                
                 document.getElementById(loadingId).remove();
                 addBubble(data.reply, 'bot', null, false, true);
+
             } catch (e) {
                 document.getElementById(loadingId).innerHTML = `<div style="color:#ff6b6b">Error: ${e.message}</div>`;
             }
         }
 
-        // --- RENDER BUBBLE (SUPPORT GRID/CAROUSEL) ---
+        // --- RENDER BUBBLE (UPDATED: Support Carousel/Grid) ---
         function addBubble(text, role, img, isLoading, saveToMem) {
             const container = document.getElementById('msg-container');
             const div = document.createElement('div');
@@ -561,7 +667,11 @@
             div.id = 'msg-' + Date.now();
 
             if (saveToMem) {
-                allSessions[currentSessionId].messages.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
+                allSessions[currentSessionId].messages.push({ 
+                    role: role === 'user' ? 'user' : 'assistant', 
+                    content: text,
+                    image: img // Note: Kita simpan img apa adanya (bisa array/string)
+                });
                 saveSessions();
             }
 
@@ -570,7 +680,8 @@
                     <div class="bubble">
                         ${img ? `<img src="${img}" style="width:100%; max-width:200px; border-radius:10px; margin-bottom:5px; display:block; border:1px solid #444;">` : ''}
                         <div>${text.replace(/\n/g, '<br>')}</div>
-                    </div>`;
+                    </div>
+                `;
             } else {
                 if(isLoading) {
                     div.innerHTML = `
@@ -580,18 +691,29 @@
                         </div>`;
                 } else {
                     let mediaHtml = '';
-                    // [PENTING] LOGIKA GRID IMAGE
+                    
+                    // [LOGIC BARU] CEK APAKAH ARRAY (BANYAK GAMBAR)
                     if (Array.isArray(img)) {
-                        let gridItems = img.map(url => `<a href="${url}" target="_blank"><img src="${url}" loading="lazy"></a>`).join('');
+                        let gridItems = img.map(url => 
+                            `<a href="${url}" target="_blank"><img src="${url}" loading="lazy" onerror="this.style.display='none'"></a>`
+                        ).join('');
                         mediaHtml = `<div class="img-grid">${gridItems}</div>`;
                     } 
-                    else if (typeof img === 'string') {
+                    else if (img && typeof img === 'string') {
+                        // SATU GAMBAR (Logic ORI)
                         mediaHtml = `<div style="margin-bottom:10px;"><a href="${img}" target="_blank"><img src="${img}" referrerpolicy="no-referrer" style="width:100%; max-width:300px; border-radius:10px; border:1px solid #444;"></a></div>`;
                     }
 
-                    let formatted = text.replace(/\n/g, '<br>').replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
-                        return `<pre><code class="language-${lang || 'javascript'}">${code.replace(/<br>/g, '\n')}</code></pre>`;
-                    });
+                    let formatted = text
+                        .replace(/\n/g, '<br>')
+                        .replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
+                            const language = lang || 'javascript';
+                            const cleanCode = code.replace(/<br>/g, '\n');
+                            return `
+                                <pre><code class="language-${language}">${cleanCode}</code></pre>
+                                <div class="code-footer"><span class="code-lang">${language}</span><span>Flora AI</span></div>
+                            `;
+                        });
 
                     div.innerHTML = `
                         <div class="avatar"><i class="fa-solid fa-spa"></i></div>
@@ -599,47 +721,69 @@
                     `;
                 }
             }
+
             container.appendChild(div);
             Prism.highlightAll();
             document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight, behavior: 'smooth' });
             return div.id;
         }
 
-        // ... Sisa fungsi helper sama ...
+        // --- HELPER FUNCTIONS (ORI) ---
         function setImgMode(mode) {
             imgMode = mode;
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`mode-${mode}`).classList.add('active');
             const input = document.getElementById('user-input');
-            if (mode === 'edit') input.placeholder = "Tulis gaya editnya...";
-            else input.placeholder = "Tanya sesuatu...";
+            if (mode === 'edit') input.placeholder = "Tulis gaya editnya (misal: anime, cyberpunk)...";
+            else input.placeholder = "Tanya sesuatu tentang gambar ini...";
         }
 
-        function handleFile(input) { /* ... sama seperti sebelumnya ... */ 
+        function handleFile(input) {
             const file = input.files[0];
             if (!file) return;
+            if (!file.type.startsWith('image/')) { alert("Harap pilih file gambar!"); return; }
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.src = e.target.result;
+                
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    let w = img.width, h = img.height, max = 800;
-                    if(w>h){ if(w>max){h*=max/w; w=max;} } else { if(h>max){w*=max/h; h=max;} }
-                    canvas.width=w; canvas.height=h;
-                    canvas.getContext('2d').drawImage(img,0,0,w,h);
-                    currentImg64 = canvas.toDataURL('image/jpeg',0.7);
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX_SIZE = 800;
+
+                    if (width > height) {
+                        if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                    } else {
+                        if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    currentImg64 = canvas.toDataURL('image/jpeg', 0.7);
                     setImgMode('vision');
                     document.getElementById('preview-img-element').src = currentImg64;
                     document.getElementById('img-preview-box').style.display = 'flex';
-                }
+                };
             };
             reader.readAsDataURL(file);
         }
+
         function clearImage() {
-            currentImg64 = null; document.getElementById('file-input').value = ""; document.getElementById('img-preview-box').style.display = 'none';
+            currentImg64 = null;
+            document.getElementById('file-input').value = "";
+            document.getElementById('img-preview-box').style.display = 'none';
         }
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('show'); }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('show');
+        }
     </script>
 </body>
-</html>
+    </html>
