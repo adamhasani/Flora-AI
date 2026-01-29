@@ -12,6 +12,19 @@ async function translateToEnglish(text) {
     }
 }
 
+// Fungsi Request ke Hercai
+async function generateHercai(prompt) {
+    try {
+        // Hercai API v3 (Model paling bagus)
+        const url = `https://hercai.onrender.com/v3/text2image?prompt=${encodeURIComponent(prompt)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.url; // Mengembalikan URL gambar
+    } catch (e) {
+        return null;
+    }
+}
+
 module.exports = async (req, res) => {
     // 1. Setup Header CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,32 +37,33 @@ module.exports = async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
 
-        // 2. Translate ke Inggris
+        // 2. Translate ke Inggris biar akurat
         const englishPrompt = await translateToEnglish(prompt);
-        // Hapus kata-kata aneh, ambil intinya saja
-        const cleanPrompt = encodeURIComponent(englishPrompt); 
+        const cleanPrompt = `${englishPrompt}, highly detailed, 8k, masterpiece`;
 
-        // 3. Generate 2 Variasi Gambar Saja (Biar Gak Kena Limit)
-        const images = [];
-        const count = 2; // TURUNKAN JADI 2
+        // 3. GENERATE GAMBAR (Hercai)
+        // Kita minta 2 gambar secara PARALEL (Bersamaan) biar cepat
+        // Kalau satu per satu nanti keburu timeout Vercel-nya.
         
-        for (let i = 0; i < count; i++) {
-            const seed = Math.floor(Math.random() * 1000000) + i;
-            
-            // GANTI KE 'turbo' SEMUA BIAR AMAN DARI LIMIT
-            // Kalau flux sering kena blokir kalau anonim
-            const model = 'turbo'; 
+        const promises = [
+            generateHercai(cleanPrompt),
+            generateHercai(cleanPrompt + ", cinematic shot") // Variasi dikit
+        ];
 
-            // Kita tambahkan parameter acak di URL biar dianggap request baru
-            const url = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1024&height=1024&seed=${seed}&model=${model}&nologo=true&enhance=false`;
-            
-            images.push(url);
+        // Tunggu keduanya selesai
+        const results = await Promise.all(promises);
+        
+        // Filter kalau ada yang gagal (null)
+        const validImages = results.filter(url => url !== null);
+
+        if (validImages.length === 0) {
+            throw new Error("Gagal generate gambar (Server Hercai sibuk).");
         }
 
         // 4. Kirim Hasil
         return res.status(200).json({ 
             success: true, 
-            images: images,
+            images: validImages,
             type: 'carousel'
         });
 
