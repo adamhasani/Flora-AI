@@ -449,103 +449,67 @@
             if(window.innerWidth <= 768) toggleSidebar();
         }
 
-        // --- INPUT CONTROLLER ---
+        // --- [SMART] INPUT CONTROLLER ---
         function processInput() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
 
             if (!txt && !currentImg64) return;
 
-            // 1. CEK: Apakah Mode Edit Gambar?
-            if (currentImg64 && imgMode === 'edit') {
-                sendImageToEditor();
-                return;
+            // 1. CEK: Apakah Mode Edit Aktif?
+            if (imgMode === 'edit') {
+                // Ada Gambar? -> Edit Mode (CreateImg)
+                if (currentImg64) {
+                    sendImageToEditor();
+                    return;
+                } 
+                // Gak Ada Gambar? -> Draw Mode (Flux Realism)
+                else {
+                    sendDrawRequest(txt);
+                    return;
+                }
             }
 
-            // 2. CEK: Apakah Perintah Gambar (Text-to-Image)?
+            // 2. CEK: Apakah Perintah Gambar?
             const drawRegex = /^(gambarkan|buatkan gambar|buat gambar|\/img|\/draw)\s+(.+)/i;
             const match = txt.match(drawRegex);
-
             if (match) {
-                const prompt = match[2]; 
-                sendDrawRequest(prompt);
+                sendDrawRequest(match[2]);
                 return;
             }
 
-            // 3. Kalau bukan keduanya, kirim Chat Biasa / Vision
+            // 3. Sisanya Chat Biasa / Vision
             sendMessage();
         }
 
-        // BUTTON "BUAT GAMBAR"
         function activateDrawMode() {
             const input = document.getElementById('user-input');
             input.value = "Gambarkan ";
             input.focus();
         }
 
-        // --- [NEW] DRAW REQUEST (DREAMFACE POLLING) ---
+        // --- DRAW REQUEST (FLUX DIRECT - NO POLLING) ---
         async function sendDrawRequest(prompt) {
             const input = document.getElementById('user-input');
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
 
-            // 1. UI Awal
             addBubble(`🎨 Gambarkan: ${prompt}`, 'user', null, false, true);
             input.value = "";
             const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
-                // STEP 1: MULAI JOB (Submit ke DreamFace)
-                const resStart = await fetch('/api/draw', {
+                const res = await fetch('/api/draw', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ step: 'start', prompt: prompt })
+                    body: JSON.stringify({ prompt: prompt, step: 'start' }) // Step start is implicit in direct mode
                 });
 
-                const dataStart = await resStart.json();
-                if(!dataStart.success) throw new Error(dataStart.error || "Gagal memulai job.");
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.error || "Gagal membuat gambar.");
 
-                // Kita simpan "Kunci Rahasia" (jobData) dari server
-                const jobData = dataStart.jobData;
-
-                // STEP 2: CEK STATUS SETIAP 3 DETIK (Polling)
-                let attempts = 0;
-                const maxAttempts = 30; // Max 90 detik nunggu
-                
-                const pollInterval = setInterval(async () => {
-                    attempts++;
-                    try {
-                        const resCheck = await fetch('/api/draw', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ step: 'check', jobData: jobData })
-                        });
-                        const dataCheck = await resCheck.json();
-
-                        // A. SUKSES
-                        if (dataCheck.status === 'done') {
-                            clearInterval(pollInterval);
-                            document.getElementById(loadingId).remove();
-                            // Tampilkan Gambar
-                            addBubble(`✨ Jadi nih: <b>${prompt}</b>`, 'bot', dataCheck.url, false, true);
-                        } 
-                        // B. GAGAL
-                        else if (dataCheck.status === 'failed') {
-                            clearInterval(pollInterval);
-                            throw new Error("Gambar ditolak server.");
-                        }
-                        // C. TIMEOUT
-                        else if (attempts >= maxAttempts) {
-                            clearInterval(pollInterval);
-                            throw new Error("Waktu habis (Timeout).");
-                        }
-                        // D. MASIH LOADING -> Loop lagi...
-
-                    } catch (errLoop) {
-                        clearInterval(pollInterval);
-                        document.getElementById(loadingId).innerHTML = `<div style="color:red">Error: ${errLoop.message}</div>`;
-                    }
-                }, 3000); // Cek tiap 3 detik
+                document.getElementById(loadingId).remove();
+                addBubble(`Nih gambarnya: <b>${prompt}</b> ✨`, 'bot', data.url, false, true);
 
             } catch (e) {
                 document.getElementById(loadingId).innerHTML = `
@@ -555,12 +519,11 @@
             }
         }
 
-
-        // --- EDIT IMAGE LOGIC (FIX: DIRECT LINK) ---
+        // --- EDIT IMAGE LOGIC (CREATEIMG POLLING) ---
         async function sendImageToEditor() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
-            if(!txt) { alert("Tulis instruksi editnya!"); return; }
+            if(!txt) { alert("Tulis instruksi editnya! (Contoh: jadi anime)"); return; }
 
             const welcome = document.getElementById('welcome-screen');
             if(welcome) welcome.remove();
@@ -573,6 +536,7 @@
             const loadingId = addBubble("", 'bot', null, true, false);
 
             try {
+                // STEP 1: UPLOAD & START JOB
                 const resStart = await fetch('/api/edit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -582,8 +546,11 @@
                 const dataStart = await resStart.json();
                 if(!dataStart.success) throw new Error(dataStart.error || "Gagal memulai job.");
 
-                const jobId = dataStart.jobId;
+                const jobData = dataStart.jobData;
+
+                // STEP 2: CEK STATUS (Polling)
                 let attempts = 0;
+                const maxAttempts = 40; 
                 
                 const pollInterval = setInterval(async () => {
                     attempts++;
@@ -591,32 +558,35 @@
                         const resCheck = await fetch('/api/edit', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ step: 'check', jobId: jobId })
+                            body: JSON.stringify({ step: 'check', jobData: jobData })
                         });
                         const dataCheck = await resCheck.json();
 
                         if (dataCheck.status === 'done') {
                             clearInterval(pollInterval);
                             document.getElementById(loadingId).remove();
-                            const finalUrl = dataCheck.url;
+                            const finalUrl = `https://images.weserv.nl/?url=${encodeURIComponent(dataCheck.url)}`;
                             addBubble(`✨ Selesai! Hasil edit: <b>${txt}</b>`, 'bot', finalUrl, false, true);
                         } 
-                        else if (dataCheck.status === 'failed') {
-                            clearInterval(pollInterval);
-                            throw new Error("Gambar ditolak (NSFW/Error).");
+                        else if (dataCheck.status === 'pending') {
+                            // Wait
                         }
-                        else if (attempts >= 20) {
+                        else if (attempts >= maxAttempts) {
                             clearInterval(pollInterval);
-                            throw new Error("Waktu habis.");
+                            throw new Error("Waktu habis (Timeout).");
                         }
+
                     } catch (errLoop) {
                         clearInterval(pollInterval);
                         document.getElementById(loadingId).innerHTML = `<div style="color:red">Error: ${errLoop.message}</div>`;
                     }
-                }, 3000);
+                }, 3000); 
 
             } catch (e) {
-                document.getElementById(loadingId).innerHTML = `<div style="color:#ff6b6b">Error: ${e.message}</div>`;
+                document.getElementById(loadingId).innerHTML = `
+                    <div style="color:#ff6b6b; padding:10px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Error: ${e.message}
+                    </div>`;
             }
         }
 
@@ -784,4 +754,4 @@
         }
     </script>
 </body>
-</html>
+                            </html>
