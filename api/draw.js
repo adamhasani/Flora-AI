@@ -12,17 +12,16 @@ async function translateToEnglish(text) {
     }
 }
 
-// 2. Sumber A: Anabot (Model: Photo Realistic)
+// 2. Fungsi Utama: Request ke Anabot
 async function getAnabotImage(prompt) {
     try {
-        // Timeout 20 detik (Anabot kadang butuh waktu render HD)
+        // Timeout 25 detik (Kita kasih waktu agak lama biar Anabot sempat mikir)
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 20000);
+        const timeout = setTimeout(() => controller.abort(), 25000);
 
-        // MODEL DIGANTI JADI 'Photo Realistic'
         const model = 'Photo Realistic'; 
         const apikey = 'freeApikey';
-
+        
         const url = `https://anabot.my.id/api/ai/dreamImage?prompt=${encodeURIComponent(prompt)}&models=${encodeURIComponent(model)}&apikey=${apikey}`;
         
         const res = await fetch(url, { method: 'GET', signal: controller.signal });
@@ -30,25 +29,24 @@ async function getAnabotImage(prompt) {
         
         const data = await res.json();
         
-        // Ambil URL dari respons JSON
-        return data.url || data.result || null;
+        // Cek URL hasil
+        const imageUrl = data.url || data.result;
+
+        if (!imageUrl || typeof imageUrl !== 'string') {
+            throw new Error("Respon Anabot kosong");
+        }
+
+        return imageUrl;
 
     } catch (e) {
         console.log("Anabot Error:", e.message);
-        return null;
+        return null; 
     }
-}
-
-// 3. Sumber B: Pollinations (Mode Turbo - Cadangan Cepat)
-function getPollinationsImage(prompt) {
-    const seed = Math.floor(Math.random() * 1000000);
-    const safePrompt = encodeURIComponent(prompt);
-    // Pollinations Turbo selalu jadi back-up yang handal
-    return `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&seed=${seed}&model=turbo&nologo=true`;
 }
 
 // --- MAIN HANDLER ---
 module.exports = async (req, res) => {
+    // Setup CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -59,25 +57,26 @@ module.exports = async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
 
-        // 1. Translate & Enhance Prompt
+        // 1. Translate
         const englishPrompt = await translateToEnglish(prompt);
-        // Tambahan keyword agar hasil Photo Realistic makin maksimal
-        const finalPrompt = `${englishPrompt}, hyper realistic, 8k, cinematic lighting, photography`;
+        const finalPrompt = `${englishPrompt}, hyper realistic, 8k, cinematic lighting`;
 
-        // 2. PARALEL REQUEST (Anabot + Pollinations)
+        // 2. Request ke Anabot (2x Paralel biar tetap Carousel)
+        // Kita paksa dua-duanya minta ke Anabot
         const task1 = getAnabotImage(finalPrompt);
-        const task2 = Promise.resolve(getPollinationsImage(finalPrompt)); 
+        const task2 = getAnabotImage(finalPrompt + ", different angle"); 
 
         const results = await Promise.all([task1, task2]);
 
-        // 3. Filter hasil yang valid (URL http...)
-        const validImages = results.filter(url => url !== null && typeof url === 'string' && url.startsWith('http'));
+        // 3. Cek Hasil
+        const validImages = results.filter(url => url !== null);
 
+        // Kalau kosong, berarti Anabot gagal total
         if (validImages.length === 0) {
-            throw new Error("Semua server gambar sibuk. Coba lagi nanti.");
+            throw new Error("Server Anabot tidak merespon. Coba lagi nanti.");
         }
 
-        // 4. Kirim Hasil Carousel
+        // 4. Kirim Hasil
         return res.status(200).json({ 
             success: true, 
             images: validImages,
