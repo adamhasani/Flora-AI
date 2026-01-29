@@ -12,30 +12,38 @@ async function translateToEnglish(text) {
     }
 }
 
-// 2. Sumber A: Hercai (High Quality)
-async function getHercaiImage(prompt) {
+// 2. Sumber A: Anabot (Model: Photo Realistic)
+async function getAnabotImage(prompt) {
     try {
-        // Timeout 8 detik biar gak lama
+        // Timeout 20 detik (Anabot kadang butuh waktu render HD)
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const timeout = setTimeout(() => controller.abort(), 20000);
 
-        const url = `https://hercai.onrender.com/v3/text2image?prompt=${encodeURIComponent(prompt)}`;
-        const res = await fetch(url, { signal: controller.signal });
+        // MODEL DIGANTI JADI 'Photo Realistic'
+        const model = 'Photo Realistic'; 
+        const apikey = 'freeApikey';
+
+        const url = `https://anabot.my.id/api/ai/dreamImage?prompt=${encodeURIComponent(prompt)}&models=${encodeURIComponent(model)}&apikey=${apikey}`;
+        
+        const res = await fetch(url, { method: 'GET', signal: controller.signal });
         clearTimeout(timeout);
         
         const data = await res.json();
-        return data.url || null;
+        
+        // Ambil URL dari respons JSON
+        return data.url || data.result || null;
+
     } catch (e) {
-        console.log("Hercai Error:", e.message);
+        console.log("Anabot Error:", e.message);
         return null;
     }
 }
 
-// 3. Sumber B: Pollinations (Mode Turbo - Anti Limit)
-// Kita pakai 'Turbo' karena 'Flux' terlalu berat dan sering kena blokir
+// 3. Sumber B: Pollinations (Mode Turbo - Cadangan Cepat)
 function getPollinationsImage(prompt) {
     const seed = Math.floor(Math.random() * 1000000);
     const safePrompt = encodeURIComponent(prompt);
+    // Pollinations Turbo selalu jadi back-up yang handal
     return `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&seed=${seed}&model=turbo&nologo=true`;
 }
 
@@ -51,27 +59,25 @@ module.exports = async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
 
-        // 1. Translate
+        // 1. Translate & Enhance Prompt
         const englishPrompt = await translateToEnglish(prompt);
-        const finalPrompt = `${englishPrompt}, masterpiece, best quality, ultra detailed, 8k`;
+        // Tambahan keyword agar hasil Photo Realistic makin maksimal
+        const finalPrompt = `${englishPrompt}, hyper realistic, 8k, cinematic lighting, photography`;
 
-        // 2. PARALEL REQUEST (Minta ke 2 Server Berbeda)
-        // - Gambar 1: Dari Hercai
-        // - Gambar 2: Dari Pollinations Turbo
-        
-        const task1 = getHercaiImage(finalPrompt);
-        const task2 = Promise.resolve(getPollinationsImage(finalPrompt)); // Pollinations itu instant link
+        // 2. PARALEL REQUEST (Anabot + Pollinations)
+        const task1 = getAnabotImage(finalPrompt);
+        const task2 = Promise.resolve(getPollinationsImage(finalPrompt)); 
 
         const results = await Promise.all([task1, task2]);
 
-        // 3. Bersihkan hasil yang gagal (Null)
-        const validImages = results.filter(url => url !== null && url.startsWith('http'));
+        // 3. Filter hasil yang valid (URL http...)
+        const validImages = results.filter(url => url !== null && typeof url === 'string' && url.startsWith('http'));
 
         if (validImages.length === 0) {
             throw new Error("Semua server gambar sibuk. Coba lagi nanti.");
         }
 
-        // 4. Kirim Hasil
+        // 4. Kirim Hasil Carousel
         return res.status(200).json({ 
             success: true, 
             images: validImages,
