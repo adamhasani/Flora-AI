@@ -12,29 +12,30 @@ async function translateToEnglish(text) {
     }
 }
 
-// 2. Sumber A: Hercai (Prioritas Utama)
-async function tryHercai(prompt) {
+// 2. Sumber A: Hercai (High Quality)
+async function getHercaiImage(prompt) {
     try {
-        // Timeout manual 5 detik biar gak nunggu kelamaan
+        // Timeout 8 detik biar gak lama
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), 8000);
 
         const url = `https://hercai.onrender.com/v3/text2image?prompt=${encodeURIComponent(prompt)}`;
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(timeout);
         
         const data = await res.json();
-        if (!data.url) throw new Error("Hercai gagal");
-        return data.url;
+        return data.url || null;
     } catch (e) {
-        return null; // Gagal
+        console.log("Hercai Error:", e.message);
+        return null;
     }
 }
 
-// 3. Sumber B: Pollinations Turbo (Cadangan Mati)
-function getPollinations(prompt, seed) {
+// 3. Sumber B: Pollinations (Mode Turbo - Anti Limit)
+// Kita pakai 'Turbo' karena 'Flux' terlalu berat dan sering kena blokir
+function getPollinationsImage(prompt) {
+    const seed = Math.floor(Math.random() * 1000000);
     const safePrompt = encodeURIComponent(prompt);
-    // Pakai model Turbo biar ngebut & jarang limit
     return `https://image.pollinations.ai/prompt/${safePrompt}?width=1024&height=1024&seed=${seed}&model=turbo&nologo=true`;
 }
 
@@ -50,32 +51,30 @@ module.exports = async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
 
-        // 1. Translate dulu
+        // 1. Translate
         const englishPrompt = await translateToEnglish(prompt);
-        const finalPrompt = `${englishPrompt}, masterpiece, best quality, ultra detailed`;
+        const finalPrompt = `${englishPrompt}, masterpiece, best quality, ultra detailed, 8k`;
 
-        // 2. Siapkan 2 Slot Gambar (Paralel)
-        // Kita coba generate 2 gambar sekaligus
-        const tasks = [0, 1].map(async (i) => {
-            // COBA HERCAI DULU...
-            let imageUrl = await tryHercai(finalPrompt);
-            
-            // KALAU HERCAI GAGAL (NULL), PAKAI POLLINATIONS
-            if (!imageUrl) {
-                console.log(`Slot ${i}: Hercai sibuk, switch ke Pollinations.`);
-                const seed = Math.floor(Math.random() * 1000000) + i;
-                imageUrl = getPollinations(finalPrompt, seed);
-            }
-            
-            return imageUrl;
-        });
+        // 2. PARALEL REQUEST (Minta ke 2 Server Berbeda)
+        // - Gambar 1: Dari Hercai
+        // - Gambar 2: Dari Pollinations Turbo
+        
+        const task1 = getHercaiImage(finalPrompt);
+        const task2 = Promise.resolve(getPollinationsImage(finalPrompt)); // Pollinations itu instant link
 
-        // Tunggu semua selesai
-        const images = await Promise.all(tasks);
+        const results = await Promise.all([task1, task2]);
 
+        // 3. Bersihkan hasil yang gagal (Null)
+        const validImages = results.filter(url => url !== null && url.startsWith('http'));
+
+        if (validImages.length === 0) {
+            throw new Error("Semua server gambar sibuk. Coba lagi nanti.");
+        }
+
+        // 4. Kirim Hasil
         return res.status(200).json({ 
             success: true, 
-            images: images,
+            images: validImages,
             type: 'carousel'
         });
 
