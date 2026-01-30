@@ -749,24 +749,6 @@
             transform: translateY(-3px);
             box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
         }
-
-        .clear-data-btn {
-            margin-top: 10px;
-            background: transparent;
-            border: 1px solid #333;
-            color: #666;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 12px;
-            transition: all 0.3s;
-        }
-
-        .clear-data-btn:hover {
-            border-color: var(--accent-color);
-            color: var(--accent-color);
-        }
     </style>
 </head>
 <body>
@@ -776,12 +758,11 @@
             <div style="font-size:40px; margin-bottom:10px;">🌸</div>
             <h1 style="background: var(--primary-gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin:0;">Flora AI</h1>
             <p style="color:#666; font-size:12px; margin-top:5px;">Your Creative Companion (Online)</p>
+            
+            <!-- Input dan Button tanpa onclick langsung, kita atur di JS -->
             <input type="text" id="username" class="auth-input" placeholder="Siapa nama kamu?" autocomplete="off">
-            <button onclick="handleLogin()" class="auth-btn">
+            <button id="login-btn" class="auth-btn">
                 Masuk <i class="fa-solid fa-arrow-right"></i>
-            </button>
-            <button onclick="clearAllData()" class="clear-data-btn">
-                <i class="fa-solid fa-trash"></i> Bersihkan Data & Mulai Ulang
             </button>
         </div>
     </div>
@@ -921,61 +902,49 @@
         let currentUserSafe = null;
         let isFirstLoad = true; // Flag untuk load pertama kali
 
-        // --- FUNGSI CLEAR ALL DATA ---
-        window.clearAllData = function() {
-            if(confirm('Yakin ingin menghapus semua data? Ini akan menghapus riwayat chat kamu.')) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
+        // --- PERBAIKAN LOGIN SYSTEM ---
+        // Kita ambil elemen DOM sekali di awal untuk memastikan keberadaannya
+        const usernameInput = document.getElementById('username');
+        const loginBtn = document.getElementById('login-btn');
 
-        // --- FUNGSI LOGIN & INIT (DIPERBAIKI) ---
-        window.handleLogin = function() {
-            const nameInput = document.getElementById('username');
-            const name = nameInput.value;
+        // Fungsi Login
+        function handleLogin() {
+            // Ambil value langsung dari elemen DOM yang sudah disimpan
+            const name = usernameInput.value.trim();
             
-            // Debug log
-            console.log('=== LOGIN DEBUG ===');
-            console.log('Input value:', name);
-            console.log('Input length:', name.length);
-            console.log('Input type:', typeof name);
+            console.log("Mencoba login dengan nama:", name); // Debugging di Console
             
-            // Validasi yang lebih baik
-            if(!name || name.trim().length === 0) { 
+            if(!name) { 
+                // Jika kosong, beri fokus kembali ke input
+                usernameInput.focus();
                 alert("Nama wajib diisi!"); 
-                nameInput.focus();
                 return; 
             }
             
             // Buat username aman untuk key database (tanpa titik, $, #, [, ])
-            const trimmedName = name.trim();
-            const safeName = trimmedName.replace(/[.#$[\]]/g, "_");
+            const safeName = name.replace(/[.#$[\]]/g, "_");
             currentUserSafe = safeName;
             
             // Simpan ke localStorage agar auto login berikutnya
-            localStorage.setItem('flora_username', trimmedName);
+            localStorage.setItem('flora_username', name);
             localStorage.setItem('flora_username_safe', safeName);
             
-            console.log('Trimmed name:', trimmedName);
-            console.log('Safe name:', safeName);
-            console.log('Login berhasil!');
-            console.log('==================');
-            
-            initApp(trimmedName, safeName);
+            initApp(name, safeName);
         }
 
-        // Event listener untuk Enter key pada input username
-        document.addEventListener('DOMContentLoaded', function() {
-            const usernameInput = document.getElementById('username');
-            if(usernameInput) {
-                usernameInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleLogin();
-                    }
-                });
-            }
-        });
+        // Pasang Event Listener untuk Klik Tombol
+        if(loginBtn) {
+            loginBtn.addEventListener('click', handleLogin);
+        }
+
+        // Pasang Event Listener untuk Tombol Enter di Keyboard
+        if(usernameInput) {
+            usernameInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    handleLogin();
+                }
+            });
+        }
 
         function initApp(displayName, safeName) {
             document.getElementById('auth-layer').style.display = 'none';
@@ -1062,19 +1031,15 @@
             const savedName = localStorage.getItem('flora_username');
             const savedSafe = localStorage.getItem('flora_username_safe');
             
-            console.log('=== AUTO LOGIN CHECK ===');
-            console.log('Saved name:', savedName);
-            console.log('Saved safe:', savedSafe);
-            
             if(savedName && savedSafe) {
-                console.log('Auto login dengan:', savedName);
                 // AUTO LOGIN tanpa perlu klik
                 currentUserSafe = savedSafe;
                 initApp(savedName, savedSafe);
             } else {
-                console.log('Tidak ada data login, tampilkan form');
                 // Tampilkan form login
                 document.getElementById('auth-layer').style.display = 'flex';
+                // Fokus otomatis ke input nama
+                if(usernameInput) usernameInput.focus();
             }
         };
 
@@ -1559,14 +1524,6 @@
                 updateInputDockPosition(false);
             }
         });
-
-        // Enter key handler untuk textarea
-        document.getElementById('user-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                processInput();
-            }
-        });
     </script>
 </body>
-    </html>
+</html>
