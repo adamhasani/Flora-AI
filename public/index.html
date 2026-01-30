@@ -350,6 +350,7 @@
         let currentImg64 = null;
         let imgMode = 'vision'; 
         let currentUserSafe = null;
+        let isFirstLoad = true; // Flag untuk load pertama kali
 
         // --- FUNGSI LOGIN & INIT ---
         window.handleLogin = function() {
@@ -359,7 +360,10 @@
             // Buat username aman untuk key database (tanpa titik, $, #, [, ])
             const safeName = name.replace(/[.#$[\]]/g, "_");
             currentUserSafe = safeName;
-            localStorage.setItem('flora_username', name); // Simpan nama asli utk display
+            
+            // Simpan ke localStorage agar auto login berikutnya
+            localStorage.setItem('flora_username', name);
+            localStorage.setItem('flora_username_safe', safeName);
             
             initApp(name, safeName);
         }
@@ -383,48 +387,21 @@
                 // Render Sidebar setelah data masuk
                 renderSidebar();
 
-                // Jika belum ada sesi aktif, load sesi terakhir atau buat baru
-                if(!currentSessionId) {
-                    const sessionKeys = Object.keys(allSessions);
-                    if(sessionKeys.length > 0) {
-                        loadSession(sessionKeys[sessionKeys.length - 1]);
-                    } else {
-                        // Jangan startNewChat() disini agar tidak loop saat save,
-                        // Cukup set tampilan awal kosong
-                        startNewChat(false); // false = jangan save dulu ke db
-                    }
+                // PERBAIKAN: Hanya auto-load saat pertama kali
+                if(isFirstLoad) {
+                    isFirstLoad = false;
+                    
+                    // Langsung tampilkan welcome screen, jangan load session lama
+                    showWelcomeScreen();
                 }
             });
         }
 
-        window.onload = () => {
-            const savedName = localStorage.getItem('flora_username');
-            
-            if(savedName) {
-                // AUTO LOGIN LOGIC:
-                const safeName = savedName.replace(/[.#$[\]]/g, "_");
-                currentUserSafe = safeName;
-                
-                // Set value input (sekadar visual)
-                document.getElementById('username').value = savedName;
-                
-                // Langsung masuk aplikasi
-                initApp(savedName, safeName);
-            }
-        };
-
-        // --- SESSION MANAGEMENT ---
-        window.startNewChat = function(autoSave = true) {
+        // Fungsi untuk menampilkan welcome screen
+        function showWelcomeScreen() {
+            // Buat session ID baru tapi belum disave
             currentSessionId = Date.now().toString();
             
-            // Setup objek sesi lokal
-            const newSession = {
-                title: "Percakapan Baru",
-                timestamp: Date.now(),
-                messages: []
-            };
-
-            // Tampilkan welcome screen
             const name = localStorage.getItem('flora_username');
             document.getElementById('msg-container').innerHTML = `
                 <div id="welcome-screen" style="text-align:center; padding-top:40px; animation: fadeIn 0.5s;">
@@ -452,12 +429,32 @@
                     </div>
                 </div>
             `;
+        }
+
+        // AUTO LOGIN saat page load
+        window.onload = () => {
+            const savedName = localStorage.getItem('flora_username');
+            const savedSafe = localStorage.getItem('flora_username_safe');
             
-            if(autoSave) {
-                 allSessions[currentSessionId] = newSession;
-                 saveSessions(); // Simpan ke Firebase
-                 renderSidebar();
+            if(savedName && savedSafe) {
+                // AUTO LOGIN tanpa perlu klik
+                currentUserSafe = savedSafe;
+                initApp(savedName, savedSafe);
+            } else {
+                // Tampilkan form login
+                document.getElementById('auth-layer').style.display = 'flex';
             }
+        };
+
+        // --- SESSION MANAGEMENT ---
+        window.startNewChat = function() {
+            currentSessionId = Date.now().toString();
+            
+            // Tampilkan welcome screen (belum save ke DB)
+            showWelcomeScreen();
+            
+            // Reset sidebar active state
+            renderSidebar();
             
             if(window.innerWidth <= 768) toggleSidebar();
         }
@@ -522,15 +519,14 @@
             container.innerHTML = ""; 
 
             // Cek jika session undefined (misal dihapus di device lain)
-            if(!session) { startNewChat(false); return; }
+            if(!session) { 
+                showWelcomeScreen(); 
+                return; 
+            }
 
             if(!session.messages || session.messages.length === 0) {
                 // Tampilkan welcome screen jika kosong
-                const name = localStorage.getItem('flora_username');
-                 document.getElementById('msg-container').innerHTML = `
-                    <div id="welcome-screen" style="text-align:center; padding-top:40px;">
-                        <h2 style="font-size:26px; margin:0;">Halo, ${name}!</h2>
-                    </div>`;
+                showWelcomeScreen();
             } else {
                 session.messages.forEach(msg => {
                     addBubble(msg.content, msg.role, msg.image, false, false); // False = jangan save lagi (krn load)
