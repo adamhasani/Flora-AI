@@ -393,21 +393,23 @@
                         // Cukup set tampilan awal kosong
                         startNewChat(false); // false = jangan save dulu ke db
                     }
-                } else {
-                    // Jika sedang buka sesi, refresh pesannya (realtime)
-                    if(allSessions[currentSessionId]) {
-                        // Opsional: update tampilan chat real-time jika mau
-                        // Tapi hati-hati mereset scroll user
-                    }
                 }
             });
         }
 
         window.onload = () => {
             const savedName = localStorage.getItem('flora_username');
+            
             if(savedName) {
+                // AUTO LOGIN LOGIC:
+                const safeName = savedName.replace(/[.#$[\]]/g, "_");
+                currentUserSafe = safeName;
+                
+                // Set value input (sekadar visual)
                 document.getElementById('username').value = savedName;
-                // Auto login jika nama ada (opsional, user klik masuk manual lebih aman)
+                
+                // Langsung masuk aplikasi
+                initApp(savedName, safeName);
             }
         };
 
