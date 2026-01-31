@@ -1,73 +1,55 @@
-// --- DRAW REQUEST (DITAMBAH TRANSLASI OTOMATIS) ---
-async function sendDrawRequest(prompt) {
-    const input = document.getElementById('user-input');
-    const welcome = document.getElementById('welcome-screen');
-    if(welcome) welcome.remove();
+// Nama File: api/draw.js
 
-    // Pastikan session ada di DB
-    if(!allSessions[currentSessionId]) {
-        allSessions[currentSessionId] = { title: prompt, timestamp: Date.now(), messages: [] };
-    }
+module.exports = async (req, res) => {
+    // 1. Setup Header CORS (Wajib biar bisa diakses dari Frontend)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    addBubble(`🎨 Gambarkan: ${prompt}`, 'user', null, false, true);
-    input.value = "";
-    
-    // Tampilkan animasi loading
-    const loadingId = addBubble("", 'bot', null, true, false);
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        // --- LANGKAH 1: TRANSLASI (Dari kode api/draw.js kamu) ---
+        const { prompt } = req.body;
+        if (!prompt) return res.status(400).json({ error: "Prompt kosong!" });
+
+        // 2. Translate (Indo -> Inggris)
+        // Kita pakai Google Translate API yang ringan & gratis biar Pollinations paham
         let englishPrompt = prompt;
-        
         try {
-            // Menggunakan Google Translate API Gratis
-            const transUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(prompt)}`;
-            const transRes = await fetch(transUrl);
-            const transData = await transRes.json();
-            
-            // Ambil hasil terjemahan
-            if (transData && transData[0] && transData[0][0]) {
-                englishPrompt = transData[0][0][0];
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(prompt)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if(data && data[0] && data[0][0] && data[0][0][0]) {
+                englishPrompt = data[0][0][0];
             }
         } catch (e) {
-            console.warn("Gagal translate, pakai teks asli.");
-            // Kalau gagal, pakai prompt asli
-            englishPrompt = prompt; 
+            console.log("Translate error (skip):", e.message);
         }
 
-        // --- LANGKAH 2: GENERATE GAMBAR (Pollinations AI) ---
-        // Kita pakai prompt bahasa Inggris agar hasil gambarnya lebih akurat
-        const encodedPrompt = encodeURIComponent(englishPrompt);
-        const randomSeed = Math.floor(Math.random() * 1000000); 
+        // 3. Racik 4 URL Gambar (Link Factory)
+        // Kita tidak download gambar di sini, cuma bikin string URL-nya.
+        // Gambar akan diload oleh HP user, jadi IP Vercel AMAN dari limit.
         
-        // URL langsung ke gambar
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${randomSeed}&nologo=true`;
+        const cleanPrompt = englishPrompt.replace(/[^\w\s,]/gi, ''); // Hapus simbol aneh
+        const finalPrompt = encodeURIComponent(cleanPrompt);
+        const seed = Math.floor(Math.random() * 1000000);
 
-        // Preload gambar untuk memastikan sukses sebelum ditampilkan
-        const img = new Image();
-        img.onload = () => {
-            // Hapus loading
-            const loadingEl = document.getElementById(loadingId);
-            if(loadingEl) loadingEl.remove();
-            
-            // Tampilkan gambar hasil (sebutin prompt Inggrisnya biar tahu)
-            addBubble(`Nih hasilnya: <b>${englishPrompt}</b> ✨`, 'bot', imageUrl, false, true);
-        };
-        
-        img.onerror = () => {
-            document.getElementById(loadingId).innerHTML = `
-                <div style="color:#ff6b6b; padding:10px;">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Gagal memuat gambar.
-                </div>`;
-        };
+        // Kita siapkan 4 Model berbeda untuk variasi maksimal (Carousel)
+        const images = [
+            `https://image.pollinations.ai/prompt/${finalPrompt}?width=1024&height=1024&seed=${seed}&model=turbo&nologo=true`,
+            `https://image.pollinations.ai/prompt/${finalPrompt}?width=1024&height=1024&seed=${seed+1}&model=flux&nologo=true`,
+            `https://image.pollinations.ai/prompt/${finalPrompt}?width=1024&height=1024&seed=${seed+2}&model=flux-realism&nologo=true`,
+            `https://image.pollinations.ai/prompt/${finalPrompt}?width=1024&height=1024&seed=${seed+3}&model=any-dark&nologo=true`
+        ];
 
-        // Mulai memuat gambar
-        img.src = imageUrl;
+        // 4. Kirim Array Link ke Frontend
+        return res.status(200).json({ 
+            success: true, 
+            images: images,
+            translatedPrompt: englishPrompt
+        });
 
-    } catch (e) {
-        document.getElementById(loadingId).innerHTML = `
-            <div style="color:#ff6b6b; padding:10px;">
-                <i class="fa-solid fa-triangle-exclamation"></i> Error: ${e.message}
-            </div>`;
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
     }
-}
+};
