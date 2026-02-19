@@ -1,70 +1,52 @@
 
-<h1 align="center">🌿 flora ai</h1>
-
 <div align="center">
-  <img src="https://img.shields.io/badge/status-active-success.svg" alt="status">
-  <img src="https://img.shields.io/badge/version-1.0-blue.svg" alt="version">
-  <img src="https://img.shields.io/badge/vercel-deployed-black.svg?logo=vercel" alt="vercel">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=26&duration=3000&pause=1000&color=00ff00&center=true&vCenter=true&width=600&lines=>>+FLORA_AI+INITIALIZED...;>>+SYSTEM+ONLINE;>>+AWAITING+COMMANDS_&background=000000" alt="typing svg" />
 </div>
 
-<p align="center">
-  <b>asisten cerdas berbasis ai untuk pengalaman ngobrol yang responsif dan interaktif</b>
-</p>
-
 <div align="center">
-  <a href="https://flora-ai-eight.vercel.app"><b>🚀 coba live demo flora ai di sini 🚀</b></a>
+  <a href="https://flora-ai-eight.vercel.app">
+    <img src="https://img.shields.io/badge/status-live_on_vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="live status" />
+  </a>
+  <img src="https://img.shields.io/badge/engine-pollinations_ai-8A2BE2?style=for-the-badge&logo=openai&logoColor=white" alt="engine" />
+  <img src="https://img.shields.io/badge/build-passing-00ff00?style=for-the-badge" alt="build" />
 </div>
 
 <br>
 
-### ✨ highlight fitur
-- 💬 **percakapan natural** - asisten pintar yang siap merespons berbagai pertanyaan dengan cepat
-- ⚡ **performa ringan** - antarmuka web yang dioptimalkan biar gak bikin berat hp atau laptop
-- 📱 **ramah mobile** - desain responsif yang tetep rapi walau dibuka dari layar kecil
-- ☁️ **cloud deployed** - selalu online dan gampang diakses berkat integrasi vercel
+> "artificial intelligence tailored for seamless web interactions"
 
-### 🛠️ teknologi yang digunakan
-project ini dibangun menggunakan tech stack pilihan biar kodenya tetep rapi dan gampang dikembangin:
-- **frontend** html5 & css3
-- **logic** javascript
-- **deployment** vercel
+## ⚙️ system architecture
+flora ai dibangun dengan arsitektur yang ringan tapi sangat kuat untuk pemrosesan bahasa natural secara real-time
 
-### 💻 panduan install lokal
-buat kamu yang mau clone dan modifikasi flora ai di komputer kamu sendiri
+- **[ frontend ]** antarmuka minimalis dengan html dan css murni tanpa framework berat
+- **[ backend/api ]** serverless function menangani routing ke pollinations ai
+- **[ deployment ]** edge network vercel untuk latensi super rendah
 
-1. clone repo ini ke komputer kamu
+## 🔌 api & routing
+berdasarkan struktur direktori sistem beroperasi melalui rute berikut
+
+```text
+/
+├── public/
+│   └── index.html      # ui utama
+├── api/
+│   └── pollinations.js # gateway ke engine ai
+└── package.json        # config dependencies
+
+```
+
+## 💻 eksekusi lokal
+
+buat ngejalanin node ini di mesin kamu sendiri buka terminal dan jalankan perintah berikut
+
 ```bash
 git clone [https://github.com/adamhasani/Flora-AI.git](https://github.com/adamhasani/Flora-AI.git)
-
-```
-
-2. masuk ke dalam folder project
-
-```bash
 cd Flora-AI
-
-```
-
-3. install semua dependencies yang dibutuhkan
-
-```bash
 npm install
-
-```
-
-4. jalankan di local server
-
-```bash
 npm run dev
 
 ```
 
-### 👨‍💻 tentang developer
-
-dikembangkan dengan penuh dedikasi oleh **adam hasani** - mahasiswa sains data yang punya minat besar di bidang kecerdasan buatan dan pengembangan web
-
----
-
 <div align="center">
-dibuat untuk eksperimen dan eksplorasi teknologi ai masa depan
+<img src="https://www.google.com/search?q=https://komarev.com/ghpvc/%3Fusername%3Dadamhasani-flora-ai%26style%3Dfor-the-badge%26color%3D00ff00%26label%3Dsystem%2Bpings" alt="view counter" />
 </div>
