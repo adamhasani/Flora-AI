@@ -278,7 +278,6 @@
         </div>
     </div>
 
-    <!-- PERBAIKAN: Overlay dipindahkan ke dalam app-interface -->
     <div id="app-interface">
         <div id="overlay" onclick="toggleSidebar()"></div>
         
@@ -553,6 +552,7 @@
             });
         }
         window.autoResize = function(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+        
         window.processInput = function() {
             const input = document.getElementById('user-input');
             const txt = input.value.trim();
@@ -562,9 +562,20 @@
             const drawRegex = /^(gambarkan|buatkan gambar|buat gambar|\/img|\/draw)\s+(.+)/i;
             const match = txt.match(drawRegex);
             if (match) { sendDrawRequest(match[2]); return; }
-            sendMessage();
+            sendMessage(); // Memicu fungsi streaming
         }
         window.activateDrawMode = function() { const input = document.getElementById('user-input'); input.value = "Gambarkan "; input.focus(); }
+
+        // --- HELPER BARU UNTUK FORMATTING KODE SAAT STREAMING ---
+        window.formatBotContent = function(text) {
+            return text.replace(/\n/g, '<br>').replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
+                const language = lang || 'javascript'; const cleanCode = code.replace(/<br>/g, '\n').trim(); 
+                const escapedCode = cleanCode.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const codeForAttr = cleanCode.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+                const canPreview = ['html', 'htm', 'xml'].includes(language.toLowerCase()) || (cleanCode.includes('<html') || cleanCode.includes('<!DOCTYPE'));
+                return `<div class="code-block-wrapper"><div class="code-header"><span class="code-lang">${language}</span><div class="code-actions">${canPreview ? `<button class="code-btn" onclick='openPreview(\`${codeForAttr}\`)'><i class="fa-solid fa-eye"></i> Preview</button>` : ''}<button class="code-btn" onclick='copyCode(this, \`${codeForAttr}\`)'><i class="fa-solid fa-copy"></i> Salin</button></div></div><pre><code class="language-${language}">${escapedCode}</code></pre></div>`;
+            });
+        };
 
         async function sendDrawRequest(prompt) {
             const input = document.getElementById('user-input');
@@ -612,36 +623,102 @@
             } catch (e) { document.getElementById(loadingId).innerHTML = `<div style="color:#ef4444">Error: ${e.message}</div>`; }
         }
 
+        // --- FUNGSI STREAMING UTAMA (SUDAH DIROMBAK) ---
         async function sendMessage() {
-            const input = document.getElementById('user-input'); const txt = input.value.trim();
+            const input = document.getElementById('user-input'); 
+            const txt = input.value.trim();
             if (!txt && !currentImg64) return;
-            const welcome = document.getElementById('welcome-screen'); if(welcome) welcome.remove();
-            if (!allSessions[currentSessionId]) { allSessions[currentSessionId] = { title: txt ? txt.substring(0, 25) + "..." : "Gambar...", timestamp: Date.now(), messages: [] }; }
-            else if (allSessions[currentSessionId].messages?.length === 0) { allSessions[currentSessionId].title = txt ? txt.substring(0, 25) + "..." : "Gambar..."; }
+            
+            const welcome = document.getElementById('welcome-screen'); 
+            if(welcome) welcome.remove();
+            
+            if (!allSessions[currentSessionId]) { 
+                allSessions[currentSessionId] = { title: txt ? txt.substring(0, 25) + "..." : "Gambar...", timestamp: Date.now(), messages: [] }; 
+            } else if (allSessions[currentSessionId].messages?.length === 0) { 
+                allSessions[currentSessionId].title = txt ? txt.substring(0, 25) + "..." : "Gambar..."; 
+            }
+            
             const imgToSend = currentImg64;
             addBubble(txt, 'user', imgToSend, false, true);
+            
             const payload = { history: (allSessions[currentSessionId].messages || []).slice(-10), message: txt, image: imgToSend };
             input.value = ""; clearImage();
+            
             const loadingId = addBubble("", 'bot', null, true, false);
+            const botContainer = document.getElementById(loadingId);
+            
             try {
-                const res = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                // Gunakan fetch ke Vercel (karena endpoint kamu pakai /api)
+                const res = await fetch('/api', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
+                
                 if (!res.ok) throw new Error("Gagal terhubung.");
-                const data = await res.json();
-                document.getElementById(loadingId).remove();
-                addBubble(data.reply, 'bot', null, false, true);
-            } catch (e) { document.getElementById(loadingId).innerHTML = `<div style="color:#ef4444; padding:12px;">Error: ${e.message}</div>`; }
+                
+                // Mulai baca stream
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let fullText = "";
+                
+                // Ubah status dari "Loading Indicator" jadi kotak teks biasa
+                botContainer.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content" id="content-${loadingId}"></div>`;
+                const contentDiv = document.getElementById(`content-${loadingId}`);
+                let buffer = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    let lines = buffer.split('\n');
+                    buffer = lines.pop(); // Simpan line yang belum lengkap ke buffer
+                    
+                    for (const line of lines) {
+                        if (line.trim() === "") continue;
+                        if (line.includes("[DONE]")) break; // Streaming selesai
+                        
+                        if (line.startsWith("data: ")) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                if (data.text) {
+                                    fullText += data.text;
+                                    // Update layar secara live dengan format bot
+                                    contentDiv.innerHTML = window.formatBotContent(fullText);
+                                    document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight });
+                                }
+                            } catch (e) { /* Abaikan chunk terputus */ }
+                        }
+                    }
+                }
+                
+                // Setelah selesai, terapkan Prism Highlight supaya warnanya muncul
+                if(window.Prism) Prism.highlightAllUnder(botContainer);
+                
+                // Simpan text utuh ke memori Firebase
+                if(!allSessions[currentSessionId].messages) allSessions[currentSessionId].messages = [];
+                allSessions[currentSessionId].messages.push({ role: 'assistant', content: fullText, image: null });
+                saveSessions();
+                
+            } catch (e) { 
+                botContainer.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content"><div style="color:#ef4444; padding:12px;">Error: ${e.message}</div></div>`; 
+            }
         }
 
+        // --- FUNGSI ADDBUBBLE DIPERBARUI AGAR MENGGUNAKAN HELPER ---
         function addBubble(text, role, img, isLoading, saveToMem) {
             const container = document.getElementById('msg-container');
             const div = document.createElement('div');
             div.className = `msg-group ${role}`;
             div.id = 'msg-' + Date.now();
+            
             if (saveToMem) {
                 if(!allSessions[currentSessionId].messages) allSessions[currentSessionId].messages = [];
                 allSessions[currentSessionId].messages.push({ role: role === 'user' ? 'user' : 'assistant', content: text, image: img });
                 saveSessions();
             }
+            
             if (role === 'user') {
                 const imgHtml = img ? `<img src="${img}" style="max-width:180px; border-radius:10px; margin-bottom:8px; display:block;">` : '';
                 div.innerHTML = `<div class="bubble">${imgHtml}<div>${text.replace(/\n/g, '<br>')}</div></div>`;
@@ -650,17 +727,18 @@
                     div.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div style="padding:10px 0;"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
                 } else {
                     let mediaHtml = '';
-                    if (Array.isArray(img)) { let gridItems = img.map(url => `<a href="${url}" target="_blank"><img src="${url}" loading="lazy" onerror="this.style.display='none'"></a>`).join(''); mediaHtml = `<div class="img-grid">${gridItems}</div>`; }
-                    else if (img && typeof img === 'string') { mediaHtml = `<div class="single-img"><a href="${img}" target="_blank"><img src="${img}" referrerpolicy="no-referrer"></a></div>`; }
-                    let formatted = text.replace(/\n/g, '<br>').replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
-                        const language = lang || 'javascript'; const cleanCode = code.replace(/<br>/g, '\n').trim(); const escapedCode = cleanCode.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        const codeForAttr = cleanCode.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-                        const canPreview = ['html', 'htm', 'xml'].includes(language.toLowerCase()) || (cleanCode.includes('<html') || cleanCode.includes('<!DOCTYPE'));
-                        return `<div class="code-block-wrapper"><div class="code-header"><span class="code-lang">${language}</span><div class="code-actions">${canPreview ? `<button class="code-btn" onclick='openPreview(\`${codeForAttr}\`)'><i class="fa-solid fa-eye"></i> Preview</button>` : ''}<button class="code-btn" onclick='copyCode(this, \`${codeForAttr}\`)'><i class="fa-solid fa-copy"></i> Salin</button></div></div><pre><code class="language-${language}">${escapedCode}</code></pre></div>`;
-                    });
+                    if (Array.isArray(img)) { 
+                        let gridItems = img.map(url => `<a href="${url}" target="_blank"><img src="${url}" loading="lazy" onerror="this.style.display='none'"></a>`).join(''); 
+                        mediaHtml = `<div class="img-grid">${gridItems}</div>`; 
+                    } else if (img && typeof img === 'string') { 
+                        mediaHtml = `<div class="single-img"><a href="${img}" target="_blank"><img src="${img}" referrerpolicy="no-referrer"></a></div>`; 
+                    }
+                    // Gunakan formatBotContent helper yang baru dibuat
+                    let formatted = window.formatBotContent(text);
                     div.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content">${mediaHtml}${formatted}</div>`;
                 }
             }
+            
             container.appendChild(div);
             if(window.Prism) Prism.highlightAll();
             document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight, behavior: 'smooth' });
