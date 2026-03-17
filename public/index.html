@@ -1,1294 +1,1333 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flora AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Flora AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<style>
+:root {
+--bg-deep: #0a0a0b;
+--bg-elevated: #111113;
+--bg-panel: #161618;
+--bg-card: #1a1a1c;
+--accent: #c9a87c;
+--accent-soft: rgba(201, 168, 124, 0.15);
+--accent-glow: rgba(201, 168, 124, 0.4);
+--text-primary: #f4f4f5;
+--text-secondary: #a1a1aa;
+--text-muted: #71717a;
+--border-subtle: rgba(255, 255, 255, 0.06);
+--border-accent: rgba(201, 168, 124, 0.2);
+--shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+--shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+--shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+--radius-sm: 8px;
+--radius-md: 12px;
+--radius-lg: 16px;
+--radius-xl: 24px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+font-family: 'Inter', -apple-system, sans-serif;
+background: var(--bg-deep);
+color: var(--text-primary);
+line-height: 1.6;
+letter-spacing: -0.01em;
+}
+.ambient-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.ambient-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5; animation: orbFloat 20s ease-in-out infinite; }
+.orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(201, 168, 124, 0.15) 0%, transparent 70%); top: -200px; right: -100px; animation-delay: 0s; }
+.orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%); bottom: -100px; left: -100px; animation-delay: -10s; }
+.orb-3 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(201, 168, 124, 0.1) 0%, transparent 70%); top: 50%; left: 30%; animation-delay: -5s; }
+@keyframes orbFloat {
+0%, 100% { transform: translate(0, 0) scale(1); }
+25% { transform: translate(30px, -20px) scale(1.05); }
+50% { transform: translate(-20px, 30px) scale(0.95); }
+75% { transform: translate(-30px, -10px) scale(1.02); }
+}
+.noise-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0.03; background-image: url("image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E"); }
+#auth-layer { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; background: var(--bg-deep); }
+.auth-container { width: 100%; max-width: 380px; padding: 48px 40px; position: relative; z-index: 2; }
+.auth-brand { text-align: center; margin-bottom: 48px; }
+.auth-logo { width: 64px; height: 64px; margin: 0 auto 20px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--bg-deep); box-shadow: 0 8px 32px var(--accent-glow); animation: logoPulse 3s ease-in-out infinite; }
+@keyframes logoPulse { 0%, 100% { transform: scale(1); box-shadow: 0 8px 32px var(--accent-glow); } 50% { transform: scale(1.02); box-shadow: 0 12px 40px var(--accent-glow); } }
+.auth-title { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); margin-bottom: 8px; }
+.auth-subtitle { font-size: 14px; color: var(--text-muted); letter-spacing: 0.02em; }
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+.input-group { position: relative; }
+.input-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+.auth-input { width: 100%; padding: 16px 20px; background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-primary); font-size: 15px; font-family: inherit; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.auth-input::placeholder { color: var(--text-muted); }
+.auth-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.auth-btn { width: 100%; padding: 16px 24px; margin-top: 8px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border: none; border-radius: var(--radius-md); color: var(--bg-deep); font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.auth-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--accent-glow); }
+.auth-btn:active { transform: translateY(0); }
+#app-interface { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; position: relative; z-index: 2; }
+.sidebar { width: 300px; background: var(--bg-elevated); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; flex-shrink: 0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 100; }
+.sidebar-header { padding: 24px 20px; border-bottom: 1px solid var(--border-subtle); }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.brand-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--bg-deep); font-size: 16px; }
+.brand-name { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.new-chat-btn { width: 100%; padding: 14px 20px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-primary); font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.new-chat-btn:hover { background: var(--accent-soft); border-color: var(--border-accent); color: var(--accent); }
+.history-section { flex: 1; overflow-y: auto; padding: 16px 12px; }
+.history-section::-webkit-scrollbar { width: 4px; }
+.history-section::-webkit-scrollbar-track { background: transparent; }
+.history-section::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+.history-date { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 8px 12px; position: sticky; top: 0; background: var(--bg-elevated); }
+.history-item { padding: 12px 14px; border-radius: var(--radius-sm); cursor: pointer; margin-bottom: 4px; transition: all 0.2s ease; border: 1px solid transparent; }
+.history-item:hover { background: var(--bg-card); }
+.history-item.active { background: var(--accent-soft); border-color: var(--border-accent); }
+.history-item.active .history-title { color: var(--accent); }
+.history-title { font-size: 14px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.main-view { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; z-index: 1; }
+.mobile-header { display: none; padding: 16px 20px; align-items: center; justify-content: space-between; background: rgba(10, 10, 11, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-subtle); position: relative; z-index: 50; }
+.mobile-brand { display: flex; align-items: center; gap: 10px; }
+.mobile-brand-name { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; }
+.menu-btn { background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; padding: 8px; transition: color 0.2s; }
+.menu-btn:hover { color: var(--text-primary); }
+#chat-stream { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 24px 0; scroll-behavior: smooth; }
+#chat-stream::-webkit-scrollbar { width: 6px; }
+#chat-stream::-webkit-scrollbar-track { background: transparent; }
+#chat-stream::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+.msg-wrapper { max-width: 800px; width: 100%; margin: 0 auto; padding: 0 24px; }
+.msg-group { display: flex; gap: 16px; margin-bottom: 24px; animation: msgSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes msgSlide { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.msg-group.user { justify-content: flex-end; }
+.avatar { width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--accent-soft); border: 1px solid var(--border-accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent); font-size: 14px; }
+.user .bubble { background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 14px 18px; border-radius: var(--radius-lg); border-top-right-radius: var(--radius-sm); max-width: 75%; font-size: 15px; line-height: 1.6; }
+.bot-content { flex: 1; min-width: 0; }
+.bot-content p { margin-bottom: 12px; }
+.bot-content p:last-child { margin-bottom: 0; }
+.bot-content strong { color: var(--accent); font-weight: 600; }
+.bot-content code:not([class*="language-"]) { background: var(--bg-card); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace; }
+.code-block-wrapper {
+background: var(--bg-panel);
+border: 1px solid var(--border-subtle);
+border-radius: var(--radius-md);
+margin: 16px 0;
+overflow: hidden;
+box-shadow: var(--shadow-md);
+transition: border-color 0.2s;
+}
+.code-block-wrapper:hover {
+border-color: var(--border-accent);
+}
+.code-tab-bar {
+display: flex;
+align-items: center;
+background: var(--bg-card);
+border-bottom: 1px solid var(--border-subtle);
+padding: 0 12px;
+gap: 0;
+position: relative;
+}
+.code-lang-badge {
+font-family: 'Space Grotesk', sans-serif;
+font-size: 11px;
+font-weight: 700;
+color: var(--accent);
+text-transform: uppercase;
+letter-spacing: 0.08em;
+padding: 10px 12px 10px 4px;
+border-right: 1px solid var(--border-subtle);
+margin-right: 8px;
+flex-shrink: 0;
+}
+.tab-switcher {
+display: flex;
+gap: 2px;
+flex: 1;
+}
+.tab-btn {
+padding: 8px 14px;
+background: transparent;
+border: none;
+border-radius: 6px;
+font-size: 12px;
+font-weight: 500;
+font-family: 'Inter', sans-serif;
+color: var(--text-muted);
+cursor: pointer;
+display: flex;
+align-items: center;
+gap: 6px;
+transition: all 0.2s ease;
+position: relative;
+}
+.tab-btn:hover { color: var(--text-secondary); background: var(--bg-panel); }
+.tab-btn.active {
+color: var(--text-primary);
+background: var(--bg-panel);
+}
+.tab-btn.active::after {
+content: '';
+position: absolute;
+bottom: -1px;
+left: 8px;
+right: 8px;
+height: 2px;
+background: var(--accent);
+border-radius: 2px 2px 0 0;
+}
+.tab-btn .tab-dot {
+width: 6px; height: 6px;
+border-radius: 50%;
+background: currentColor;
+opacity: 0.5;
+}
+.tab-btn.active .tab-dot { opacity: 1; background: var(--accent); }
+.code-actions-right {
+display: flex;
+gap: 6px;
+margin-left: auto;
+flex-shrink: 0;
+}
+.code-btn {
+background: transparent;
+border: 1px solid var(--border-subtle);
+border-radius: 6px;
+padding: 5px 10px;
+font-size: 11px;
+font-family: 'Inter', sans-serif;
+color: var(--text-muted);
+cursor: pointer;
+display: flex;
+align-items: center;
+gap: 5px;
+transition: all 0.2s;
+white-space: nowrap;
+}
+.code-btn:hover { background: var(--bg-panel); border-color: var(--border-accent); color: var(--accent); }
+.code-btn.success { background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); color: #22c55e; }
+.code-btn.fullscreen-btn:hover { background: rgba(201, 168, 124, 0.1); color: var(--accent); }
+.code-pane { display: block; }
+.code-pane pre {
+margin: 0;
+padding: 18px;
+background: transparent !important;
+overflow-x: auto;
+max-height: 420px;
+}
+.code-pane pre::-webkit-scrollbar { width: 4px; height: 4px; }
+.code-pane pre::-webkit-scrollbar-track { background: transparent; }
+.code-pane pre::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+.code-pane pre code {
+font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+font-size: 13px;
+line-height: 1.75;
+}
+.preview-pane {
+display: none;
+position: relative;
+background: #fff;
+min-height: 320px;
+}
+.preview-pane.active { display: block; }
+.code-pane.hidden { display: none; }
+.preview-pane iframe {
+width: 100%;
+min-height: 320px;
+border: none;
+display: block;
+}
+.preview-pane .preview-loading {
+position: absolute;
+inset: 0;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+background: var(--bg-panel);
+gap: 12px;
+color: var(--text-muted);
+font-size: 13px;
+}
+.preview-spinner {
+width: 28px; height: 28px;
+border: 2px solid var(--border-subtle);
+border-top-color: var(--accent);
+border-radius: 50%;
+animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.preview-status-bar {
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 8px 14px;
+background: var(--bg-card);
+border-top: 1px solid var(--border-subtle);
+font-size: 11px;
+color: var(--text-muted);
+}
+.status-dot {
+width: 7px; height: 7px;
+border-radius: 50%;
+background: #22c55e;
+box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.status-refresh-btn {
+margin-left: auto;
+background: none;
+border: none;
+color: var(--text-muted);
+cursor: pointer;
+font-size: 11px;
+padding: 3px 8px;
+border-radius: 4px;
+display: flex;
+align-items: center;
+gap: 5px;
+transition: all 0.2s;
+}
+.status-refresh-btn:hover { background: var(--bg-panel); color: var(--accent); }
+.preview-modal {
+position: fixed;
+inset: 0;
+z-index: 1000;
+display: none;
+background: rgba(0, 0, 0, 0.9);
+backdrop-filter: blur(12px);
+animation: fadeIn 0.2s ease;
+}
+.preview-modal.show { display: flex; flex-direction: column; }
+.preview-modal-header {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 12px 20px;
+background: var(--bg-elevated);
+border-bottom: 1px solid var(--border-subtle);
+flex-shrink: 0;
+}
+.preview-modal-title {
+display: flex;
+align-items: center;
+gap: 10px;
+font-family: 'Space Grotesk', sans-serif;
+font-size: 14px;
+font-weight: 600;
+}
+.preview-modal-badge {
+font-size: 10px;
+font-weight: 700;
+text-transform: uppercase;
+letter-spacing: 0.06em;
+padding: 3px 8px;
+border-radius: 4px;
+background: var(--accent-soft);
+color: var(--accent);
+border: 1px solid var(--border-accent);
+}
+.preview-modal-actions { display: flex; gap: 8px; }
+.preview-modal-btn {
+padding: 7px 14px;
+background: var(--bg-card);
+border: 1px solid var(--border-subtle);
+border-radius: 6px;
+font-size: 12px;
+font-family: 'Inter', sans-serif;
+color: var(--text-secondary);
+cursor: pointer;
+display: flex;
+align-items: center;
+gap: 6px;
+transition: all 0.2s;
+}
+.preview-modal-btn:hover { background: var(--accent-soft); border-color: var(--border-accent); color: var(--accent); }
+.preview-modal-btn.close-btn:hover { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; }
+.preview-modal-body {
+flex: 1;
+display: flex;
+overflow: hidden;
+}
+.modal-split-view {
+display: flex;
+flex: 1;
+overflow: hidden;
+}
+.modal-code-panel {
+width: 45%;
+border-right: 1px solid var(--border-subtle);
+display: flex;
+flex-direction: column;
+background: var(--bg-panel);
+overflow: hidden;
+transition: width 0.3s ease;
+}
+.modal-code-panel.collapsed { width: 0; border: none; overflow: hidden; }
+.modal-preview-panel {
+flex: 1;
+background: #fff;
+display: flex;
+flex-direction: column;
+overflow: hidden;
+}
+.modal-code-scroll {
+flex: 1;
+overflow: auto;
+padding: 16px;
+}
+.modal-code-scroll::-webkit-scrollbar { width: 4px; }
+.modal-code-scroll::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+.modal-code-scroll pre {
+margin: 0;
+background: transparent !important;
+}
+.modal-code-scroll pre code {
+font-family: 'SF Mono', 'Fira Code', monospace;
+font-size: 12.5px;
+line-height: 1.75;
+}
+.modal-iframe {
+flex: 1;
+border: none;
+width: 100%;
+height: 100%;
+}
+.modal-divider {
+width: 4px;
+background: var(--border-subtle);
+cursor: col-resize;
+flex-shrink: 0;
+transition: background 0.2s;
+position: relative;
+}
+.modal-divider:hover, .modal-divider.dragging { background: var(--accent); }
+.modal-divider::after {
+content: '';
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+width: 3px;
+height: 40px;
+background: var(--border-subtle);
+border-radius: 3px;
+}
+.img-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0; }
+.img-grid a { display: block; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle); transition: all 0.3s; }
+.img-grid a:hover { border-color: var(--accent); transform: translateY(-2px); }
+.img-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.single-img { margin: 16px 0; }
+.single-img img { max-width: 320px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+.typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
+.typing-indicator span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: typingBounce 1.4s ease-in-out infinite; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+.welcome-screen { text-align: center; padding: 60px 24px; animation: fadeIn 0.5s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.welcome-icon { width: 80px; height: 80px; margin: 0 auto 24px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 36px; color: var(--bg-deep); box-shadow: 0 12px 40px var(--accent-glow); }
+.welcome-title { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; }
+.welcome-title .accent { color: var(--accent); }
+.welcome-subtitle { color: var(--text-muted); font-size: 15px; margin-bottom: 40px; }
+.starter-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 480px; margin: 0 auto; }
+.starter-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 18px; text-align: left; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.starter-card:hover { background: var(--bg-panel); border-color: var(--border-accent); transform: translateY(-3px); }
+.starter-icon { font-size: 20px; margin-bottom: 10px; color: var(--accent); }
+.starter-title { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.starter-desc { font-size: 12px; color: var(--text-muted); }
+.input-dock { padding: 16px 24px 24px; position: relative; z-index: 50; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.input-dock.centered { position: absolute; bottom: 50%; left: 50%; transform: translate(-50%, 50%); width: 100%; max-width: 640px; padding: 0 24px; }
+.input-container { max-width: 640px; margin: 0 auto; }
+.preview-bar { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 12px; animation: slideUp 0.3s ease; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.preview-bar.show { display: flex; }
+.preview-img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-subtle); }
+.preview-actions { flex: 1; display: flex; gap: 8px; }
+.preview-mode-btn { padding: 8px 14px; background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+.preview-mode-btn:hover { background: var(--bg-elevated); }
+.preview-mode-btn.active { background: var(--accent-soft); border-color: var(--border-accent); color: var(--accent); }
+.remove-btn { background: none; border: none; color: var(--text-muted); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.remove-btn:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.input-bar { display: flex; align-items: flex-end; gap: 8px; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.input-bar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.input-action { background: none; border: none; color: var(--text-muted); padding: 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 16px; transition: all 0.2s; }
+.input-action:hover { background: var(--bg-panel); color: var(--accent); }
+.input-textarea { flex: 1; background: none; border: none; color: var(--text-primary); font-family: inherit; font-size: 15px; line-height: 1.5; resize: none; max-height: 120px; padding: 10px 4px; }
+.input-textarea::placeholder { color: var(--text-muted); }
+.input-textarea:focus { outline: none; }
+.send-btn { width: 42px; height: 42px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border: none; border-radius: var(--radius-md); color: var(--bg-deep); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 16px var(--accent-glow); }
+#overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 90; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+#overlay.show { opacity: 1; pointer-events: auto; }
 
-    <style>
-        :root {
-            --bg-deep: #0a0a0b;
-            --bg-elevated: #111113;
-            --bg-panel: #161618;
-            --bg-card: #1a1a1c;
-            --accent: #c9a87c;
-            --accent-soft: rgba(201, 168, 124, 0.15);
-            --accent-glow: rgba(201, 168, 124, 0.4);
-            --text-primary: #f4f4f5;
-            --text-secondary: #a1a1aa;
-            --text-muted: #71717a;
-            --border-subtle: rgba(255, 255, 255, 0.06);
-            --border-accent: rgba(201, 168, 124, 0.2);
-            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
-            --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --radius-xl: 24px;
-        }
+/* ===== THINKING TIME INDICATOR ===== */
+.thinking-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  animation: slideUp 0.3s ease;
+}
+.thinking-bar.show { display: flex; }
+.thinking-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+.thinking-time {
+  font-family: 'Space Grotesk', monospace;
+  color: var(--accent);
+  font-weight: 600;
+  min-width: 50px;
+  text-align: right;
+}
+.code-size-warning {
+  font-size: 11px;
+  color: #f59e0b;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 4px;
+  margin: 8px 12px;
+}
+.preview-error {
+  padding: 20px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  color: #ef4444;
+  font-size: 13px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.preview-error i { font-size: 24px; }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; overflow: hidden; }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg-deep);
-            color: var(--text-primary);
-            line-height: 1.6;
-            letter-spacing: -0.01em;
-        }
-
-        /* Ambient Background */
-        .ambient-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-        .ambient-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5; animation: orbFloat 20s ease-in-out infinite; }
-        .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(201, 168, 124, 0.15) 0%, transparent 70%); top: -200px; right: -100px; animation-delay: 0s; }
-        .orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%); bottom: -100px; left: -100px; animation-delay: -10s; }
-        .orb-3 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(201, 168, 124, 0.1) 0%, transparent 70%); top: 50%; left: 30%; animation-delay: -5s; }
-        @keyframes orbFloat {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(30px, -20px) scale(1.05); }
-            50% { transform: translate(-20px, 30px) scale(0.95); }
-            75% { transform: translate(-30px, -10px) scale(1.02); }
-        }
-
-        .noise-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0.03; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E"); }
-
-        /* Auth Layer */
-        #auth-layer { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; background: var(--bg-deep); }
-        .auth-container { width: 100%; max-width: 380px; padding: 48px 40px; position: relative; z-index: 2; }
-        .auth-brand { text-align: center; margin-bottom: 48px; }
-        .auth-logo { width: 64px; height: 64px; margin: 0 auto 20px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--bg-deep); box-shadow: 0 8px 32px var(--accent-glow); animation: logoPulse 3s ease-in-out infinite; }
-        @keyframes logoPulse { 0%, 100% { transform: scale(1); box-shadow: 0 8px 32px var(--accent-glow); } 50% { transform: scale(1.02); box-shadow: 0 12px 40px var(--accent-glow); } }
-        .auth-title { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); margin-bottom: 8px; }
-        .auth-subtitle { font-size: 14px; color: var(--text-muted); letter-spacing: 0.02em; }
-        .auth-form { display: flex; flex-direction: column; gap: 16px; }
-        .input-group { position: relative; }
-        .input-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .auth-input { width: 100%; padding: 16px 20px; background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-primary); font-size: 15px; font-family: inherit; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .auth-input::placeholder { color: var(--text-muted); }
-        .auth-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-        .auth-btn { width: 100%; padding: 16px 24px; margin-top: 8px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border: none; border-radius: var(--radius-md); color: var(--bg-deep); font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .auth-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--accent-glow); }
-        .auth-btn:active { transform: translateY(0); }
-
-        /* App Interface */
-        #app-interface { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; position: relative; z-index: 2; }
-
-        /* Sidebar */
-        .sidebar { width: 300px; background: var(--bg-elevated); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; flex-shrink: 0; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 100; }
-        .sidebar-header { padding: 24px 20px; border-bottom: 1px solid var(--border-subtle); }
-        .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-        .brand-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--bg-deep); font-size: 16px; }
-        .brand-name { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
-        .new-chat-btn { width: 100%; padding: 14px 20px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-primary); font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
-        .new-chat-btn:hover { background: var(--accent-soft); border-color: var(--border-accent); color: var(--accent); }
-        .history-section { flex: 1; overflow-y: auto; padding: 16px 12px; }
-        .history-section::-webkit-scrollbar { width: 4px; }
-        .history-section::-webkit-scrollbar-track { background: transparent; }
-        .history-section::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
-        .history-date { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 8px 12px; position: sticky; top: 0; background: var(--bg-elevated); }
-        .history-item { padding: 12px 14px; border-radius: var(--radius-sm); cursor: pointer; margin-bottom: 4px; transition: all 0.2s ease; border: 1px solid transparent; }
-        .history-item:hover { background: var(--bg-card); }
-        .history-item.active { background: var(--accent-soft); border-color: var(--border-accent); }
-        .history-item.active .history-title { color: var(--accent); }
-        .history-title { font-size: 14px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Main View */
-        .main-view { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; z-index: 1; }
-        .mobile-header { display: none; padding: 16px 20px; align-items: center; justify-content: space-between; background: rgba(10, 10, 11, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-subtle); position: relative; z-index: 50; }
-        .mobile-brand { display: flex; align-items: center; gap: 10px; }
-        .mobile-brand-name { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; }
-        .menu-btn { background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; padding: 8px; transition: color 0.2s; }
-        .menu-btn:hover { color: var(--text-primary); }
-
-        /* Chat Stream */
-        #chat-stream { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 24px 0; scroll-behavior: smooth; }
-        #chat-stream::-webkit-scrollbar { width: 6px; }
-        #chat-stream::-webkit-scrollbar-track { background: transparent; }
-        #chat-stream::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
-        .msg-wrapper { max-width: 800px; width: 100%; margin: 0 auto; padding: 0 24px; }
-        .msg-group { display: flex; gap: 16px; margin-bottom: 24px; animation: msgSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes msgSlide { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .msg-group.user { justify-content: flex-end; }
-        .avatar { width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--accent-soft); border: 1px solid var(--border-accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent); font-size: 14px; }
-        .user .bubble { background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 14px 18px; border-radius: var(--radius-lg); border-top-right-radius: var(--radius-sm); max-width: 75%; font-size: 15px; line-height: 1.6; }
-        .bot-content { flex: 1; min-width: 0; }
-        .bot-content p { margin-bottom: 12px; }
-        .bot-content p:last-child { margin-bottom: 0; }
-        .bot-content strong { color: var(--accent); font-weight: 600; }
-        .bot-content code:not([class*="language-"]) { background: var(--bg-card); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace; }
-
-        /* ===== UPGRADED CODE BLOCK WITH TABS ===== */
-        .code-block-wrapper {
-            background: var(--bg-panel);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            margin: 16px 0;
-            overflow: hidden;
-            box-shadow: var(--shadow-md);
-            transition: border-color 0.2s;
-        }
-        .code-block-wrapper:hover {
-            border-color: var(--border-accent);
-        }
-
-        /* Tab bar */
-        .code-tab-bar {
-            display: flex;
-            align-items: center;
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border-subtle);
-            padding: 0 12px;
-            gap: 0;
-            position: relative;
-        }
-        .code-lang-badge {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            padding: 10px 12px 10px 4px;
-            border-right: 1px solid var(--border-subtle);
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
-        .tab-switcher {
-            display: flex;
-            gap: 2px;
-            flex: 1;
-        }
-        .tab-btn {
-            padding: 8px 14px;
-            background: transparent;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            font-family: 'Inter', sans-serif;
-            color: var(--text-muted);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        .tab-btn:hover { color: var(--text-secondary); background: var(--bg-panel); }
-        .tab-btn.active {
-            color: var(--text-primary);
-            background: var(--bg-panel);
-        }
-        .tab-btn.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 8px;
-            right: 8px;
-            height: 2px;
-            background: var(--accent);
-            border-radius: 2px 2px 0 0;
-        }
-        .tab-btn .tab-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-            opacity: 0.5;
-        }
-        .tab-btn.active .tab-dot { opacity: 1; background: var(--accent); }
-
-        .code-actions-right {
-            display: flex;
-            gap: 6px;
-            margin-left: auto;
-            flex-shrink: 0;
-        }
-        .code-btn {
-            background: transparent;
-            border: 1px solid var(--border-subtle);
-            border-radius: 6px;
-            padding: 5px 10px;
-            font-size: 11px;
-            font-family: 'Inter', sans-serif;
-            color: var(--text-muted);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-        .code-btn:hover { background: var(--bg-panel); border-color: var(--border-accent); color: var(--accent); }
-        .code-btn.success { background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); color: #22c55e; }
-        .code-btn.fullscreen-btn:hover { background: rgba(201, 168, 124, 0.1); color: var(--accent); }
-
-        /* Code pane */
-        .code-pane { display: block; }
-        .code-pane pre {
-            margin: 0;
-            padding: 18px;
-            background: transparent !important;
-            overflow-x: auto;
-            max-height: 420px;
-        }
-        .code-pane pre::-webkit-scrollbar { width: 4px; height: 4px; }
-        .code-pane pre::-webkit-scrollbar-track { background: transparent; }
-        .code-pane pre::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
-        .code-pane pre code {
-            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-            font-size: 13px;
-            line-height: 1.75;
-        }
-
-        /* Preview pane */
-        .preview-pane {
-            display: none;
-            position: relative;
-            background: #fff;
-            min-height: 320px;
-        }
-        .preview-pane.active { display: block; }
-        .code-pane.hidden { display: none; }
-
-        .preview-pane iframe {
-            width: 100%;
-            min-height: 320px;
-            border: none;
-            display: block;
-        }
-        .preview-pane .preview-loading {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: var(--bg-panel);
-            gap: 12px;
-            color: var(--text-muted);
-            font-size: 13px;
-        }
-        .preview-spinner {
-            width: 28px; height: 28px;
-            border: 2px solid var(--border-subtle);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Preview status bar */
-        .preview-status-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
-            background: var(--bg-card);
-            border-top: 1px solid var(--border-subtle);
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-        .status-dot {
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: #22c55e;
-            box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
-            animation: pulse-dot 2s ease-in-out infinite;
-        }
-        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .status-refresh-btn {
-            margin-left: auto;
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            transition: all 0.2s;
-        }
-        .status-refresh-btn:hover { background: var(--bg-panel); color: var(--accent); }
-
-        /* ===== FULLSCREEN PREVIEW MODAL ===== */
-        .preview-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            display: none;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(12px);
-            animation: fadeIn 0.2s ease;
-        }
-        .preview-modal.show { display: flex; flex-direction: column; }
-        .preview-modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 20px;
-            background: var(--bg-elevated);
-            border-bottom: 1px solid var(--border-subtle);
-            flex-shrink: 0;
-        }
-        .preview-modal-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        .preview-modal-badge {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            padding: 3px 8px;
-            border-radius: 4px;
-            background: var(--accent-soft);
-            color: var(--accent);
-            border: 1px solid var(--border-accent);
-        }
-        .preview-modal-actions { display: flex; gap: 8px; }
-        .preview-modal-btn {
-            padding: 7px 14px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: 6px;
-            font-size: 12px;
-            font-family: 'Inter', sans-serif;
-            color: var(--text-secondary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-        }
-        .preview-modal-btn:hover { background: var(--accent-soft); border-color: var(--border-accent); color: var(--accent); }
-        .preview-modal-btn.close-btn:hover { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; }
-        .preview-modal-body {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
-        /* Split view in modal */
-        .modal-split-view {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-        .modal-code-panel {
-            width: 45%;
-            border-right: 1px solid var(--border-subtle);
-            display: flex;
-            flex-direction: column;
-            background: var(--bg-panel);
-            overflow: hidden;
-            transition: width 0.3s ease;
-        }
-        .modal-code-panel.collapsed { width: 0; border: none; overflow: hidden; }
-        .modal-preview-panel {
-            flex: 1;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .modal-code-scroll {
-            flex: 1;
-            overflow: auto;
-            padding: 16px;
-        }
-        .modal-code-scroll::-webkit-scrollbar { width: 4px; }
-        .modal-code-scroll::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
-        .modal-code-scroll pre {
-            margin: 0;
-            background: transparent !important;
-        }
-        .modal-code-scroll pre code {
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 12.5px;
-            line-height: 1.75;
-        }
-        .modal-iframe {
-            flex: 1;
-            border: none;
-            width: 100%;
-            height: 100%;
-        }
-        /* Divider drag handle */
-        .modal-divider {
-            width: 4px;
-            background: var(--border-subtle);
-            cursor: col-resize;
-            flex-shrink: 0;
-            transition: background 0.2s;
-            position: relative;
-        }
-        .modal-divider:hover, .modal-divider.dragging { background: var(--accent); }
-        .modal-divider::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 3px;
-            height: 40px;
-            background: var(--border-subtle);
-            border-radius: 3px;
-        }
-
-        /* Image Grid */
-        .img-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0; }
-        .img-grid a { display: block; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle); transition: all 0.3s; }
-        .img-grid a:hover { border-color: var(--accent); transform: translateY(-2px); }
-        .img-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
-        .single-img { margin: 16px 0; }
-        .single-img img { max-width: 320px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
-
-        /* Typing Indicator */
-        .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
-        .typing-indicator span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: typingBounce 1.4s ease-in-out infinite; }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
-
-        /* Welcome Screen */
-        .welcome-screen { text-align: center; padding: 60px 24px; animation: fadeIn 0.5s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .welcome-icon { width: 80px; height: 80px; margin: 0 auto 24px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 36px; color: var(--bg-deep); box-shadow: 0 12px 40px var(--accent-glow); }
-        .welcome-title { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; }
-        .welcome-title .accent { color: var(--accent); }
-        .welcome-subtitle { color: var(--text-muted); font-size: 15px; margin-bottom: 40px; }
-        .starter-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 480px; margin: 0 auto; }
-        .starter-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 18px; text-align: left; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
-        .starter-card:hover { background: var(--bg-panel); border-color: var(--border-accent); transform: translateY(-3px); }
-        .starter-icon { font-size: 20px; margin-bottom: 10px; color: var(--accent); }
-        .starter-title { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-        .starter-desc { font-size: 12px; color: var(--text-muted); }
-
-        /* Input Dock */
-        .input-dock { padding: 16px 24px 24px; position: relative; z-index: 50; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .input-dock.centered { position: absolute; bottom: 50%; left: 50%; transform: translate(-50%, 50%); width: 100%; max-width: 640px; padding: 0 24px; }
-        .input-container { max-width: 640px; margin: 0 auto; }
-        .preview-bar { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 12px; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .preview-bar.show { display: flex; }
-        .preview-img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-subtle); }
-        .preview-actions { flex: 1; display: flex; gap: 8px; }
-        .preview-mode-btn { padding: 8px 14px; background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
-        .preview-mode-btn:hover { background: var(--bg-elevated); }
-        .preview-mode-btn.active { background: var(--accent-soft); border-color: var(--border-accent); color: var(--accent); }
-        .remove-btn { background: none; border: none; color: var(--text-muted); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .remove-btn:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-        .input-bar { display: flex; align-items: flex-end; gap: 8px; padding: 8px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-xl); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
-        .input-bar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-        .input-action { background: none; border: none; color: var(--text-muted); padding: 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 16px; transition: all 0.2s; }
-        .input-action:hover { background: var(--bg-panel); color: var(--accent); }
-        .input-textarea { flex: 1; background: none; border: none; color: var(--text-primary); font-family: inherit; font-size: 15px; line-height: 1.5; resize: none; max-height: 120px; padding: 10px 4px; }
-        .input-textarea::placeholder { color: var(--text-muted); }
-        .input-textarea:focus { outline: none; }
-        .send-btn { width: 42px; height: 42px; background: linear-gradient(135deg, var(--accent) 0%, #d4b896 100%); border: none; border-radius: var(--radius-md); color: var(--bg-deep); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
-        .send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 16px var(--accent-glow); }
-
-        /* Overlay */
-        #overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 90; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
-        #overlay.show { opacity: 1; pointer-events: auto; }
-
-        /* Mobile */
-        @media (max-width: 768px) {
-            .sidebar { position: fixed; left: -100%; height: 100%; box-shadow: var(--shadow-lg); }
-            .sidebar.active { left: 0; }
-            .mobile-header { display: flex; }
-            .msg-wrapper { padding: 0 16px; }
-            .input-dock { padding: 12px 16px 20px; }
-            .input-dock.centered { position: relative; bottom: auto; left: auto; transform: none; padding: 12px 16px 20px; }
-            .starter-grid { grid-template-columns: 1fr; }
-            .welcome-screen { padding: 40px 16px; }
-            .auth-container { padding: 32px 24px; }
-            .modal-code-panel { display: none; }
-            .modal-code-panel.collapsed { display: none; }
-        }
-    </style>
+@media (max-width: 768px) {
+.sidebar { position: fixed; left: -100%; height: 100%; box-shadow: var(--shadow-lg); }
+.sidebar.active { left: 0; }
+.mobile-header { display: flex; }
+.msg-wrapper { padding: 0 16px; }
+.input-dock { padding: 12px 16px 20px; }
+.input-dock.centered { position: relative; bottom: auto; left: auto; transform: none; padding: 12px 16px 20px; }
+.starter-grid { grid-template-columns: 1fr; }
+.welcome-screen { padding: 40px 16px; }
+.auth-container { padding: 32px 24px; }
+.modal-code-panel { display: none; }
+.modal-code-panel.collapsed { display: none; }
+}
+</style>
 </head>
 <body>
-
-    <div class="ambient-bg">
-        <div class="ambient-orb orb-1"></div>
-        <div class="ambient-orb orb-2"></div>
-        <div class="ambient-orb orb-3"></div>
-    </div>
-    <div class="noise-overlay"></div>
-
-    <div id="auth-layer">
-        <div class="auth-container">
-            <div class="auth-brand">
-                <div class="auth-logo"><i class="fa-solid fa-spa"></i></div>
-                <h1 class="auth-title">Flora AI</h1>
-                <p class="auth-subtitle">Your Intelligent Creative Companion</p>
-            </div>
-            <div class="auth-form">
-                <div class="input-group">
-                    <label for="username">Nama Anda</label>
-                    <input type="text" id="username" class="auth-input" placeholder="Siapa nama kamu?" autocomplete="off">
-                </div>
-                <button id="login-btn" class="auth-btn">
-                    Mulai Berbincang <i class="fa-solid fa-arrow-right"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="app-interface">
-        <div id="overlay" onclick="toggleSidebar()"></div>
-        
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="brand">
-                    <div class="brand-icon"><i class="fa-solid fa-spa"></i></div>
-                    <span class="brand-name">Flora AI</span>
-                </div>
-                <button class="new-chat-btn" onclick="startNewChat()">
-                    <i class="fa-solid fa-plus"></i> Percakapan Baru
-                </button>
-            </div>
-            <div class="history-section" id="history-list"></div>
-        </aside>
-
-        <main class="main-view">
-            <header class="mobile-header">
-                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
-                <div class="mobile-brand">
-                    <span class="mobile-brand-name">Flora AI</span>
-                </div>
-                <div style="width: 34px;"></div>
-            </header>
-
-            <div id="chat-stream">
-                <div class="msg-wrapper" id="msg-container"></div>
-            </div>
-
-            <div class="input-dock" id="input-dock">
-                <div class="input-container">
-                    <div class="preview-bar" id="img-preview-box">
-                        <img id="preview-img-element" class="preview-img" src="" alt="Preview">
-                        <div class="preview-actions">
-                            <button id="mode-vision" class="preview-mode-btn active" onclick="setImgMode('vision')"><i class="fa-solid fa-eye"></i> Analisis</button>
-                            <button id="mode-edit" class="preview-mode-btn" onclick="setImgMode('edit')"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit</button>
-                        </div>
-                        <button class="remove-btn" onclick="clearImage()"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                    <div class="input-bar">
-                        <button class="input-action" onclick="document.getElementById('file-input').click()" title="Unggah Gambar"><i class="fa-solid fa-image"></i></button>
-                        <input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFile(this)">
-                        <button class="input-action" onclick="activateDrawMode()" title="Buat Gambar"><i class="fa-solid fa-palette"></i></button>
-                        <textarea id="user-input" class="input-textarea" rows="1" placeholder="Tulis pesan untuk Flora..." oninput="autoResize(this)"></textarea>
-                        <button class="send-btn" onclick="processInput()"><i class="fa-solid fa-paper-plane"></i></button>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- FULLSCREEN PREVIEW MODAL WITH SPLIT VIEW -->
-    <div class="preview-modal" id="code-preview-modal">
-        <div class="preview-modal-header">
-            <div class="preview-modal-title">
-                <i class="fa-solid fa-eye" style="color: var(--accent);"></i>
-                <span id="modal-title-text">Live Preview</span>
-                <span class="preview-modal-badge" id="modal-lang-badge">HTML</span>
-            </div>
-            <div class="preview-modal-actions">
-                <button class="preview-modal-btn" id="split-toggle-btn" onclick="toggleSplitView()">
-                    <i class="fa-solid fa-table-columns"></i> Split View
-                </button>
-                <button class="preview-modal-btn" onclick="refreshModalPreview()">
-                    <i class="fa-solid fa-rotate-right"></i> Refresh
-                </button>
-                <button class="preview-modal-btn" onclick="copyModalCode()">
-                    <i class="fa-solid fa-copy"></i> Salin Kode
-                </button>
-                <button class="preview-modal-btn close-btn" onclick="closeFullscreenPreview()">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        </div>
-        <div class="preview-modal-body">
-            <div class="modal-split-view">
-                <div class="modal-code-panel collapsed" id="modal-code-panel">
-                    <div class="modal-code-scroll">
-                        <pre id="modal-code-pre"><code id="modal-code-display"></code></pre>
-                    </div>
-                </div>
-                <div class="modal-divider" id="modal-divider" onmousedown="startDrag(event)"></div>
-                <div class="modal-preview-panel">
-                    <iframe class="modal-iframe" id="modal-preview-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCPQuSdHVxNpSc4Xcc6Uzg16Z5rnCfezhA",
-            authDomain: "flora-database-f767e.firebaseapp.com",
-            databaseURL: "https://flora-database-f767e-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "flora-database-f767e",
-            storageBucket: "flora-database-f767e.firebasestorage.app",
-            messagingSenderId: "713333859975",
-            appId: "1:713333859975:web:9932d9b04ad7d58fd7ba22",
-            measurementId: "G-Z6MVELQ63X"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        let currentSessionId = null;
-        let allSessions = {};
-        let currentImg64 = null;
-        let imgMode = 'vision';
-        let currentUID = null;
-        let displayName = "User";
-        let isFirstLoad = true;
-
-        // ===== MODAL STATE =====
-        let _modalCode = '';
-        let _modalLang = 'html';
-        let _splitActive = false;
-
-        const usernameInput = document.getElementById('username');
-        const loginBtn = document.getElementById('login-btn');
-
-        function generateUID() { return 'user_' + Date.now().toString(36) + Math.random().toString(36).substring(2); }
-
-        function handleLogin() {
-            const nameInput = usernameInput.value.trim();
-            if (!nameInput) { usernameInput.focus(); alert("Nama wajib diisi!"); return; }
-            displayName = nameInput;
-            let savedUID = localStorage.getItem('flora_uid');
-            if (!savedUID) { savedUID = generateUID(); localStorage.setItem('flora_uid', savedUID); }
-            localStorage.setItem('flora_display_name', displayName);
-            currentUID = savedUID;
-            initApp(displayName, currentUID);
-        }
-
-        if (loginBtn) loginBtn.addEventListener('click', handleLogin);
-        if (usernameInput) usernameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
-
-        function initApp(name, uid) {
-            document.getElementById('auth-layer').style.display = 'none';
-            document.getElementById('app-interface').style.opacity = 1;
-            const userChatsRef = ref(db, 'chats/' + uid);
-            onValue(userChatsRef, (snapshot) => {
-                const data = snapshot.val();
-                allSessions = data || {};
-                renderSidebar();
-                if (isFirstLoad) { isFirstLoad = false; showWelcomeScreen(); }
-            });
-        }
-
-        function showWelcomeScreen() {
-            currentSessionId = Date.now().toString();
-            const name = localStorage.getItem('flora_display_name') || "User";
-            document.getElementById('msg-container').innerHTML = `
-                <div class="welcome-screen" id="welcome-screen">
-                    <div class="welcome-icon"><i class="fa-solid fa-spa"></i></div>
-                    <h2 class="welcome-title">Halo, <span class="accent">${name}</span></h2>
-                    <p class="welcome-subtitle">Apa yang bisa saya bantu hari ini?</p>
-                    <div class="starter-grid">
-                        <div class="starter-card" onclick="useStarter('Buatkan game ular (snake) sederhana pakai HTML, CSS, dan JS dalam satu file.')">
-                            <div class="starter-icon"><i class="fa-solid fa-gamepad"></i></div>
-                            <div class="starter-title">Tes Koding Web</div>
-                            <div class="starter-desc">Bikin game uler Live Preview</div>
-                        </div>
-                        <div class="starter-card" onclick="useStarter('Ceritakan fakta menarik tentang teknologi AI')">
-                            <div class="starter-icon"><i class="fa-solid fa-lightbulb"></i></div>
-                            <div class="starter-title">Pengetahuan</div>
-                            <div class="starter-desc">Fakta tentang AI</div>
-                        </div>
-                        <div class="starter-card" onclick="useStarter('Buatkan gambar pemandangan gunung saat matahari terbenam')">
-                            <div class="starter-icon"><i class="fa-solid fa-image"></i></div>
-                            <div class="starter-title">Generate Gambar</div>
-                            <div class="starter-desc">Pemandangan gunung sunset</div>
-                        </div>
-                        <div class="starter-card" onclick="useStarter('Bantu saya merangkum konsep Data Science untuk pemula')">
-                            <div class="starter-icon"><i class="fa-solid fa-book"></i></div>
-                            <div class="starter-title">Edukasi</div>
-                            <div class="starter-desc">Konsep Data Science</div>
-                        </div>
-                    </div>
-                </div>`;
-            updateInputDockPosition(true);
-        }
-
-        function updateInputDockPosition(isWelcome) {
-            const inputDock = document.getElementById('input-dock');
-            if (window.innerWidth > 768) inputDock.classList.toggle('centered', isWelcome);
-            else inputDock.classList.remove('centered');
-        }
-
-        window.onload = () => {
-            const savedUID = localStorage.getItem('flora_uid');
-            const savedName = localStorage.getItem('flora_display_name');
-            if (savedUID && savedName) { currentUID = savedUID; displayName = savedName; initApp(savedName, savedUID); }
-            else { document.getElementById('auth-layer').style.display = 'flex'; if (usernameInput) usernameInput.focus(); }
-        };
-
-        window.startNewChat = function () {
-            currentSessionId = Date.now().toString();
-            showWelcomeScreen();
-            renderSidebar();
-            if (window.innerWidth <= 768) toggleSidebar();
-        };
-
-        window.useStarter = function (text) {
-            document.getElementById('user-input').value = text;
-            processInput();
-        };
-
-        function saveSessions() {
-            if (!currentUID) return;
-            set(ref(db, 'chats/' + currentUID), allSessions);
-        }
-
-        function getDateCategory(timestamp) {
-            const date = new Date(timestamp);
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            if (date.toDateString() === today.toDateString()) return "Hari Ini";
-            if (date.toDateString() === yesterday.toDateString()) return "Kemarin";
-            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-        }
-
-        function renderSidebar() {
-            const list = document.getElementById('history-list');
-            list.innerHTML = "";
-            if (!allSessions) return;
-            const sortedIds = Object.keys(allSessions).sort((a, b) => b - a);
-            let lastHeader = "";
-            sortedIds.forEach(id => {
-                const session = allSessions[id];
-                const header = getDateCategory(session.timestamp);
-                if (header !== lastHeader) {
-                    const headerDiv = document.createElement('div');
-                    headerDiv.className = 'history-date';
-                    headerDiv.innerText = header;
-                    list.appendChild(headerDiv);
-                    lastHeader = header;
-                }
-                const div = document.createElement('div');
-                div.className = `history-item ${id === currentSessionId ? 'active' : ''}`;
-                div.onclick = () => loadSession(id);
-                div.innerHTML = `<div class="history-title">${session.title}</div>`;
-                list.appendChild(div);
-            });
-        }
-
-        window.loadSession = function (id) {
-            currentSessionId = id;
-            const session = allSessions[id];
-            const container = document.getElementById('msg-container');
-            container.innerHTML = "";
-            if (!session) { showWelcomeScreen(); return; }
-            if (!session.messages || session.messages.length === 0) { showWelcomeScreen(); }
-            else {
-                session.messages.forEach(msg => { addBubble(msg.content, msg.role, msg.image, false, false); });
-                updateInputDockPosition(false);
-            }
-            renderSidebar();
-            if (window.innerWidth <= 768) toggleSidebar();
-        };
-
-        // ===== UPGRADED PREVIEW SYSTEM =====
-
-        function buildPreviewHTML(code, lang) {
-            if (lang === 'javascript' || lang === 'js') {
-                return `<!DOCTYPE html><html><head>
-                    <meta charset="UTF-8">
-                    <style>
-                        body{font-family:system-ui,sans-serif;padding:20px;background:#f8f9fa;color:#1a1a1a;}
-                        #output{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;min-height:60px;font-family:'SF Mono',monospace;font-size:13px;line-height:1.6;}
-                        h3{font-size:13px;font-weight:600;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;}
-                        .err{color:#ef4444;}
-                    </style>
-                </head><body>
-                    <h3>⚙ Console Output</h3>
-                    <div id="output"><i style="color:#9ca3af">Menjalankan script...</i></div>
-                    <script>
-                        const out=document.getElementById('output');
-                        let first=true;
-                        console.log=function(...a){
-                            if(first){out.innerHTML='';first=false;}
-                            out.innerHTML+='<div>> '+a.join(' ')+'</div>';
-                        };
-                        try{${code}}catch(e){out.innerHTML='<div class="err">✗ Error: '+e.message+'</div>';}
-                    <\/script>
-                </body></html>`;
-            }
-            if (lang === 'css') {
-                return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-                    <style>
-                        *{box-sizing:border-box;}
-                        body{font-family:system-ui,sans-serif;padding:24px;background:#fff;}
-                        ${code}
-                    </style>
-                </head><body>
-                    <h1>Heading H1</h1><h2>Heading H2</h2>
-                    <p>Ini contoh paragraf. <strong>Bold</strong>, <em>italic</em>, dan <a href="#">link</a>.</p>
-                    <button>Tombol</button> <button class="btn">Button Class</button>
-                    <div class="card box container wrapper"><p>Div dengan class umum</p></div>
-                    <ul><li>Item satu</li><li>Item dua</li><li>Item tiga</li></ul>
-                    <input type="text" placeholder="Input teks" style="margin-top:8px">
-                </body></html>`;
-            }
-            // HTML / full code
-            return code;
-        }
-
-        function renderToIframe(iframe, code, lang) {
-            const html = buildPreviewHTML(code, lang);
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-            iframeDoc.open();
-            iframeDoc.write(html);
-            iframeDoc.close();
-        }
-
-        // Switch tabs inline (code pane / preview pane)
-        window.switchTab = function (blockId, tab) {
-            const wrapper = document.getElementById(blockId);
-            if (!wrapper) return;
-            const codePaneEl = wrapper.querySelector('.code-pane');
-            const previewPaneEl = wrapper.querySelector('.preview-pane');
-            const btnCode = wrapper.querySelector('.tab-btn[data-tab="code"]');
-            const btnPreview = wrapper.querySelector('.tab-btn[data-tab="preview"]');
-
-            if (tab === 'code') {
-                codePaneEl.classList.remove('hidden');
-                previewPaneEl.classList.remove('active');
-                btnCode.classList.add('active');
-                btnPreview.classList.remove('active');
-            } else {
-                codePaneEl.classList.add('hidden');
-                previewPaneEl.classList.add('active');
-                btnCode.classList.remove('active');
-                btnPreview.classList.add('active');
-                // Render iframe if not rendered yet
-                const iframe = previewPaneEl.querySelector('iframe');
-                const loading = previewPaneEl.querySelector('.preview-loading');
-                if (iframe && !iframe.dataset.rendered) {
-                    const rawCode = decodeURIComponent(wrapper.dataset.code);
-                    const lang = wrapper.dataset.lang || 'html';
-                    renderToIframe(iframe, rawCode, lang);
-                    iframe.dataset.rendered = '1';
-                    if (loading) {
-                        iframe.addEventListener('load', () => { if (loading) loading.style.display = 'none'; }, { once: true });
-                    }
-                }
-            }
-        };
-
-        // Refresh inline preview
-        window.refreshInlinePreview = function (blockId) {
-            const wrapper = document.getElementById(blockId);
-            if (!wrapper) return;
-            const iframe = wrapper.querySelector('.preview-pane iframe');
-            if (!iframe) return;
-            const rawCode = decodeURIComponent(wrapper.dataset.code);
-            const lang = wrapper.dataset.lang || 'html';
-            iframe.dataset.rendered = '';
-            renderToIframe(iframe, rawCode, lang);
-            iframe.dataset.rendered = '1';
-        };
-
-        // Open fullscreen modal
-        window.openFullscreenPreview = function (blockId) {
-            const wrapper = document.getElementById(blockId);
-            if (!wrapper) return;
-            _modalCode = decodeURIComponent(wrapper.dataset.code);
-            _modalLang = wrapper.dataset.lang || 'html';
-
-            document.getElementById('modal-lang-badge').textContent = _modalLang.toUpperCase();
-            document.getElementById('modal-title-text').textContent = 'Live Preview — ' + (_modalLang.toUpperCase());
-
-            const modalIframe = document.getElementById('modal-preview-iframe');
-            renderToIframe(modalIframe, _modalCode, _modalLang);
-
-            // Populate code panel
-            const codeDisplay = document.getElementById('modal-code-display');
-            codeDisplay.textContent = _modalCode;
-            codeDisplay.className = `language-${_modalLang}`;
-            if (window.Prism) Prism.highlightElement(codeDisplay);
-
-            document.getElementById('code-preview-modal').classList.add('show');
-            document.body.style.overflow = 'hidden';
-        };
-
-        window.closeFullscreenPreview = function () {
-            document.getElementById('code-preview-modal').classList.remove('show');
-            document.body.style.overflow = '';
-            _splitActive = false;
-            document.getElementById('modal-code-panel').classList.add('collapsed');
-            document.getElementById('split-toggle-btn').innerHTML = '<i class="fa-solid fa-table-columns"></i> Split View';
-        };
-
-        window.toggleSplitView = function () {
-            _splitActive = !_splitActive;
-            const panel = document.getElementById('modal-code-panel');
-            const btn = document.getElementById('split-toggle-btn');
-            if (_splitActive) {
-                panel.classList.remove('collapsed');
-                panel.style.width = '45%';
-                btn.innerHTML = '<i class="fa-solid fa-square"></i> Preview Only';
-            } else {
-                panel.classList.add('collapsed');
-                btn.innerHTML = '<i class="fa-solid fa-table-columns"></i> Split View';
-            }
-        };
-
-        window.refreshModalPreview = function () {
-            const iframe = document.getElementById('modal-preview-iframe');
-            renderToIframe(iframe, _modalCode, _modalLang);
-        };
-
-        window.copyModalCode = function () {
-            navigator.clipboard.writeText(_modalCode).then(() => {
-                const btn = document.querySelector('.preview-modal-btn[onclick="copyModalCode()"]');
-                if (btn) {
-                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Tersalin!';
-                    setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-copy"></i> Salin Kode'; }, 2000);
-                }
-            });
-        };
-
-        // Drag to resize split panel
-        window.startDrag = function (e) {
-            if (!_splitActive) return;
-            e.preventDefault();
-            const divider = document.getElementById('modal-divider');
-            const codePanel = document.getElementById('modal-code-panel');
-            const container = divider.parentElement;
-            divider.classList.add('dragging');
-            const onMove = (ev) => {
-                const containerRect = container.getBoundingClientRect();
-                const x = (ev.clientX || ev.touches?.[0].clientX) - containerRect.left;
-                const pct = Math.min(Math.max((x / containerRect.width) * 100, 20), 70);
-                codePanel.style.width = pct + '%';
-            };
-            const onUp = () => {
-                divider.classList.remove('dragging');
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-            };
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        };
-
-        // Close modal on Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeFullscreenPreview();
-        });
-
-        // ===== FORMAT BOT CONTENT WITH INLINE TAB SYSTEM =====
-        let _blockCounter = 0;
-
-        window.formatBotContent = function (text) {
-            return text.replace(/\n/g, '<br>').replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
-                const language = lang.trim() || 'javascript';
-                const cleanCode = code.replace(/<br>/g, '\n').trim();
-                const escapedCode = cleanCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                const safeCode = encodeURIComponent(cleanCode);
-                const langLower = language.toLowerCase();
-                const canPreview = ['html', 'htm', 'javascript', 'js', 'css'].includes(langLower)
-                    || cleanCode.includes('<html') || cleanCode.includes('<!DOCTYPE');
-
-                const blockId = 'codeblock-' + (++_blockCounter);
-
-                const previewTabHTML = canPreview ? `
-                    <button class="tab-btn" data-tab="preview" onclick="switchTab('${blockId}', 'preview')">
-                        <span class="tab-dot"></span> Preview
-                    </button>` : '';
-
-                const previewPaneHTML = canPreview ? `
-                    <div class="preview-pane">
-                        <div class="preview-loading">
-                            <div class="preview-spinner"></div>
-                            <span>Merender preview...</span>
-                        </div>
-                        <iframe sandbox="allow-scripts allow-same-origin allow-forms allow-modals" style="width:100%;min-height:320px;border:none;display:block;"></iframe>
-                        <div class="preview-status-bar">
-                            <div class="status-dot"></div>
-                            <span>Preview siap</span>
-                            <button class="status-refresh-btn" onclick="refreshInlinePreview('${blockId}')">
-                                <i class="fa-solid fa-rotate-right"></i> Refresh
-                            </button>
-                        </div>
-                    </div>` : '';
-
-                const fullscreenBtnHTML = canPreview ? `
-                    <button class="code-btn fullscreen-btn" onclick="openFullscreenPreview('${blockId}')" title="Buka Fullscreen">
-                        <i class="fa-solid fa-expand"></i> Fullscreen
-                    </button>` : '';
-
-                return `
-                <div class="code-block-wrapper" id="${blockId}" data-code="${safeCode}" data-lang="${langLower}">
-                    <div class="code-tab-bar">
-                        <span class="code-lang-badge">${language}</span>
-                        <div class="tab-switcher">
-                            <button class="tab-btn active" data-tab="code" onclick="switchTab('${blockId}', 'code')">
-                                <span class="tab-dot"></span> Kode
-                            </button>
-                            ${previewTabHTML}
-                        </div>
-                        <div class="code-actions-right">
-                            ${fullscreenBtnHTML}
-                            <button class="code-btn" onclick="copyInlineCode(this, '${safeCode}')">
-                                <i class="fa-solid fa-copy"></i> Salin
-                            </button>
-                        </div>
-                    </div>
-                    <div class="code-pane">
-                        <pre><code class="language-${language}">${escapedCode}</code></pre>
-                    </div>
-                    ${previewPaneHTML}
-                </div>`;
-            });
-        };
-
-        window.copyInlineCode = function (btn, safeCode) {
-            navigator.clipboard.writeText(decodeURIComponent(safeCode)).then(() => {
-                btn.classList.add('success');
-                btn.innerHTML = '<i class="fa-solid fa-check"></i> Tersalin!';
-                setTimeout(() => { btn.classList.remove('success'); btn.innerHTML = '<i class="fa-solid fa-copy"></i> Salin'; }, 2000);
-            });
-        };
-
-        // ===== SEND MESSAGE (STREAMING) =====
-        async function sendMessage() {
-            const input = document.getElementById('user-input');
-            const txt = input.value.trim();
-            if (!txt && !currentImg64) return;
-
-            const welcome = document.getElementById('welcome-screen');
-            if (welcome) welcome.remove();
-
-            if (!allSessions[currentSessionId]) {
-                allSessions[currentSessionId] = { title: txt ? txt.substring(0, 25) + "..." : "Gambar...", timestamp: Date.now(), messages: [] };
-            } else if (allSessions[currentSessionId].messages?.length === 0) {
-                allSessions[currentSessionId].title = txt ? txt.substring(0, 25) + "..." : "Gambar...";
-            }
-
-            const imgToSend = currentImg64;
-            addBubble(txt, 'user', imgToSend, false, true);
-
-            const payload = { history: (allSessions[currentSessionId].messages || []).slice(-10), message: txt, image: imgToSend };
-            input.value = ""; clearImage();
-
-            const loadingId = addBubble("", 'bot', null, true, false);
-            const botContainer = document.getElementById(loadingId);
-
-            try {
-                const res = await fetch('/api', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) throw new Error("Gagal terhubung.");
-
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder("utf-8");
-                let fullText = "";
-
-                botContainer.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content" id="content-${loadingId}"></div>`;
-                const contentDiv = document.getElementById(`content-${loadingId}`);
-                let buffer = "";
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
-                    let lines = buffer.split('\n');
-                    buffer = lines.pop();
-
-                    for (const line of lines) {
-                        if (line.trim() === "" || line.includes("[DONE]")) continue;
-                        if (line.startsWith("data: ")) {
-                            try {
-                                const data = JSON.parse(line.substring(6));
-                                if (data.text) {
-                                    fullText += data.text;
-                                    contentDiv.innerHTML = window.formatBotContent(fullText);
-                                    document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight });
-                                }
-                            } catch (e) { }
-                        }
-                    }
-                }
-
-                if (window.Prism) Prism.highlightAllUnder(botContainer);
-
-                if (!allSessions[currentSessionId].messages) allSessions[currentSessionId].messages = [];
-                allSessions[currentSessionId].messages.push({ role: 'assistant', content: fullText, image: null });
-                saveSessions();
-
-            } catch (e) {
-                botContainer.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content"><div style="color:#ef4444;padding:12px;">Error: ${e.message}</div></div>`;
-            }
-        }
-
-        async function sendDrawRequest(prompt) {
-            const input = document.getElementById('user-input');
-            const welcome = document.getElementById('welcome-screen');
-            if (welcome) welcome.remove();
-            if (!allSessions[currentSessionId]) { allSessions[currentSessionId] = { title: prompt, timestamp: Date.now(), messages: [] }; }
-            addBubble(`Gambarkan: ${prompt}`, 'user', null, false, true);
-            input.value = "";
-            const loadingId = addBubble("", 'bot', null, true, false);
-            try {
-                const res = await fetch('/api/draw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
-                const data = await res.json();
-                if (!res.ok || !data.success) throw new Error(data.error || "Gagal membuat gambar.");
-                document.getElementById(loadingId).remove();
-                const images = data.images || (data.url ? [data.url] : []);
-                if (images.length > 0) { addBubble(`Berikut hasilnya untuk: ${prompt}`, 'bot', images, false, true); }
-                else { throw new Error("Tidak ada gambar yang dihasilkan."); }
-            } catch (e) { document.getElementById(loadingId).innerHTML = `<div style="color:#ef4444;padding:12px;">Gagal: ${e.message}</div>`; }
-        }
-
-        async function sendImageToEditor() {
-            const input = document.getElementById('user-input'); const txt = input.value.trim();
-            if (!txt) { alert("Tulis instruksi editnya!"); return; }
-            const welcome = document.getElementById('welcome-screen'); if (welcome) welcome.remove();
-            if (!allSessions[currentSessionId]) { allSessions[currentSessionId] = { title: "Edit Gambar", timestamp: Date.now(), messages: [] }; }
-            const imgToSend = currentImg64;
-            addBubble(`Edit: ${txt}`, 'user', imgToSend, false, true);
-            input.value = ""; clearImage();
-            const loadingId = addBubble("", 'bot', null, true, false);
-            try {
-                const resStart = await fetch('/api/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: 'start', image: imgToSend, prompt: txt }) });
-                const dataStart = await resStart.json();
-                if (!dataStart.success) throw new Error(dataStart.error || "Gagal memulai job.");
-                const jobId = dataStart.jobId; let attempts = 0;
-                const pollInterval = setInterval(async () => {
-                    attempts++;
-                    try {
-                        const resCheck = await fetch('/api/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: 'check', jobId }) });
-                        const dataCheck = await resCheck.json();
-                        if (dataCheck.status === 'done') { clearInterval(pollInterval); document.getElementById(loadingId).remove(); addBubble(`Selesai! Hasil edit: ${txt}`, 'bot', dataCheck.url, false, true); }
-                        else if (dataCheck.status === 'failed') { clearInterval(pollInterval); throw new Error("Gambar ditolak."); }
-                        else if (attempts >= 20) { clearInterval(pollInterval); throw new Error("Waktu habis."); }
-                    } catch (errLoop) { clearInterval(pollInterval); document.getElementById(loadingId).innerHTML = `<div style="color:#ef4444">Error: ${errLoop.message}</div>`; }
-                }, 3000);
-            } catch (e) { document.getElementById(loadingId).innerHTML = `<div style="color:#ef4444">Error: ${e.message}</div>`; }
-        }
-
-        function addBubble(text, role, img, isLoading, saveToMem) {
-            const container = document.getElementById('msg-container');
-            const div = document.createElement('div');
-            div.className = `msg-group ${role}`;
-            div.id = 'msg-' + Date.now();
-
-            if (saveToMem) {
-                if (!allSessions[currentSessionId].messages) allSessions[currentSessionId].messages = [];
-                allSessions[currentSessionId].messages.push({ role: role === 'user' ? 'user' : 'assistant', content: text, image: img });
-                saveSessions();
-            }
-
-            if (role === 'user') {
-                const imgHtml = img ? `<img src="${img}" style="max-width:180px;border-radius:10px;margin-bottom:8px;display:block;">` : '';
-                div.innerHTML = `<div class="bubble">${imgHtml}<div>${text.replace(/\n/g, '<br>')}</div></div>`;
-            } else {
-                if (isLoading) {
-                    div.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div style="padding:10px 0;"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
-                } else {
-                    let mediaHtml = '';
-                    if (Array.isArray(img)) {
-                        let gridItems = img.map(url => `<a href="${url}" target="_blank"><img src="${url}" loading="lazy" onerror="this.style.display='none'"></a>`).join('');
-                        mediaHtml = `<div class="img-grid">${gridItems}</div>`;
-                    } else if (img && typeof img === 'string') {
-                        mediaHtml = `<div class="single-img"><a href="${img}" target="_blank"><img src="${img}" referrerpolicy="no-referrer"></a></div>`;
-                    }
-                    let formatted = window.formatBotContent(text);
-                    div.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content">${mediaHtml}${formatted}</div>`;
-                }
-            }
-
-            container.appendChild(div);
-            if (window.Prism) Prism.highlightAll();
-            document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight, behavior: 'smooth' });
-            return div.id;
-        }
-
-        window.processInput = function () {
-            const input = document.getElementById('user-input');
-            const txt = input.value.trim();
-            if (!txt && !currentImg64) return;
-            updateInputDockPosition(false);
-            if (imgMode === 'edit') { if (currentImg64) { sendImageToEditor(); return; } else { sendDrawRequest(txt); return; } }
-            const drawRegex = /^(gambarkan|buatkan gambar|buat gambar|\/img|\/draw)\s+(.+)/i;
-            const match = txt.match(drawRegex);
-            if (match) { sendDrawRequest(match[2]); return; }
-            sendMessage();
-        };
-
-        window.activateDrawMode = function () { const input = document.getElementById('user-input'); input.value = "Gambarkan "; input.focus(); };
-        window.autoResize = function (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
-        window.setImgMode = function (mode) {
-            imgMode = mode;
-            document.querySelectorAll('.preview-mode-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`mode-${mode}`).classList.add('active');
-            document.getElementById('user-input').placeholder = mode === 'edit' ? "Tulis gaya editnya..." : "Tanya sesuatu tentang gambar ini...";
-        };
-        window.handleFile = function (input) {
-            const file = input.files[0]; if (!file) return;
-            if (!file.type.startsWith('image/')) { alert("Harap pilih file gambar!"); return; }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image(); img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas'); let width = img.width; let height = img.height; const MAX_SIZE = 800;
-                    if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
-                    else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
-                    canvas.width = width; canvas.height = height;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-                    currentImg64 = canvas.toDataURL('image/jpeg', 0.7);
-                    setImgMode('vision');
-                    document.getElementById('preview-img-element').src = currentImg64;
-                    document.getElementById('img-preview-box').classList.add('show');
-                };
-            };
-            reader.readAsDataURL(file);
-        };
-        window.clearImage = function () { currentImg64 = null; document.getElementById('file-input').value = ""; document.getElementById('img-preview-box').classList.remove('show'); };
-        window.toggleSidebar = function () { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('show'); };
-        window.addEventListener('resize', () => { const welcome = document.getElementById('welcome-screen'); updateInputDockPosition(!!welcome); });
-
-        // Enter to send
-        document.addEventListener('DOMContentLoaded', () => {
-            const ta = document.getElementById('user-input');
-            if (ta) {
-                ta.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); processInput(); }
-                });
-            }
-        });
-    </script>
+<div class="ambient-bg">
+<div class="ambient-orb orb-1"></div>
+<div class="ambient-orb orb-2"></div>
+<div class="ambient-orb orb-3"></div>
+</div>
+<div class="noise-overlay"></div>
+<div id="auth-layer">
+<div class="auth-container">
+<div class="auth-brand">
+<div class="auth-logo"><i class="fa-solid fa-spa"></i></div>
+<h1 class="auth-title">Flora AI</h1>
+<p class="auth-subtitle">Your Intelligent Creative Companion</p>
+</div>
+<div class="auth-form">
+<div class="input-group">
+<label for="username">Nama Anda</label>
+<input type="text" id="username" class="auth-input" placeholder="Siapa nama kamu?" autocomplete="off">
+</div>
+<button id="login-btn" class="auth-btn">
+Mulai Berbincang <i class="fa-solid fa-arrow-right"></i>
+</button>
+</div>
+</div>
+</div>
+<div id="app-interface">
+<div id="overlay" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+<div class="sidebar-header">
+<div class="brand">
+<div class="brand-icon"><i class="fa-solid fa-spa"></i></div>
+<span class="brand-name">Flora AI</span>
+</div>
+<button class="new-chat-btn" onclick="startNewChat()">
+<i class="fa-solid fa-plus"></i> Percakapan Baru
+</button>
+</div>
+<div class="history-section" id="history-list"></div>
+</aside>
+<main class="main-view">
+<header class="mobile-header">
+<button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+<div class="mobile-brand">
+<span class="mobile-brand-name">Flora AI</span>
+</div>
+<div style="width: 34px;"></div>
+</header>
+<div id="chat-stream">
+<div class="msg-wrapper" id="msg-container"></div>
+</div>
+<div class="input-dock" id="input-dock">
+<div class="input-container">
+<div class="preview-bar" id="img-preview-box">
+<img id="preview-img-element" class="preview-img" src="" alt="Preview">
+<div class="preview-actions">
+<button id="mode-vision" class="preview-mode-btn active" onclick="setImgMode('vision')"><i class="fa-solid fa-eye"></i> Analisis</button>
+<button id="mode-edit" class="preview-mode-btn" onclick="setImgMode('edit')"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit</button>
+</div>
+<button class="remove-btn" onclick="clearImage()"><i class="fa-solid fa-xmark"></i></button>
+</div>
+<div class="input-bar">
+<button class="input-action" onclick="document.getElementById('file-input').click()" title="Unggah Gambar"><i class="fa-solid fa-image"></i></button>
+<input type="file" id="file-input" style="display:none" accept="image/*" onchange="handleFile(this)">
+<button class="input-action" onclick="activateDrawMode()" title="Buat Gambar"><i class="fa-solid fa-palette"></i></button>
+<textarea id="user-input" class="input-textarea" rows="1" placeholder="Tulis pesan untuk Flora..." oninput="autoResize(this)"></textarea>
+<button class="send-btn" onclick="processInput()"><i class="fa-solid fa-paper-plane"></i></button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<div class="preview-modal" id="code-preview-modal">
+<div class="preview-modal-header">
+<div class="preview-modal-title">
+<i class="fa-solid fa-eye" style="color: var(--accent);"></i>
+<span id="modal-title-text">Live Preview</span>
+<span class="preview-modal-badge" id="modal-lang-badge">HTML</span>
+</div>
+<div class="preview-modal-actions">
+<button class="preview-modal-btn" id="split-toggle-btn" onclick="toggleSplitView()">
+<i class="fa-solid fa-table-columns"></i> Split View
+</button>
+<button class="preview-modal-btn" onclick="refreshModalPreview()">
+<i class="fa-solid fa-rotate-right"></i> Refresh
+</button>
+<button class="preview-modal-btn" onclick="copyModalCode()">
+<i class="fa-solid fa-copy"></i> Salin Kode
+</button>
+<button class="preview-modal-btn close-btn" onclick="closeFullscreenPreview()">
+<i class="fa-solid fa-xmark"></i>
+</button>
+</div>
+</div>
+<div class="preview-modal-body">
+<div class="modal-split-view">
+<div class="modal-code-panel collapsed" id="modal-code-panel">
+<div class="modal-code-scroll">
+<pre id="modal-code-pre"><code id="modal-code-display"></code></pre>
+</div>
+</div>
+<div class="modal-divider" id="modal-divider" onmousedown="startDrag(event)"></div>
+<div class="modal-preview-panel">
+<iframe class="modal-iframe" id="modal-preview-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
+</div>
+</div>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+const firebaseConfig = {
+apiKey: "AIzaSyCPQuSdHVxNpSc4Xcc6Uzg16Z5rnCfezhA",
+authDomain: "flora-database-f767e.firebaseapp.com",
+databaseURL: "https://flora-database-f767e-default-rtdb.asia-southeast1.firebasedatabase.app",
+projectId: "flora-database-f767e",
+storageBucket: "flora-database-f767e.firebasestorage.app",
+messagingSenderId: "713333859975",
+appId: "1:713333859975:web:9932d9b04ad7d58fd7ba22",
+measurementId: "G-Z6MVELQ63X"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+let currentSessionId = null;
+let allSessions = {};
+let currentImg64 = null;
+let imgMode = 'vision';
+let currentUID = null;
+let displayName = "User";
+let isFirstLoad = true;
+let _modalCode = '';
+let _modalLang = 'html';
+let _splitActive = false;
+let thinkingStartTime = 0;
+let thinkingInterval = null;
+const usernameInput = document.getElementById('username');
+const loginBtn = document.getElementById('login-btn');
+function generateUID() { return 'user_' + Date.now().toString(36) + Math.random().toString(36).substring(2); }
+function handleLogin() {
+const nameInput = usernameInput.value.trim();
+if (!nameInput) { usernameInput.focus(); alert("Nama wajib diisi!"); return; }
+displayName = nameInput;
+let savedUID = localStorage.getItem('flora_uid');
+if (!savedUID) { savedUID = generateUID(); localStorage.setItem('flora_uid', savedUID); }
+localStorage.setItem('flora_display_name', displayName);
+currentUID = savedUID;
+initApp(displayName, currentUID);
+}
+if (loginBtn) loginBtn.addEventListener('click', handleLogin);
+if (usernameInput) usernameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
+function initApp(name, uid) {
+document.getElementById('auth-layer').style.display = 'none';
+document.getElementById('app-interface').style.opacity = 1;
+const userChatsRef = ref(db, 'chats/' + uid);
+onValue(userChatsRef, (snapshot) => {
+const data = snapshot.val();
+allSessions = data || {};
+renderSidebar();
+if (isFirstLoad) { isFirstLoad = false; showWelcomeScreen(); }
+});
+}
+function showWelcomeScreen() {
+currentSessionId = Date.now().toString();
+const name = localStorage.getItem('flora_display_name') || "User";
+document.getElementById('msg-container').innerHTML = `
+<div class="welcome-screen" id="welcome-screen">
+<div class="welcome-icon"><i class="fa-solid fa-spa"></i></div>
+<h2 class="welcome-title">Halo, <span class="accent">${name}</span></h2>
+<p class="welcome-subtitle">Apa yang bisa saya bantu hari ini?</p>
+<div class="starter-grid">
+<div class="starter-card" onclick="useStarter('Buatkan game ular (snake) sederhana pakai HTML, CSS, dan JS dalam satu file.')">
+<div class="starter-icon"><i class="fa-solid fa-gamepad"></i></div>
+<div class="starter-title">Tes Koding Web</div>
+<div class="starter-desc">Bikin game uler Live Preview</div>
+</div>
+<div class="starter-card" onclick="useStarter('Ceritakan fakta menarik tentang teknologi AI')">
+<div class="starter-icon"><i class="fa-solid fa-lightbulb"></i></div>
+<div class="starter-title">Pengetahuan</div>
+<div class="starter-desc">Fakta tentang AI</div>
+</div>
+<div class="starter-card" onclick="useStarter('Buatkan gambar pemandangan gunung saat matahari terbenam')">
+<div class="starter-icon"><i class="fa-solid fa-image"></i></div>
+<div class="starter-title">Generate Gambar</div>
+<div class="starter-desc">Pemandangan gunung sunset</div>
+</div>
+<div class="starter-card" onclick="useStarter('Bantu saya merangkum konsep Data Science untuk pemula')">
+<div class="starter-icon"><i class="fa-solid fa-book"></i></div>
+<div class="starter-title">Edukasi</div>
+<div class="starter-desc">Konsep Data Science</div>
+</div>
+</div>
+</div>`;
+updateInputDockPosition(true);
+}
+function updateInputDockPosition(isWelcome) {
+const inputDock = document.getElementById('input-dock');
+if (window.innerWidth > 768) inputDock.classList.toggle('centered', isWelcome);
+else inputDock.classList.remove('centered');
+}
+window.onload = () => {
+const savedUID = localStorage.getItem('flora_uid');
+const savedName = localStorage.getItem('flora_display_name');
+if (savedUID && savedName) { currentUID = savedUID; displayName = savedName; initApp(savedName, savedUID); }
+else { document.getElementById('auth-layer').style.display = 'flex'; if (usernameInput) usernameInput.focus(); }
+};
+window.startNewChat = function () {
+currentSessionId = Date.now().toString();
+showWelcomeScreen();
+renderSidebar();
+if (window.innerWidth <= 768) toggleSidebar();
+};
+window.useStarter = function (text) {
+document.getElementById('user-input').value = text;
+processInput();
+};
+function saveSessions() {
+if (!currentUID) return;
+set(ref(db, 'chats/' + currentUID), allSessions);
+}
+function getDateCategory(timestamp) {
+const date = new Date(timestamp);
+const today = new Date();
+const yesterday = new Date(today);
+yesterday.setDate(yesterday.getDate() - 1);
+if (date.toDateString() === today.toDateString()) return "Hari Ini";
+if (date.toDateString() === yesterday.toDateString()) return "Kemarin";
+return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function renderSidebar() {
+const list = document.getElementById('history-list');
+list.innerHTML = "";
+if (!allSessions) return;
+const sortedIds = Object.keys(allSessions).sort((a, b) => b - a);
+let lastHeader = "";
+sortedIds.forEach(id => {
+const session = allSessions[id];
+const header = getDateCategory(session.timestamp);
+if (header !== lastHeader) {
+const headerDiv = document.createElement('div');
+headerDiv.className = 'history-date';
+headerDiv.innerText = header;
+list.appendChild(headerDiv);
+lastHeader = header;
+}
+const div = document.createElement('div');
+div.className = `history-item ${id === currentSessionId ? 'active' : ''}`;
+div.onclick = () => loadSession(id);
+div.innerHTML = `<div class="history-title">${session.title}</div>`;
+list.appendChild(div);
+});
+}
+window.loadSession = function (id) {
+currentSessionId = id;
+const session = allSessions[id];
+const container = document.getElementById('msg-container');
+container.innerHTML = "";
+if (!session) { showWelcomeScreen(); return; }
+if (!session.messages || session.messages.length === 0) { showWelcomeScreen(); }
+else {
+session.messages.forEach(msg => { addBubble(msg.content, msg.role, msg.image, false, false); });
+updateInputDockPosition(false);
+}
+renderSidebar();
+if (window.innerWidth <= 768) toggleSidebar();
+};
+// ===== THINKING TIMER FUNCTIONS =====
+window.startThinkingTimer = function () {
+thinkingStartTime = Date.now();
+const inputContainer = document.querySelector('.input-container');
+if (!inputContainer || document.getElementById('thinking-bar')) return;
+
+const thinkingBar = document.createElement('div');
+thinkingBar.className = 'thinking-bar show';
+thinkingBar.id = 'thinking-bar';
+thinkingBar.innerHTML = `
+<div class="thinking-dot"></div>
+<span>Flora sedang berpikir</span>
+<span class="thinking-time" id="thinking-time-display">0.0s</span>
+`;
+inputContainer.insertBefore(thinkingBar, inputContainer.firstChild);
+
+thinkingInterval = setInterval(() => {
+const elapsed = ((Date.now() - thinkingStartTime) / 1000).toFixed(1);
+const display = document.getElementById('thinking-time-display');
+if (display) display.textContent = elapsed + 's';
+}, 100);
+};
+
+window.stopThinkingTimer = function () {
+if (thinkingInterval) {
+clearInterval(thinkingInterval);
+thinkingInterval = null;
+}
+const thinkingBar = document.getElementById('thinking-bar');
+if (thinkingBar) {
+const elapsed = ((Date.now() - thinkingStartTime) / 1000).toFixed(2);
+thinkingBar.innerHTML = `
+<div class="thinking-dot" style="background:#22c55e;"></div>
+<span>Selesai dalam</span>
+<span class="thinking-time" style="color:#22c55e;">${elapsed}s</span>
+`;
+setTimeout(() => { thinkingBar.remove(); }, 3000);
+}
+};
+
+// ===== IMPROVED PREVIEW SYSTEM =====
+function buildPreviewHTML(code, lang) {
+const MAX_CODE_SIZE = 50000;
+if (code.length > MAX_CODE_SIZE) {
+return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:system-ui,sans-serif;padding:40px;background:#f8f9fa;color:#1a1a1a;text-align:center;"><div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:24px;"><h3 style="color:#d97706;margin-bottom:8px;">⚠️ Kode Terlalu Besar</h3><p style="color:#92400e;font-size:13px;">Preview tidak tersedia untuk kode >50KB. Silakan gunakan Fullscreen atau salin kode.</p></div></body></html>`;
+}
+
+if (lang === 'javascript' || lang === 'js') {
+return `<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<style>
+body{font-family:system-ui,sans-serif;padding:20px;background:#f8f9fa;color:#1a1a1a;}
+#output{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;min-height:60px;font-family:'SF Mono',monospace;font-size:13px;line-height:1.6;}
+h3{font-size:13px;font-weight:600;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;}
+.err{color:#ef4444;}
+</style>
+</head><body>
+<h3>⚙ Console Output</h3>
+<div id="output"><i style="color:#9ca3af">Menjalankan script...</i></div>
+<script>
+const out=document.getElementById('output');
+let first=true;
+console.log=function(...a){
+if(first){out.innerHTML='';first=false;}
+out.innerHTML+='<div>> '+a.join(' ')+'</div>';
+};
+try{${code.substring(0, 30000)}}catch(e){out.innerHTML='<div class="err">✗ Error: '+e.message+'</div>';}
+<\/script>
+</body></html>`;
+}
+
+if (lang === 'css') {
+return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;}
+body{font-family:system-ui,sans-serif;padding:24px;background:#fff;}
+${code.substring(0, 30000)}
+</style>
+</head><body>
+<h1>Heading H1</h1><h2>Heading H2</h2>
+<p>Ini contoh paragraf. <strong>Bold</strong>, <em>italic</em>, dan <a href="#">link</a>.</p>
+<button>Tombol</button> <button class="btn">Button Class</button>
+<div class="card box container wrapper"><p>Div dengan class umum</p></div>
+<ul><li>Item satu</li><li>Item dua</li><li>Item tiga</li></ul>
+<input type="text" placeholder="Input teks" style="margin-top:8px">
+</body></html>`;
+}
+
+const hasHtmlTag = code.includes('<html') || code.includes('<!DOCTYPE');
+const hasHeadTag = code.includes('<head');
+const hasBodyTag = code.includes('<body');
+const hasStyleTag = code.includes('<style');
+
+if (hasHtmlTag) {
+return code.substring(0, MAX_CODE_SIZE);
+} else if (hasHeadTag || hasBodyTag || hasStyleTag) {
+if (!hasHtmlTag) {
+return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">${hasHeadTag ? '' : '<style>body{font-family:system-ui,sans-serif;padding:20px;}</style>'}</head><body>${code.substring(0, MAX_CODE_SIZE)}</body></html>`;
+}
+return code.substring(0, MAX_CODE_SIZE);
+} else {
+return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><style>body{font-family:system-ui,sans-serif;padding:20px;background:#fff;white-space:pre-wrap;}</style></head><body>${code.substring(0, MAX_CODE_SIZE)}</body></html>`;
+}
+}
+
+function renderToIframe(iframe, code, lang) {
+if (!iframe) return;
+
+const html = buildPreviewHTML(code, lang);
+const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+try {
+iframeDoc.open();
+iframeDoc.write(html);
+iframeDoc.close();
+
+const timeoutId = setTimeout(() => {
+if (iframe && iframeDoc.readyState !== 'complete') {
+iframeDoc.open();
+iframeDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:system-ui,sans-serif;padding:40px;background:#fef3c7;color:#92400e;text-align:center;"><div style="background:#fff;border:1px solid #f59e0b;border-radius:8px;padding:24px;"><h3>⏱️ Timeout</h3><p style="font-size:13px;">Preview membutuhkan waktu terlalu lama. Kode mungkin terlalu kompleks.</p></div></body></html>');
+iframeDoc.close();
+}
+}, 5000);
+
+iframe.onload = () => { clearTimeout(timeoutId); };
+} catch (e) {
+iframeDoc.open();
+iframeDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:system-ui,sans-serif;padding:40px;background:#fee2e2;color:#991b1b;text-align:center;"><div style="background:#fff;border:1px solid #ef4444;border-radius:8px;padding:24px;"><h3>❌ Error Render</h3><p style="font-size:13px;">' + e.message + '</p></div></body></html>');
+iframeDoc.close();
+}
+}
+
+window.switchTab = function (blockId, tab) {
+const wrapper = document.getElementById(blockId);
+if (!wrapper) return;
+const codePaneEl = wrapper.querySelector('.code-pane');
+const previewPaneEl = wrapper.querySelector('.preview-pane');
+const btnCode = wrapper.querySelector('.tab-btn[data-tab="code"]');
+const btnPreview = wrapper.querySelector('.tab-btn[data-tab="preview"]');
+if (tab === 'code') {
+codePaneEl.classList.remove('hidden');
+previewPaneEl.classList.remove('active');
+btnCode.classList.add('active');
+btnPreview.classList.remove('active');
+} else {
+codePaneEl.classList.add('hidden');
+previewPaneEl.classList.add('active');
+btnCode.classList.remove('active');
+btnPreview.classList.add('active');
+const iframe = previewPaneEl.querySelector('iframe');
+const loading = previewPaneEl.querySelector('.preview-loading');
+if (iframe && !iframe.dataset.rendered) {
+const rawCode = decodeURIComponent(wrapper.dataset.code);
+const lang = wrapper.dataset.lang || 'html';
+
+if (rawCode.length > 50000) {
+if (loading) loading.style.display = 'none';
+previewPaneEl.innerHTML = '<div class="preview-error"><i class="fa-solid fa-triangle-exclamation"></i><div>⚠️ Kode terlalu besar untuk preview (>50KB). Gunakan Fullscreen atau salin kode.</div></div>';
+return;
+}
+
+renderToIframe(iframe, rawCode, lang);
+iframe.dataset.rendered = '1';
+if (loading) {
+iframe.addEventListener('load', () => { if (loading) loading.style.display = 'none'; }, { once: true });
+setTimeout(() => { if (loading && loading.style.display !== 'none') loading.style.display = 'none'; }, 5000);
+}
+}
+}
+};
+
+window.refreshInlinePreview = function (blockId) {
+const wrapper = document.getElementById(blockId);
+if (!wrapper) return;
+const iframe = wrapper.querySelector('.preview-pane iframe');
+if (!iframe) return;
+const rawCode = decodeURIComponent(wrapper.dataset.code);
+const lang = wrapper.dataset.lang || 'html';
+iframe.dataset.rendered = '';
+renderToIframe(iframe, rawCode, lang);
+iframe.dataset.rendered = '1';
+};
+
+window.openFullscreenPreview = function (blockId) {
+const wrapper = document.getElementById(blockId);
+if (!wrapper) return;
+_modalCode = decodeURIComponent(wrapper.dataset.code);
+_modalLang = wrapper.dataset.lang || 'html';
+
+if (_modalCode.length > 100000) {
+alert('⚠️ Kode sangat besar (' + Math.round(_modalCode.length/1024) + 'KB). Preview mungkin lambat.');
+}
+
+document.getElementById('modal-lang-badge').textContent = _modalLang.toUpperCase();
+document.getElementById('modal-title-text').textContent = 'Live Preview — ' + (_modalLang.toUpperCase());
+const modalIframe = document.getElementById('modal-preview-iframe');
+renderToIframe(modalIframe, _modalCode, _modalLang);
+const codeDisplay = document.getElementById('modal-code-display');
+codeDisplay.textContent = _modalCode;
+codeDisplay.className = `language-${_modalLang}`;
+if (window.Prism) Prism.highlightElement(codeDisplay);
+document.getElementById('code-preview-modal').classList.add('show');
+document.body.style.overflow = 'hidden';
+};
+
+window.closeFullscreenPreview = function () {
+document.getElementById('code-preview-modal').classList.remove('show');
+document.body.style.overflow = '';
+_splitActive = false;
+document.getElementById('modal-code-panel').classList.add('collapsed');
+document.getElementById('split-toggle-btn').innerHTML = '<i class="fa-solid fa-table-columns"></i> Split View';
+};
+
+window.toggleSplitView = function () {
+_splitActive = !_splitActive;
+const panel = document.getElementById('modal-code-panel');
+const btn = document.getElementById('split-toggle-btn');
+if (_splitActive) {
+panel.classList.remove('collapsed');
+panel.style.width = '45%';
+btn.innerHTML = '<i class="fa-solid fa-square"></i> Preview Only';
+} else {
+panel.classList.add('collapsed');
+btn.innerHTML = '<i class="fa-solid fa-table-columns"></i> Split View';
+}
+};
+
+window.refreshModalPreview = function () {
+const iframe = document.getElementById('modal-preview-iframe');
+renderToIframe(iframe, _modalCode, _modalLang);
+};
+
+window.copyModalCode = function () {
+navigator.clipboard.writeText(_modalCode).then(() => {
+const btn = document.querySelector('.preview-modal-btn[onclick="copyModalCode()"]');
+if (btn) {
+btn.innerHTML = '<i class="fa-solid fa-check"></i> Tersalin!';
+setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-copy"></i> Salin Kode'; }, 2000);
+}
+});
+};
+
+window.startDrag = function (e) {
+if (!_splitActive) return;
+e.preventDefault();
+const divider = document.getElementById('modal-divider');
+const codePanel = document.getElementById('modal-code-panel');
+const container = divider.parentElement;
+divider.classList.add('dragging');
+const onMove = (ev) => {
+const containerRect = container.getBoundingClientRect();
+const x = (ev.clientX || ev.touches?.[0].clientX) - containerRect.left;
+const pct = Math.min(Math.max((x / containerRect.width) * 100, 20), 70);
+codePanel.style.width = pct + '%';
+};
+const onUp = () => {
+divider.classList.remove('dragging');
+document.removeEventListener('mousemove', onMove);
+document.removeEventListener('mouseup', onUp);
+};
+document.addEventListener('mousemove', onMove);
+document.addEventListener('mouseup', onUp);
+};
+
+document.addEventListener('keydown', (e) => {
+if (e.key === 'Escape') closeFullscreenPreview();
+});
+
+let _blockCounter = 0;
+window.formatBotContent = function (text) {
+return text.replace(/\n/g, '<br>').replace(/```(\w*)([\s\S]*?)```/g, (match, lang, code) => {
+const language = lang.trim() || 'javascript';
+const cleanCode = code.replace(/<br>/g, '\n').trim();
+const escapedCode = cleanCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const safeCode = encodeURIComponent(cleanCode);
+const langLower = language.toLowerCase();
+const canPreview = ['html', 'htm', 'javascript', 'js', 'css'].includes(langLower)
+|| cleanCode.includes('<html') || cleanCode.includes('<!DOCTYPE');
+const blockId = 'codeblock-' + (++_blockCounter);
+const previewTabHTML = canPreview ? `
+<button class="tab-btn" data-tab="preview" onclick="switchTab('${blockId}', 'preview')">
+<span class="tab-dot"></span> Preview
+</button>` : '';
+const previewPaneHTML = canPreview ? `
+<div class="preview-pane">
+<div class="preview-loading">
+<div class="preview-spinner"></div>
+<span>Merender preview...</span>
+</div>
+<iframe sandbox="allow-scripts allow-same-origin allow-forms allow-modals" style="width:100%;min-height:320px;border:none;display:block;"></iframe>
+<div class="preview-status-bar">
+<div class="status-dot"></div>
+<span>Preview siap</span>
+<button class="status-refresh-btn" onclick="refreshInlinePreview('${blockId}')">
+<i class="fa-solid fa-rotate-right"></i> Refresh
+</button>
+</div>
+</div>` : '';
+const fullscreenBtnHTML = canPreview ? `
+<button class="code-btn fullscreen-btn" onclick="openFullscreenPreview('${blockId}')" title="Buka Fullscreen">
+<i class="fa-solid fa-expand"></i> Fullscreen
+</button>` : '';
+return `
+<div class="code-block-wrapper" id="${blockId}" data-code="${safeCode}" data-lang="${langLower}">
+<div class="code-tab-bar">
+<span class="code-lang-badge">${language}</span>
+<div class="tab-switcher">
+<button class="tab-btn active" data-tab="code" onclick="switchTab('${blockId}', 'code')">
+<span class="tab-dot"></span> Kode
+</button>
+${previewTabHTML}
+</div>
+<div class="code-actions-right">
+${fullscreenBtnHTML}
+<button class="code-btn" onclick="copyInlineCode(this, '${safeCode}')">
+<i class="fa-solid fa-copy"></i> Salin
+</button>
+</div>
+</div>
+<div class="code-pane">
+<pre><code class="language-${language}">${escapedCode}</code></pre>
+</div>
+${previewPaneHTML}
+</div>`;
+});
+};
+
+window.copyInlineCode = function (btn, safeCode) {
+navigator.clipboard.writeText(decodeURIComponent(safeCode)).then(() => {
+btn.classList.add('success');
+btn.innerHTML = '<i class="fa-solid fa-check"></i> Tersalin!';
+setTimeout(() => { btn.classList.remove('success'); btn.innerHTML = '<i class="fa-solid fa-copy"></i> Salin'; }, 2000);
+});
+};
+
+async function sendMessage() {
+const input = document.getElementById('user-input');
+const txt = input.value.trim();
+if (!txt && !currentImg64) return;
+const welcome = document.getElementById('welcome-screen');
+if (welcome) welcome.remove();
+if (!allSessions[currentSessionId]) {
+allSessions[currentSessionId] = { title: txt ? txt.substring(0, 25) + "..." : "Gambar...", timestamp: Date.now(), messages: [] };
+} else if (allSessions[currentSessionId].messages?.length === 0) {
+allSessions[currentSessionId].title = txt ? txt.substring(0, 25) + "..." : "Gambar...";
+}
+const imgToSend = currentImg64;
+addBubble(txt, 'user', imgToSend, false, true);
+const payload = { history: (allSessions[currentSessionId].messages || []).slice(-10), message: txt, image: imgToSend };
+input.value = ""; clearImage();
+
+// START THINKING TIMER
+window.startThinkingTimer();
+
+const loadingId = addBubble("", 'bot', null, true, false);
+const botContainer = document.getElementById(loadingId);
+try {
+const res = await fetch('/api', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload)
+});
+if (!res.ok) throw new Error("Gagal terhubung.");
+const reader = res.body.getReader();
+const decoder = new TextDecoder("utf-8");
+let fullText = "";
+botContainer.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content" id="content-${loadingId}"></div>`;
+const contentDiv = document.getElementById(`content-${loadingId}`);
+let buffer = "";
+while (true) {
+const { done, value } = await reader.read();
+if (done) break;
+buffer += decoder.decode(value, { stream: true });
+let lines = buffer.split('\n');
+buffer = lines.pop();
+for (const line of lines) {
+if (line.trim() === "" || line.includes("[DONE]")) continue;
+if (line.startsWith(" ")) {
+try {
+const data = JSON.parse(line.substring(6));
+if (data.text) {
+fullText += data.text;
+contentDiv.innerHTML = window.formatBotContent(fullText);
+document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight });
+}
+} catch (e) { }
+}
+}
+}
+// STOP THINKING TIMER
+window.stopThinkingTimer();
+
+if (window.Prism) Prism.highlightAllUnder(botContainer);
+if (!allSessions[currentSessionId].messages) allSessions[currentSessionId].messages = [];
+allSessions[currentSessionId].messages.push({ role: 'assistant', content: fullText, image: null });
+saveSessions();
+} catch (e) {
+window.stopThinkingTimer();
+botContainer.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content"><div style="color:#ef4444;padding:12px;">Error: ${e.message}</div></div>`;
+}
+}
+
+async function sendDrawRequest(prompt) {
+const input = document.getElementById('user-input');
+const welcome = document.getElementById('welcome-screen');
+if (welcome) welcome.remove();
+if (!allSessions[currentSessionId]) { allSessions[currentSessionId] = { title: prompt, timestamp: Date.now(), messages: [] }; }
+addBubble(`Gambarkan: ${prompt}`, 'user', null, false, true);
+input.value = "";
+const loadingId = addBubble("", 'bot', null, true, false);
+try {
+const res = await fetch('/api/draw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+const data = await res.json();
+if (!res.ok || !data.success) throw new Error(data.error || "Gagal membuat gambar.");
+document.getElementById(loadingId).remove();
+const images = data.images || (data.url ? [data.url] : []);
+if (images.length > 0) { addBubble(`Berikut hasilnya untuk: ${prompt}`, 'bot', images, false, true); }
+else { throw new Error("Tidak ada gambar yang dihasilkan."); }
+} catch (e) { document.getElementById(loadingId).innerHTML = `<div style="color:#ef4444;padding:12px;">Gagal: ${e.message}</div>`; }
+}
+
+async function sendImageToEditor() {
+const input = document.getElementById('user-input'); const txt = input.value.trim();
+if (!txt) { alert("Tulis instruksi editnya!"); return; }
+const welcome = document.getElementById('welcome-screen'); if (welcome) welcome.remove();
+if (!allSessions[currentSessionId]) { allSessions[currentSessionId] = { title: "Edit Gambar", timestamp: Date.now(), messages: [] }; }
+const imgToSend = currentImg64;
+addBubble(`Edit: ${txt}`, 'user', imgToSend, false, true);
+input.value = ""; clearImage();
+const loadingId = addBubble("", 'bot', null, true, false);
+try {
+const resStart = await fetch('/api/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: 'start', image: imgToSend, prompt: txt }) });
+const dataStart = await resStart.json();
+if (!dataStart.success) throw new Error(dataStart.error || "Gagal memulai job.");
+const jobId = dataStart.jobId; let attempts = 0;
+const pollInterval = setInterval(async () => {
+attempts++;
+try {
+const resCheck = await fetch('/api/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: 'check', jobId }) });
+const dataCheck = await resCheck.json();
+if (dataCheck.status === 'done') { clearInterval(pollInterval); document.getElementById(loadingId).remove(); addBubble(`Selesai! Hasil edit: ${txt}`, 'bot', dataCheck.url, false, true); }
+else if (dataCheck.status === 'failed') { clearInterval(pollInterval); throw new Error("Gambar ditolak."); }
+else if (attempts >= 20) { clearInterval(pollInterval); throw new Error("Waktu habis."); }
+} catch (errLoop) { clearInterval(pollInterval); document.getElementById(loadingId).innerHTML = `<div style="color:#ef4444">Error: ${errLoop.message}</div>`; }
+}, 3000);
+} catch (e) { document.getElementById(loadingId).innerHTML = `<div style="color:#ef4444">Error: ${e.message}</div>`; }
+}
+
+function addBubble(text, role, img, isLoading, saveToMem) {
+const container = document.getElementById('msg-container');
+const div = document.createElement('div');
+div.className = `msg-group ${role}`;
+div.id = 'msg-' + Date.now();
+if (saveToMem) {
+if (!allSessions[currentSessionId].messages) allSessions[currentSessionId].messages = [];
+allSessions[currentSessionId].messages.push({ role: role === 'user' ? 'user' : 'assistant', content: text, image: img });
+saveSessions();
+}
+if (role === 'user') {
+const imgHtml = img ? `<img src="${img}" style="max-width:180px;border-radius:10px;margin-bottom:8px;display:block;">` : '';
+div.innerHTML = `<div class="bubble">${imgHtml}<div>${text.replace(/\n/g, '<br>')}</div></div>`;
+} else {
+if (isLoading) {
+div.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div style="padding:10px 0;"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+} else {
+let mediaHtml = '';
+if (Array.isArray(img)) {
+let gridItems = img.map(url => `<a href="${url}" target="_blank"><img src="${url}" loading="lazy" onerror="this.style.display='none'"></a>`).join('');
+mediaHtml = `<div class="img-grid">${gridItems}</div>`;
+} else if (img && typeof img === 'string') {
+mediaHtml = `<div class="single-img"><a href="${img}" target="_blank"><img src="${img}" referrerpolicy="no-referrer"></a></div>`;
+}
+let formatted = window.formatBotContent(text);
+div.innerHTML = `<div class="avatar"><i class="fa-solid fa-spa"></i></div><div class="bot-content">${mediaHtml}${formatted}</div>`;
+}
+}
+container.appendChild(div);
+if (window.Prism) Prism.highlightAll();
+document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight, behavior: 'smooth' });
+return div.id;
+}
+
+window.processInput = function () {
+const input = document.getElementById('user-input');
+const txt = input.value.trim();
+if (!txt && !currentImg64) return;
+updateInputDockPosition(false);
+if (imgMode === 'edit') { if (currentImg64) { sendImageToEditor(); return; } else { sendDrawRequest(txt); return; } }
+const drawRegex = /^(gambarkan|buatkan gambar|buat gambar|\/img|\/draw)\s+(.+)/i;
+const match = txt.match(drawRegex);
+if (match) { sendDrawRequest(match[2]); return; }
+sendMessage();
+};
+
+window.activateDrawMode = function () { const input = document.getElementById('user-input'); input.value = "Gambarkan "; input.focus(); };
+window.autoResize = function (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
+window.setImgMode = function (mode) {
+imgMode = mode;
+document.querySelectorAll('.preview-mode-btn').forEach(btn => btn.classList.remove('active'));
+document.getElementById(`mode-${mode}`).classList.add('active');
+document.getElementById('user-input').placeholder = mode === 'edit' ? "Tulis gaya editnya..." : "Tanya sesuatu tentang gambar ini...";
+};
+window.handleFile = function (input) {
+const file = input.files[0]; if (!file) return;
+if (!file.type.startsWith('image/')) { alert("Harap pilih file gambar!"); return; }
+const reader = new FileReader();
+reader.onload = (e) => {
+const img = new Image(); img.src = e.target.result;
+img.onload = () => {
+const canvas = document.createElement('canvas'); let width = img.width; let height = img.height; const MAX_SIZE = 800;
+if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
+else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+canvas.width = width; canvas.height = height;
+const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+currentImg64 = canvas.toDataURL('image/jpeg', 0.7);
+setImgMode('vision');
+document.getElementById('preview-img-element').src = currentImg64;
+document.getElementById('img-preview-box').classList.add('show');
+};
+};
+reader.readAsDataURL(file);
+};
+window.clearImage = function () { currentImg64 = null; document.getElementById('file-input').value = ""; document.getElementById('img-preview-box').classList.remove('show'); };
+window.toggleSidebar = function () { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('show'); };
+window.addEventListener('resize', () => { const welcome = document.getElementById('welcome-screen'); updateInputDockPosition(!!welcome); });
+document.addEventListener('DOMContentLoaded', () => {
+const ta = document.getElementById('user-input');
+if (ta) {
+ta.addEventListener('keydown', (e) => {
+if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); processInput(); }
+});
+}
+});
+</script>
 </body>
 </html>
