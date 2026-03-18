@@ -936,6 +936,9 @@ async function sendMessage(overrideTxt, replaceMsgId){
     contentDiv.className='bot-content';
     contentDiv.id='content-'+msgDiv.id;
 
+    // 🤖 Robot: mulai berpikir
+    document.dispatchEvent(new CustomEvent('flora:thinkStart'));
+
     if(_isAtBottom) scrollToBottom(false); else bumpNewMsg();
 
     try {
@@ -966,6 +969,8 @@ async function sendMessage(overrideTxt, replaceMsgId){
                                 window.finishThinkingBlock(thinkId);
                                 avatarEl.classList.remove('thinking-glow');
                                 wrap.appendChild(contentDiv);
+                                // 🤖 Robot: streaming dimulai
+                                document.dispatchEvent(new CustomEvent('flora:streamStart'));
                             }
                             fullText+=d.text;
                             contentDiv.innerHTML=window.formatBotContent(fullText);
@@ -979,6 +984,8 @@ async function sendMessage(overrideTxt, replaceMsgId){
 
         if(!started){ window.finishThinkingBlock(thinkId); avatarEl.classList.remove('thinking-glow'); }
         cursor.remove();
+        // 🤖 Robot: streaming selesai, deteksi mood dari teks
+        document.dispatchEvent(new CustomEvent('flora:streamEnd', { detail: { text: fullText } }));
         if(window.Prism) Prism.highlightAllUnder(msgDiv);
 
         // Add action bar
@@ -1119,6 +1126,362 @@ document.addEventListener('DOMContentLoaded',()=>{
     const ta=document.getElementById('user-input');
     if(ta) ta.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); processInput(); } });
 });
+</script>
+
+<!-- ══ FLORA CHIBI ROBOT ══ -->
+<style>
+#flora-robot-wrap {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 200;
+    width: 110px;
+    height: 120px;
+    cursor: pointer;
+    filter: drop-shadow(0 8px 24px rgba(201,168,124,.35));
+    transition: filter .3s;
+    user-select: none;
+}
+#flora-robot-wrap:hover { filter: drop-shadow(0 12px 32px rgba(201,168,124,.55)); }
+
+/* Bounce animation */
+#flora-robot-wrap.bounce {
+    animation: robotBounce .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes robotBounce {
+    0%   { transform: translateY(0) scale(1); }
+    30%  { transform: translateY(-18px) scale(1.05,.95); }
+    60%  { transform: translateY(4px) scale(.97,1.03); }
+    80%  { transform: translateY(-6px) scale(1.02,.98); }
+    100% { transform: translateY(0) scale(1); }
+}
+
+/* Mood badge */
+#robot-mood-badge {
+    position: absolute;
+    top: -6px; right: -6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 3px 7px;
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity .3s, transform .3s;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+}
+#flora-robot-wrap:hover #robot-mood-badge {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Streaming: mouth pulses via JS class */
+#robot-mouth { transition: d .15s ease; }
+
+/* Eye blink overlay (covers eye-whites to simulate blink) */
+.eye-blink-l, .eye-blink-r {
+    transform-origin: center;
+    transform-box: fill-box;
+    transition: transform .08s ease;
+}
+
+@media(max-width:768px){
+    #flora-robot-wrap { bottom: 90px; left: 12px; width: 80px; height: 88px; }
+}
+</style>
+
+<div id="flora-robot-wrap" title="Flora AI">
+    <div id="robot-mood-badge">💭 idle</div>
+    <svg id="flora-svg" viewBox="0 0 110 120" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
+        <defs>
+            <radialGradient id="headG" cx="50%" cy="35%" r="60%">
+                <stop offset="0%" stop-color="#e0c89a"/>
+                <stop offset="100%" stop-color="#b8924e"/>
+            </radialGradient>
+            <radialGradient id="screenG" cx="50%" cy="40%" r="55%">
+                <stop offset="0%" stop-color="#18181a"/>
+                <stop offset="100%" stop-color="#0a0a0b"/>
+            </radialGradient>
+            <filter id="glow">
+                <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="softGlow">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <clipPath id="eyeClipL"><circle cx="37" cy="62" r="14"/></clipPath>
+            <clipPath id="eyeClipR"><circle cx="73" cy="62" r="14"/></clipPath>
+        </defs>
+
+        <!-- Antenna -->
+        <line x1="55" y1="16" x2="55" y2="4" stroke="#c9a87c" stroke-width="2.5" stroke-linecap="round"/>
+        <circle id="antenna-glow" cx="55" cy="3" r="4.5" fill="#c9a87c" filter="url(#glow)" opacity=".9">
+            <animate attributeName="r" values="4.5;6;4.5" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values=".9;1;.9" dur="2s" repeatCount="indefinite"/>
+        </circle>
+
+        <!-- Left ear -->
+        <rect x="6" y="50" width="11" height="22" rx="5.5" fill="url(#headG)"/>
+        <rect x="9" y="55" width="5" height="12" rx="2.5" fill="#b8924e" opacity=".5"/>
+        <!-- Right ear -->
+        <rect x="93" y="50" width="11" height="22" rx="5.5" fill="url(#headG)"/>
+        <rect x="96" y="55" width="5" height="12" rx="2.5" fill="#b8924e" opacity=".5"/>
+
+        <!-- Head -->
+        <rect x="14" y="16" width="82" height="88" rx="26" fill="url(#headG)"/>
+
+        <!-- Face screen -->
+        <rect x="21" y="24" width="68" height="72" rx="18" fill="url(#screenG)"/>
+
+        <!-- ── LEFT EYE ── -->
+        <circle cx="37" cy="62" r="14" fill="white"/>
+        <!-- Pupil group (moved by JS) -->
+        <g id="pupil-group-l">
+            <circle id="pupil-l" cx="37" cy="62" r="8" fill="#0d0d0f"/>
+            <circle cx="40" cy="58.5" r="2.8" fill="white" opacity=".85"/>
+            <circle cx="34.5" cy="65" r="1.4" fill="white" opacity=".4"/>
+        </g>
+        <!-- Eye blink (scale Y to 0 for blink) -->
+        <rect class="eye-blink-l" id="blink-l" x="23" y="48" width="28" height="28" rx="14" fill="#18181a" transform="scaleY(0)" style="transform-origin:37px 62px;"/>
+
+        <!-- ── RIGHT EYE ── -->
+        <circle cx="73" cy="62" r="14" fill="white"/>
+        <g id="pupil-group-r">
+            <circle id="pupil-r" cx="73" cy="62" r="8" fill="#0d0d0f"/>
+            <circle cx="76" cy="58.5" r="2.8" fill="white" opacity=".85"/>
+            <circle cx="70.5" cy="65" r="1.4" fill="white" opacity=".4"/>
+        </g>
+        <rect class="eye-blink-r" id="blink-r" x="59" y="48" width="28" height="28" rx="14" fill="#18181a" transform="scaleY(0)" style="transform-origin:73px 62px;"/>
+
+        <!-- ── EYEBROWS ── -->
+        <path id="brow-l" d="M24 46 Q37 40 50 46" stroke="#c9a87c" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path id="brow-r" d="M60 46 Q73 40 86 46" stroke="#c9a87c" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+        <!-- ── MOUTH ── -->
+        <path id="robot-mouth" d="M38 82 Q55 92 72 82" stroke="#c9a87c" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+
+        <!-- Cheeks -->
+        <circle id="cheek-l" cx="22" cy="74" r="7" fill="#ffb3c6" opacity=".35"/>
+        <circle id="cheek-r" cx="88" cy="74" r="7" fill="#ffb3c6" opacity=".35"/>
+    </svg>
+</div>
+
+<script>
+(function(){
+    // ─── CONFIG ───
+    const PUPIL_MAX = 5.5; // max px pupils travel
+    const MOODS = {
+        idle:      { badge:'😊 idle',     brow:'M24 46 Q37 40 50 46|M60 46 Q73 40 86 46', mouth:'M38 82 Q55 91 72 82', cheek:.35 },
+        happy:     { badge:'😄 senang',   brow:'M24 44 Q37 38 50 44|M60 44 Q73 38 86 44', mouth:'M36 80 Q55 96 74 80', cheek:.6  },
+        excited:   { badge:'🤩 excited',  brow:'M24 43 Q37 37 50 43|M60 43 Q73 37 86 43', mouth:'M38 79 Q55 97 72 79', cheek:.7  },
+        thinking:  { badge:'🤔 berpikir', brow:'M24 44 Q37 40 50 48|M60 48 Q73 40 86 44', mouth:'M40 85 Q55 83 70 85', cheek:.2  },
+        confused:  { badge:'😕 bingung',  brow:'M24 48 Q37 40 50 44|M60 44 Q73 40 86 48', mouth:'M40 86 Q55 80 70 87', cheek:.25 },
+        streaming: { badge:'💬 ngetik',   brow:'M24 46 Q37 40 50 46|M60 46 Q73 40 86 46', mouth:'M40 83 Q55 89 70 83', cheek:.4  },
+        error:     { badge:'😰 error',    brow:'M26 48 Q37 46 50 52|M60 52 Q73 46 86 48', mouth:'M38 88 Q55 80 72 88', cheek:.15 },
+    };
+
+    let currentMood = 'idle';
+    let isStreaming = false;
+    let streamPhase = 0;
+    let streamAnim = null;
+    let blinkTimer = null;
+
+    const wrap    = document.getElementById('flora-robot-wrap');
+    const browL   = document.getElementById('brow-l');
+    const browR   = document.getElementById('brow-r');
+    const mouth   = document.getElementById('robot-mouth');
+    const cheekL  = document.getElementById('cheek-l');
+    const cheekR  = document.getElementById('cheek-r');
+    const blinkL  = document.getElementById('blink-l');
+    const blinkR  = document.getElementById('blink-r');
+    const badge   = document.getElementById('robot-mood-badge');
+    const pGroupL = document.getElementById('pupil-group-l');
+    const pGroupR = document.getElementById('pupil-group-r');
+    const svg     = document.getElementById('flora-svg');
+
+    // ─── APPLY MOOD ───
+    function applyMood(key) {
+        const m = MOODS[key] || MOODS.idle;
+        currentMood = key;
+        badge.textContent = m.badge;
+        const [bl, br] = m.brow.split('|');
+        browL.setAttribute('d', bl);
+        browR.setAttribute('d', br);
+        mouth.setAttribute('d', m.mouth);
+        cheekL.style.opacity = m.cheek;
+        cheekR.style.opacity = m.cheek;
+    }
+
+    // ─── EYE TRACKING ───
+    let robotCX = 0, robotCY = 0;
+
+    function updateRobotCenter() {
+        const r = svg.getBoundingClientRect();
+        // eye centers in SVG coords mapped to screen
+        const scaleX = r.width / 110;
+        const scaleY = r.height / 120;
+        robotCX = r.left + 37 * scaleX;
+        robotCY = r.top  + 62 * scaleY;
+    }
+
+    function movePupils(mx, my) {
+        if(isStreaming) return; // eyes animate differently during stream
+        updateRobotCenter();
+        const r = svg.getBoundingClientRect();
+        const scaleX = r.width / 110, scaleY = r.height / 120;
+
+        // Left eye
+        const dxL = mx - (r.left + 37*scaleX);
+        const dyL = my - (r.top  + 62*scaleY);
+        const distL = Math.sqrt(dxL*dxL + dyL*dyL) || 1;
+        const clampL = Math.min(distL, PUPIL_MAX * Math.min(scaleX, scaleY)) / distL;
+        pGroupL.setAttribute('transform', `translate(${dxL*clampL/scaleX} ${dyL*clampL/scaleY})`);
+
+        // Right eye
+        const dxR = mx - (r.left + 73*scaleX);
+        const dyR = my - (r.top  + 62*scaleY);
+        const distR = Math.sqrt(dxR*dxR + dyR*dyR) || 1;
+        const clampR = Math.min(distR, PUPIL_MAX * Math.min(scaleX, scaleY)) / distR;
+        pGroupR.setAttribute('transform', `translate(${dxR*clampR/scaleX} ${dyR*clampR/scaleY})`);
+    }
+
+    document.addEventListener('mousemove', e => movePupils(e.clientX, e.clientY));
+
+    // Touch support
+    document.addEventListener('touchmove', e => {
+        const t = e.touches[0];
+        if(t) movePupils(t.clientX, t.clientY);
+    }, { passive: true });
+
+    // ─── BLINK ───
+    function doBlink() {
+        blinkL.style.transform = 'scaleY(1)';
+        blinkR.style.transform = 'scaleY(1)';
+        setTimeout(() => {
+            blinkL.style.transform = 'scaleY(0)';
+            blinkR.style.transform = 'scaleY(0)';
+        }, 120);
+        scheduleBlink();
+    }
+
+    function scheduleBlink() {
+        clearTimeout(blinkTimer);
+        const delay = 2500 + Math.random() * 4000;
+        blinkTimer = setTimeout(doBlink, delay);
+    }
+    scheduleBlink();
+
+    // ─── STREAMING MOUTH ANIMATION ───
+    const mouthFrames = [
+        'M40 83 Q55 89 70 83',
+        'M40 80 Q55 94 70 80',
+        'M40 84 Q55 87 70 84',
+        'M40 79 Q55 96 70 79',
+        'M40 83 Q55 88 70 83',
+    ];
+
+    function startStreamAnim() {
+        if(streamAnim) return;
+        streamPhase = 0;
+        streamAnim = setInterval(() => {
+            streamPhase = (streamPhase + 1) % mouthFrames.length;
+            mouth.setAttribute('d', mouthFrames[streamPhase]);
+            // Subtle eye wobble during stream
+            const wobble = Math.sin(Date.now() / 200) * 1.5;
+            pGroupL.setAttribute('transform', `translate(0 ${wobble})`);
+            pGroupR.setAttribute('transform', `translate(0 ${-wobble})`);
+        }, 160);
+    }
+
+    function stopStreamAnim() {
+        if(streamAnim) { clearInterval(streamAnim); streamAnim = null; }
+        pGroupL.setAttribute('transform', 'translate(0 0)');
+        pGroupR.setAttribute('transform', 'translate(0 0)');
+    }
+
+    // ─── BOUNCE ───
+    function doBounce() {
+        wrap.classList.remove('bounce');
+        void wrap.offsetWidth; // reflow
+        wrap.classList.add('bounce');
+        wrap.addEventListener('animationend', () => wrap.classList.remove('bounce'), { once: true });
+    }
+
+    // ─── MOOD DETECTION ───
+    function detectMood(text) {
+        const t = text.toLowerCase();
+        const excite  = /wow|luar biasa|keren|mantap|hebat|selesai|berhasil|sukses|done|siap/.test(t);
+        const happy   = /senang|bagus|baik|tentu|oke|sip|benar|yuk|ayo|halo|hei/.test(t);
+        const confused= /maaf|tidak tahu|kurang yakin|bingung|belum|hmm|wah|tunggu|coba/.test(t);
+        const thinking= /karena|karena itu|jadi|oleh karena|dengan demikian|pertama|kedua|ketiga|langkah/.test(t);
+        const error   = /error|gagal|salah|tidak bisa|tidak dapat|masalah|crash/.test(t);
+        if(excite)   return 'excited';
+        if(error)    return 'error';
+        if(confused) return 'confused';
+        if(thinking) return 'thinking';
+        if(happy)    return 'happy';
+        return 'idle';
+    }
+
+    // ─── PUBLIC API (hook into sendMessage) ───
+    window.floraRobot = {
+        setMood(key)     { applyMood(key); },
+        startStreaming() {
+            isStreaming = true;
+            applyMood('streaming');
+            startStreamAnim();
+        },
+        stopStreaming(text) {
+            isStreaming = false;
+            stopStreamAnim();
+            applyMood(detectMood(text || ''));
+        },
+        bounce() { doBounce(); },
+        detectAndSet(text) { applyMood(detectMood(text)); },
+    };
+
+    // Initialize
+    applyMood('idle');
+})();
+</script>
+
+<!-- HOOK ROBOT INTO SENDMESSAGE -->
+<script type="module">
+// Patch sendMessage to call floraRobot hooks
+// We intercept via MutationObserver on msg-container + override approach
+
+// Since sendMessage is in a module scope, we hook via custom events
+// Dispatch events from inline script and listen here
+
+document.addEventListener('flora:thinkStart', () => {
+    window.floraRobot?.setMood('thinking');
+});
+document.addEventListener('flora:streamStart', () => {
+    window.floraRobot?.startStreaming();
+});
+document.addEventListener('flora:streamEnd', e => {
+    window.floraRobot?.stopStreaming(e.detail?.text || '');
+});
+document.addEventListener('flora:newMsg', () => {
+    window.floraRobot?.bounce();
+});
+
+// MutationObserver to detect new messages and bounce
+const obs = new MutationObserver(mutations => {
+    for(const m of mutations) {
+        for(const node of m.addedNodes) {
+            if(node.nodeType === 1 && node.classList?.contains('msg-group')) {
+                window.floraRobot?.bounce();
+            }
+        }
+    }
+});
+const container = document.getElementById('msg-container');
+if(container) obs.observe(container, { childList: true });
 </script>
 </body>
 </html>
